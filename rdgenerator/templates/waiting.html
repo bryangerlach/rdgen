@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Generating Exe File</title>
+</head>
+<body>
+    Please wait...This can take 10-15 minutes (or longer if there are other users).<br><br>
+    Status: {{status}}
+    <script>
+        setTimeout(function() {
+            window.location.replace('/check_for_file?filename={{filename}}&uuid={{uuid}}');
+        }, 5000); // 5000 milliseconds = 5 seconds
+    </script>
+</body>
+</html>

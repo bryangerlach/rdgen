@@ -1,0 +1,19 @@
+To fully host the client generator yourself, you will need to following:
+
+1) A Github account that has a fork of rustdesk
+2) A Github fine-grained access token with permissions for your rustdesk repository
+3) An FTP server to upload the generated clients
+4) On the server running the client generator:
+    a) environment variables:
+        GHUSER="your github username"
+        GHBEARER="your fine-graned access token"
+    b) github secrets:
+        GENURL="example.com:8083"
+        GEN_FTP_SERVER="ftp.example.com"
+        GEN_FTP_USER="username"
+        GEN_FTP_PASSWORD="password"
+    c) optional github secrets (for signing the code):
+        WINDOWS_PFX_BASE64
+        WINDOWS_PFX_PASSWORD
+        WINDOWS_PFX_SHA1_THUMBPRINT
+5) A windows computer or VM that is set up to build rustdesk, and is setup as a self-hosted github runner
