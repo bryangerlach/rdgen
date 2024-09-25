@@ -120,12 +120,12 @@ def generator_view(request):
                 decodedCustom['override-settings']['allow-remote-config-modification'] = 'Y' if enableRemoteModi else 'N'
 
             for line in defaultManual.splitlines():
-                key, value = line.split('=')
-                decodedCustom['default-settings'][key.strip()] = value.strip()
+                k, value = line.split('=')
+                decodedCustom['default-settings'][k.strip()] = value.strip()
 
             for line in overrideManual.splitlines():
-                key, value = line.split('=')
-                decodedCustom['override-settings'][key.strip()] = value.strip()
+                k, value = line.split('=')
+                decodedCustom['override-settings'][k.strip()] = value.strip()
             
             decodedCustomJson = json.dumps(decodedCustom)
 
