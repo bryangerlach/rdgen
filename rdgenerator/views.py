@@ -226,6 +226,7 @@ def update_github_run(request):
     return HttpResponse('')
 
 def resize_and_encode_icon(imagefile):
+    print(imagefile)
     try:
         with io.BytesIO() as image_buffer:
             for chunk in imagefile.chunks():
@@ -239,7 +240,10 @@ def resize_and_encode_icon(imagefile):
 
     # Check if resizing is necessary
     if img.size[0] <= 256:
-        return_image = ContentFile(imgcopy.read(), name=imagefile.name)
+        with io.BytesIO() as image_buffer:
+            imgcopy.save(image_buffer, format=imagefile.content_type.split('/')[1])
+            image_buffer.seek(0)
+            return_image = ContentFile(image_buffer.read(), name=imagefile.name)
         return base64.b64encode(return_image.read())
 
     # Calculate resized height based on aspect ratio
@@ -247,10 +251,10 @@ def resize_and_encode_icon(imagefile):
     hsize = int((float(img.size[1]) * float(wpercent)))
 
     # Resize the image while maintaining aspect ratio using LANCZOS resampling
-    iconimgcopy = imgcopy.resize((256, hsize), Image.Resampling.LANCZOS)
+    imgcopy = imgcopy.resize((256, hsize), Image.Resampling.LANCZOS)
 
     with io.BytesIO() as resized_image_buffer:
-        iconimgcopy.save(resized_image_buffer, format=imagefile.content_type.split('/')[1])
+        imgcopy.save(resized_image_buffer, format=imagefile.content_type.split('/')[1])
         resized_image_buffer.seek(0)
 
         resized_imagefile = ContentFile(resized_image_buffer.read(), name=imagefile.name)
