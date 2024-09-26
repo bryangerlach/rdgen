@@ -225,37 +225,38 @@ def update_github_run(request):
     GithubRun.objects.filter(Q(uuid=myuuid)).update(status=mystatus)
     return HttpResponse('')
 
-def resize_and_encode_icon(iconfile):
+def resize_and_encode_icon(imagefile):
     try:
         with io.BytesIO() as image_buffer:
-            for chunk in iconfile.chunks():
+            for chunk in imagefile.chunks():
                 image_buffer.write(chunk)
             image_buffer.seek(0)
 
-            iconimg = Image.open(image_buffer)
-            iconimgcopy = iconimg.copy()
+            img = Image.open(image_buffer)
+            imgcopy = img.copy()
     except (IOError, OSError):
         raise ValueError("Uploaded file is not a valid image format.")
 
     # Check if resizing is necessary
-    if iconimg.size[0] <= 256:
-        return base64.b64encode(iconfile.read())
+    if img.size[0] <= 256:
+        return_image = ContentFile(imgcopy.read(), name=imagefile.name)
+        return base64.b64encode(return_image.read())
 
     # Calculate resized height based on aspect ratio
-    wpercent = (256 / float(iconimg.size[0]))
-    hsize = int((float(iconimg.size[1]) * float(wpercent)))
+    wpercent = (256 / float(img.size[0]))
+    hsize = int((float(img.size[1]) * float(wpercent)))
 
     # Resize the image while maintaining aspect ratio using LANCZOS resampling
-    iconimgcopy = iconimgcopy.resize((256, hsize), Image.Resampling.LANCZOS)
+    iconimgcopy = imgcopy.resize((256, hsize), Image.Resampling.LANCZOS)
 
     with io.BytesIO() as resized_image_buffer:
-        iconimgcopy.save(resized_image_buffer, format=iconfile.content_type.split('/')[1])
+        iconimgcopy.save(resized_image_buffer, format=imagefile.content_type.split('/')[1])
         resized_image_buffer.seek(0)
 
-        resized_iconfile = ContentFile(resized_image_buffer.read(), name=iconfile.name)
+        resized_imagefile = ContentFile(resized_image_buffer.read(), name=imagefile.name)
 
     # Return the Base64 encoded representation of the resized image
-    return base64.b64encode(resized_iconfile.read())
+    return base64.b64encode(resized_imagefile.read())
  
 #the following is used when accessed from an external source, like the rustdesk api server
 def startgh(request):
