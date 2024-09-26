@@ -87,10 +87,10 @@
                     {{ form.theme }} {{ form.themeDorO }} *Default sets the theme but allows the client to change it, Override sets the theme permanently.<br><br>
             </div>
             <script>
-                document.getElementById('id_iconfile').addEventListener('change', function(event) {
+                document.getElementById("{{ form.iconfile.id_for_label }}").addEventListener('change', function(event) {
                     previewImage(event.target, 'icon-preview');
                 });
-                document.getElementById('id_logofile').addEventListener('change', function(event) {
+                document.getElementById("{{ form.logofile.id_for_label }}").addEventListener('change', function(event) {
                     previewImage(event.target, 'logo-preview');
                 });
                 function previewImage(input, previewContainerId) {
