@@ -226,7 +226,6 @@ def update_github_run(request):
     return HttpResponse('')
 
 def resize_and_encode_icon(imagefile):
-    print(imagefile)
     try:
         with io.BytesIO() as image_buffer:
             for chunk in imagefile.chunks():

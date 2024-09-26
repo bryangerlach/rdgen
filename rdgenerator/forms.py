@@ -28,8 +28,8 @@ class GenerateForm(forms.Form):
     urlLink = forms.CharField(label="Custom URL for links", required=False)
 
     #Visual
-    iconfile = forms.FileField(label="Custom App Icon (in .png format)", required=False)
-    logofile = forms.FileField(label="Custom App Logo (in .png format)", required=False)
+    iconfile = forms.FileField(label="Custom App Icon (in .png format)", required=False, widget=forms.FileInput(attrs={'accept': 'image/png'}))
+    logofile = forms.FileField(label="Custom App Logo (in .png format)", required=False, widget=forms.FileInput(attrs={'accept': 'image/png'}))
     theme = forms.ChoiceField(choices=[
         ('light', 'Light'),
         ('dark', 'Dark'),
