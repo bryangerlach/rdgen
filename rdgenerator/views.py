@@ -239,7 +239,7 @@ def resize_and_encode_icon(iconfile):
 
     # Check if resizing is necessary
     if iconimg.size[0] <= 256:
-        return base64.b64encode(iconfile.read()).decode('utf-8')
+        return base64.b64encode(iconfile.read())
 
     # Calculate resized height based on aspect ratio
     wpercent = (256 / float(iconimg.size[0]))
