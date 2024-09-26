@@ -76,12 +76,38 @@
             <div class="section">
                 <h2>Visual</h2>
                     <label for="{{ form.iconfile.id_for_label }}">Custom App Icon (in .png format)</label>
-                    {{ form.iconfile }}<br><br>
+                    <!-- {{ form.iconfile }}<br><br> -->
+                    <input type="file" name="iconfile" id="iconfile" accept="image/png">
+                    <div id="icon-preview"></div><br><br>
                     <label for="{{ form.logofile.id_for_label }}">Custom App Logo (in .png format)</label>
-                    {{ form.logofile }}<br><br>
+                    <!-- {{ form.logofile }}<br><br> -->
+                    <input type="file" name="logofile" id="logofile" accept="image/png">
+                    <div id="logo-preview"></div><br><br>
                     <label for="{{ form.theme.id_for_label }}">Theme:</label>
                     {{ form.theme }} {{ form.themeDorO }} *Default sets the theme but allows the client to change it, Override sets the theme permanently.<br><br>
             </div>
+            <script>
+                document.getElementById('id_iconfile').addEventListener('change', function(event) {
+                    previewImage(event.target, 'icon-preview');
+                });
+                document.getElementById('id_logofile').addEventListener('change', function(event) {
+                    previewImage(event.target, 'logo-preview');
+                });
+                function previewImage(input, previewContainerId) {
+                    if (input.files && input.files[0]) {
+                        var reader = new FileReader();
+                        reader.onload = function(e) {
+                            var img = document.createElement('img');
+                            img.src = e.target.result;   
+                            img.style.maxWidth = '300px';
+                            img.style.maxHeight = '60px';
+                            document.getElementById(previewContainerId).innerHTML = '';
+                            document.getElementById(previewContainerId).appendChild(img);
+                        };
+                        reader.readAsDataURL(input.files[0]);
+                    }
+                }
+            </script>
 
             <div class="section">
                 <h2>Permissions</h2>
