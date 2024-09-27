@@ -142,7 +142,7 @@ def generator_view(request):
             extras = {}
             extras['runasadmin'] = runasadmin
             extras['urlLink'] = urlLink
-            extras['delayFix'] = delayFix
+            extras['delayFix'] = 'true' if delayFix else 'false'
             extra_input = json.dumps(extras)
 
             ####from here run the github action, we need user, repo, access token.
