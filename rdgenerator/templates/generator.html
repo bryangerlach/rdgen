@@ -164,11 +164,11 @@
                     {{ form.permanentPassword }} *The password is used as default, but can be changed by the client<br><br>
                     
                     
-                    <label for="{{ form.denyLan.id_for_label }}">{{ form.denyLan }} Deny LAN discovery</label><br><br>
+                    <label for="{{ form.denyLan.id_for_label }}">{{ form.denyLan }} Deny LAN discovery</label><br>
                     
-                    <label for="{{ form.enableDirectIP.id_for_label }}">{{ form.enableDirectIP }} Enable direct IP access</label><br><br>
+                    <label for="{{ form.enableDirectIP.id_for_label }}">{{ form.enableDirectIP }} Enable direct IP access</label><br>
                     
-                    <label for="{{ form.autoClose.id_for_label }}">{{ form.autoClose }} Automatically close incoming sessions on user inactivity</label><br><br>     
+                    <label for="{{ form.autoClose.id_for_label }}">{{ form.autoClose }} Automatically close incoming sessions on user inactivity</label><br>  
             </div>
         
             <div class="section">
@@ -193,21 +193,21 @@
                     <label for="{{ form.permissionsType.id_for_label }}">Permission type:</label>
                     {{ form.permissionsType }}<br><br>
                     <div class="checkbox-group">
-                    <label for="{{ form.enableKeyboard.id_for_label }}">{{ form.enableKeyboard }} Enable keyboard/mouse</label>
-                    <label for="{{ form.enableClipboard.id_for_label }}">{{ form.enableClipboard }} Enable clipboard</label><br>
-                    <label for="{{ form.enableFileTransfer.id_for_label }}">{{ form.enableFileTransfer }} Enable file transfer</label>
-                    <label for="{{ form.enableAudio.id_for_label }}">{{ form.enableAudio }} Enable audio</label><br>
-                    <label for="{{ form.enableTCP.id_for_label }}">{{ form.enableTCP }} Enable TCP tunneling</label>
-                    <label for="{{ form.enableRemoteRestart.id_for_label }}">{{ form.enableRemoteRestart }} Enable remote restart</label><br>
-                    <label for="{{ form.enableRecording.id_for_label }}">{{ form.enableRecording }} Enable recording session</label>
-                    <label for="{{ form.enableBlockingInput.id_for_label }}">{{ form.enableBlockingInput }} Enable blocking user input</label><br>
-                    <label for="{{ form.enableRemoteModi.id_for_label }}">{{ form.enableRemoteModi }} Enable remote configuration modification</label><br><br>
+                        <label for="{{ form.enableKeyboard.id_for_label }}">{{ form.enableKeyboard }} Enable keyboard/mouse</label>
+                        <label for="{{ form.enableClipboard.id_for_label }}">{{ form.enableClipboard }} Enable clipboard</label>
+                        <label for="{{ form.enableFileTransfer.id_for_label }}">{{ form.enableFileTransfer }} Enable file transfer</label>
+                        <label for="{{ form.enableAudio.id_for_label }}">{{ form.enableAudio }} Enable audio</label>
+                        <label for="{{ form.enableTCP.id_for_label }}">{{ form.enableTCP }} Enable TCP tunneling</label>
+                        <label for="{{ form.enableRemoteRestart.id_for_label }}">{{ form.enableRemoteRestart }} Enable remote restart</label>
+                        <label for="{{ form.enableRecording.id_for_label }}">{{ form.enableRecording }} Enable recording session</label>
+                        <label for="{{ form.enableBlockingInput.id_for_label }}">{{ form.enableBlockingInput }} Enable blocking user input</label>
+                        <label for="{{ form.enableRemoteModi.id_for_label }}">{{ form.enableRemoteModi }} Enable remote configuration modification</label>
                     </div>
             </div>
 
             <div class="section">
                 <h2><i class="fas fa-cog"></i> Other</h2>
-                    <label for="{{ form.removeWallpaper.id_for_label }}">{{ form.removeWallpaper }} Remove wallpaper during incoming sessions</label><br><br>
+                    <label for="{{ form.removeWallpaper.id_for_label }}">{{ form.removeWallpaper }} Remove wallpaper during incoming sessions</label><br>
                     <label for="{{ form.defaultManual.id_for_label }}">Default settings</label><br>
                     {{ form.defaultManual }}<br><br>
                     <label for="{{ form.overrideManual.id_for_label }}">Override settings</label><br>
