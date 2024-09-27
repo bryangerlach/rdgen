@@ -2,7 +2,8 @@ from django import forms
 
 class GenerateForm(forms.Form):
     #Platform
-    platform = forms.ChoiceField(choices=[('windows','Windows'),('linux','Linux (currently unavailable)'),('android','Android (currently unavailable)')], initial='windows')
+    platform = forms.ChoiceField(choices=[('windows','Windows'),('linux','Linux (currently unavailable)'),('android','Android (testing now available)')], initial='windows')
+    delayFix = forms.BooleanField(initial=True, required=False)
 
     #General
     exename = forms.CharField(label="Name for EXE file", required=True)
