@@ -19,6 +19,7 @@ def generator_view(request):
         form = GenerateForm(request.POST, request.FILES)
         if form.is_valid():
             platform = form.cleaned_data['platform']
+            delayFix = form.cleaned_data['delayFix']
             server = form.cleaned_data['serverIP']
             key = form.cleaned_data['key']
             apiServer = form.cleaned_data['apiServer']
@@ -141,6 +142,7 @@ def generator_view(request):
             extras = {}
             extras['runasadmin'] = runasadmin
             extras['urlLink'] = urlLink
+            extras['delayFix'] = delayFix
             extra_input = json.dumps(extras)
 
             ####from here run the github action, we need user, repo, access token.
