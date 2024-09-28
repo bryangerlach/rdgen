@@ -1,9 +1,8 @@
 To fully host the client generator yourself, you will need to following:
 
-1) A Github account that has a fork of rustdesk
-2) A Github fine-grained access token with permissions for your rustdesk repository
-3) An FTP server to upload the generated clients
-4) On the server running the client generator:
+1) A Github account with a fork of this repo
+2) A Github fine-grained access token with permissions for your rdgen repository
+3) On the server running the client generator:
     a) environment variables:
         GHUSER="your github username"
         GHBEARER="your fine-graned access token"
@@ -16,4 +15,4 @@ To fully host the client generator yourself, you will need to following:
         WINDOWS_PFX_BASE64
         WINDOWS_PFX_PASSWORD
         WINDOWS_PFX_SHA1_THUMBPRINT
-5) A windows computer or VM that is set up to build rustdesk, and is setup as a self-hosted github runner
+4) A windows computer or VM that is set up to build rustdesk, and is setup as a self-hosted github runner

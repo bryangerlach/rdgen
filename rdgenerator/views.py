@@ -147,13 +147,13 @@ def generator_view(request):
 
             ####from here run the github action, we need user, repo, access token.
             if platform == 'windows':
-                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rustdesk/actions/workflows/test.yml/dispatches' 
+                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rdgen/actions/workflows/generator-windows.yml/dispatches' 
             elif platform == 'linux':
-                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rustdesk/actions/workflows/generator-linux.yml/dispatches'  
+                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rdgen/actions/workflows/generator-linux.yml/dispatches'  
             elif platform == 'android':
-                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rustdesk/actions/workflows/generator-android.yml/dispatches'
+                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rdgen/actions/workflows/generator-android.yml/dispatches'
             else:
-                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rustdesk/actions/workflows/test.yml/dispatches'
+                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rdgen/actions/workflows/generator-windows.yml/dispatches'
 
             #url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rustdesk/actions/workflows/test.yml/dispatches'  
             data = {
@@ -182,7 +182,7 @@ def generator_view(request):
             response = requests.post(url, json=data, headers=headers)
             print(response)
 
-            return render(request, 'waiting.html', {'filename':filename, 'uuid':myuuid, 'status':"Starting generator...please wait"})
+            return render(request, 'waiting.html', {'filename':filename, 'uuid':myuuid, 'status':"Starting generator...please wait", 'platform':platform})
     else:
         form = GenerateForm()
     return render(request, 'generator.html', {'form': form})
@@ -191,19 +191,20 @@ def generator_view(request):
 def check_for_file(request):
     filename = request.GET['filename']
     uuid = request.GET['uuid']
+    platform = request.GET['platform']
     gh_run = GithubRun.objects.filter(Q(uuid=uuid)).first()
     status = gh_run.status
 
     #if file_exists:
     if status == "Success":
-        return render(request, 'generated.html', {'filename': filename, 'uuid':uuid})
+        return render(request, 'generated.html', {'filename': filename, 'uuid':uuid, 'platform':platform})
     else:
-        return render(request, 'waiting.html', {'filename':filename, 'uuid':uuid, 'status':status})
+        return render(request, 'waiting.html', {'filename':filename, 'uuid':uuid, 'status':status, 'platform':platform})
 
 def download(request):
     filename = request.GET['filename']
     uuid = request.GET['uuid']
-    filename = filename+".exe"
+    #filename = filename+".exe"
     file_path = os.path.join('exe',uuid,filename)
     with open(file_path, 'rb') as file:
         response = HttpResponse(file, headers={

@@ -1,0 +1,420 @@
+name: Custom Linux Client Generator
+run-name: Custom Linux Client Generator
+on: 
+  workflow_dispatch:
+    inputs:
+      server:
+        description: 'Rendezvous Server'
+        required: true
+        default: ''
+        type: string
+      key:
+        description: 'Public Key'
+        required: true
+        default: ''
+        type: string
+      apiServer:
+        description: 'API Server'
+        required: true
+        default: ''
+        type: string
+      custom:
+        description: "Custom JSON"
+        required: true
+        default: ''
+        type: string
+      uuid:
+        description: "uuid of request"
+        required: true
+        default: ''
+        type: string
+      iconbase64:
+        description: "icon in base64"
+        required: false
+        default: ''
+        type: string
+      logobase64:
+        description: "logo in base64"
+        required: false
+        default: ''
+        type: string
+      appname:
+        description: "app name"
+        required: true
+        default: 'rustdesk'
+        type: string
+      filename:
+        description: "Filename"
+        required: true
+        default: 'rustdesk'
+        type: string
+      extras:
+        description: "extra inputs in json"
+        required: true
+        default: '{}'
+        type: string
+
+env:
+  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
+  RUST_VERSION: "1.75" # sciter failed on m1 with 1.78 because of https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
+  CARGO_NDK_VERSION: "3.1.2"
+  SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
+  SCITER_NASM_DEBVERSION: "2.14-1"
+  LLVM_VERSION: "15.0.6"
+  FLUTTER_VERSION: "3.19.6"
+  ANDROID_FLUTTER_VERSION: "3.13.9" # >= 3.16 is very slow on my android phone, but work well on most of others. We may switch to new flutter after changing to texture rendering (I believe it can solve my problem).
+  FLUTTER_RUST_BRIDGE_VERSION: "1.80.1"
+  # for arm64 linux because official Dart SDK does not work
+  FLUTTER_ELINUX_VERSION: "3.16.9"
+  TAG_NAME: "${{ inputs.upload-tag }}"
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  # vcpkg version: 2024.07.12
+  VCPKG_COMMIT_ID: "1de2026f28ead93ff1773e6e680387643e914ea1"
+  VERSION: "1.3.1"
+  NDK_VERSION: "r27"
+  #signing keys env variable checks
+  ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
+  MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
+  # To make a custom build with your own servers set the below secret values
+  RS_PUB_KEY: "${{ inputs.key }}"
+  RENDEZVOUS_SERVER: "${{ inputs.server }}"
+  CUSTOM: "${{ inputs.custom }}"
+  UUIDFOLDER: "${{ inputs.uuid }}"
+  API_SERVER: "${{ inputs.apiServer }}"
+  UPLOAD_ARTIFACT: 'true'
+  SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
+  ICONBASE64: "$${{ inputs.iconbase64 }}"
+
+
+jobs:
+  generate-bridge-linux:
+    uses: ./.github/workflows/bridge.yml
+
+  build-rustdesk-linux:
+    needs: [generate-bridge-linux]
+    name: build rustdesk linux ${{ matrix.job.target }}
+    runs-on: ${{ matrix.job.on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # use a high level qemu-user-static
+        job:
+          - {
+              arch: x86_64,
+              target: x86_64-unknown-linux-gnu,
+              distro: ubuntu18.04,
+              on: ubuntu-20.04,
+              deb_arch: amd64,
+              vcpkg-triplet: x64-linux,
+            }
+          - {
+              arch: aarch64,
+              target: aarch64-unknown-linux-gnu,
+              distro: ubuntu18.04,
+              on: [self-hosted, Linux, ARM64],
+              deb_arch: arm64,
+              vcpkg-triplet: arm64-linux,
+            }
+    steps:
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Maximize build space
+        if: ${{ matrix.job.arch == 'x86_64' }}
+        run: |
+          # sudo rm -rf /opt/ghc
+          # sudo rm -rf /usr/local/lib/android
+          # sudo rm -rf /usr/share/dotnet
+          sudo apt-get update -y
+          sudo apt-get install -y nasm qemu-user-static
+
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          repository: rustdesk/rustdesk
+
+      # - name: Set Swap Space
+      #   if: ${{ matrix.job.arch == 'x86_64' }}
+      #   uses: pierotofy/set-swap-space@master
+      #   with:
+      #     swap-size-gb: 12
+
+      # - name: Free Space
+      #   run: |
+      #     df -h
+      #     free -m
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
+        if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: ${{ matrix.job.target }}
+          components: "rustfmt"
+
+      - name: Save Rust toolchain version
+        run: |
+          RUST_TOOLCHAIN_VERSION=$(cargo --version | awk '{print $2}')
+          echo "RUST_TOOLCHAIN_VERSION=$RUST_TOOLCHAIN_VERSION" >> $GITHUB_ENV
+
+      - name: Disable rust bridge build
+        run: |
+          # only build cdylib
+          sed -i  "s/\[\"cdylib\", \"staticlib\", \"rlib\"\]/\[\"cdylib\"\]/g" Cargo.toml
+
+      - name: Restore bridge files
+        if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
+        uses: actions/download-artifact@master
+        with:
+          name: bridge-artifact
+          path: ./
+
+      - name: Setup vcpkg with Github Actions binary cache
+        if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: /opt/artifacts/vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install vcpkg dependencies
+        if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
+        run: |
+          if ! $VCPKG_ROOT/vcpkg \
+            install \
+            --triplet ${{ matrix.job.vcpkg-triplet }} \
+            --x-install-root="$VCPKG_ROOT/installed"; then
+            find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
+              echo "$_1:"
+              echo "======"
+              cat "$_1"
+              echo "======"
+              echo ""
+            done
+            exit 1
+          fi
+        shell: bash
+
+      - name: Restore bridge files
+        if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
+        uses: actions/download-artifact@master
+        with:
+          name: bridge-artifact
+          path: ./
+
+      - uses: rustdesk-org/run-on-arch-action@amd64-support
+        name: Build rustdesk
+        id: vcpkg
+        if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
+        with:
+          arch: ${{ matrix.job.arch }}
+          distro: ${{ matrix.job.distro }}
+          githubToken: ${{ github.token }}
+          setup: |
+            ls -l "${PWD}"
+            ls -l /opt/artifacts/vcpkg/installed
+          dockerRunArgs: |
+            --volume "${PWD}:/workspace"
+            --volume "/opt/artifacts:/opt/artifacts"
+          shell: /bin/bash
+          install: |
+            apt-get update -y
+            echo -e "installing deps"
+            apt-get install -y \
+               build-essential \
+               clang \
+               cmake \
+               curl \
+               gcc \
+               git \
+               g++ \
+               libappindicator3-dev \
+               libasound2-dev \
+               libclang-10-dev \
+               libgstreamer1.0-dev \
+               libgstreamer-plugins-base1.0-dev \
+               libgtk-3-dev \
+               libpam0g-dev \
+               libpulse-dev \
+               libva-dev \
+               libvdpau-dev \
+               libxcb-randr0-dev \
+               libxcb-shape0-dev \
+               libxcb-xfixes0-dev \
+               libxdo-dev \
+               libxfixes-dev \
+               llvm-10-dev \
+               nasm \
+               ninja-build \
+               pkg-config \
+               tree \
+               python3 \
+               rpm \
+               unzip \
+               wget \
+               xz-utils
+            # we have libopus compiled by us.
+            apt-get remove -y libopus-dev || true
+            # output devs
+            ls -l ./
+            tree -L 3 /opt/artifacts/vcpkg/installed
+          run: |
+            # disable git safe.directory
+            git config --global --add safe.directory "*"
+            # rust
+            pushd /opt
+            # do not use rustup, because memory overflow in qemu
+            wget -O rust.tar.gz https://static.rust-lang.org/dist/rust-${{env.RUST_TOOLCHAIN_VERSION}}-${{ matrix.job.target }}.tar.gz
+            tar -zxvf rust.tar.gz > /dev/null && rm rust.tar.gz
+            cd rust-${{env.RUST_TOOLCHAIN_VERSION}}-${{ matrix.job.target }} && ./install.sh
+            rm -rf rust-${{env.RUST_TOOLCHAIN_VERSION}}-${{ matrix.job.target }}
+            # edit config
+            mkdir -p ~/.cargo/
+            echo """
+              [source.crates-io]
+              registry = 'https://github.com/rust-lang/crates.io-index'
+            """ > ~/.cargo/config
+            cat ~/.cargo/config
+            # start build
+            pushd /workspace
+            export VCPKG_ROOT=/opt/artifacts/vcpkg
+            if [[ "${{ matrix.job.arch }}" == "aarch64" ]]; then
+              export JOBS="--jobs 3"
+            else
+              export JOBS=""
+            fi
+            echo $JOBS
+            cargo build --lib $JOBS --features hwcodec,flutter --release
+            rm -rf target/release/deps target/release/build
+            rm -rf ~/.cargo
+
+            # Setup Flutter
+            # disable git safe.directory
+            git config --global --add safe.directory "*"
+            pushd /workspace
+            case ${{ matrix.job.arch }} in
+              aarch64)
+                export PATH=/opt/flutter-elinux/bin:$PATH
+                sed -i "s/flutter build linux --release/flutter-elinux build linux --verbose/g" ./build.py
+                sed -i "s/x64\/release/arm64\/release/g" ./build.py
+              ;;
+              x86_64)
+                export PATH=/opt/flutter/bin:$PATH
+              ;;
+            esac
+            popd
+            pushd /opt
+            wget https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${{ env.FLUTTER_VERSION }}-stable.tar.xz
+            tar xf flutter_linux_${{ env.FLUTTER_VERSION }}-stable.tar.xz
+            case ${{ matrix.job.arch }} in
+              aarch64)
+                # clone repo and reset to flutter ${{ env.FLUTTER_VERSION }}
+                git clone https://github.com/sony/flutter-elinux.git || true
+                pushd flutter-elinux
+                  git fetch
+                  git reset --hard ${{ env.FLUTTER_VERSION }}
+                  bin/flutter-elinux doctor -v
+                  bin/flutter-elinux precache --linux
+                popd
+                cp -R flutter/bin/cache/artifacts/engine/linux-x64/shader_lib flutter-elinux/flutter/bin/cache/artifacts/engine/linux-arm64
+                rm -rf flutter
+              ;;
+              x86_64)
+                flutter doctor -v
+              ;;
+            esac
+
+            # build flutter
+            pushd /workspace
+            mkdir output
+            chmod 777 output -R
+            export CARGO_INCREMENTAL=0
+            export DEB_ARCH=${{ matrix.job.deb_arch }}
+            python3 ./build.py --flutter --skip-cargo
+            for name in rustdesk*??.deb; do
+              mv "$name" /workspace/output/"${{ inputs.filename }}-${{ matrix.job.arch }}.deb"
+            done
+
+            # rpm package
+            echo -e "start packaging fedora package"
+            pushd /workspace
+            case ${{ matrix.job.arch }} in
+              aarch64)
+                sed -i "s/linux\/x64/linux\/arm64/g" ./res/rpm-flutter.spec
+                ;;
+            esac
+            HBB=`pwd` rpmbuild ./res/rpm-flutter.spec -bb
+            pushd ~/rpmbuild/RPMS/${{ matrix.job.arch }}
+            for name in rustdesk*??.rpm; do
+                mv "$name" /workspace/output/"${{ inputs.filename }}.rpm"
+            done
+
+            # rpm suse package
+            echo -e "start packaging suse package"
+            pushd /workspace
+            case ${{ matrix.job.arch }} in
+              aarch64)
+                sed -i "s/linux\/x64/linux\/arm64/g" ./res/rpm-flutter-suse.spec
+                ;;
+            esac
+            HBB=`pwd` rpmbuild ./res/rpm-flutter-suse.spec -bb
+            pushd ~/rpmbuild/RPMS/${{ matrix.job.arch }}
+            for name in rustdesk*??.rpm; do
+                mv "$name" /workspace/output/"${{ inputs.filename }}-suse.rpm"
+            done
+
+      # - name: Publish debian/rpm package
+      #   if: env.UPLOAD_ARTIFACT == 'true'
+      #   uses: softprops/action-gh-release@v1
+      #   with:
+      #     prerelease: true
+      #     tag_name: ${{ env.TAG_NAME }}
+      #     files: |
+      #       rustdesk-*.deb
+      #       rustdesk-*.rpm
+
+      - name: Upload to FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          server: ${{ secrets.FTP_SERVER }}
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          local-dir: output/
+          server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
+
+      - name: Upload deb
+        uses: actions/upload-artifact@master
+        if: env.UPLOAD_ARTIFACT == 'true'
+        with:
+          name: rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.deb
+          path: rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.deb
+
+      - name: Report Status
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.GENURL }}/updategh
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "Success"}'
+
+      - name: failed
+        if: failure()
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.GENURL }}/updategh
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation failed, try again"}'
+
+      - name: failed
+        if: cancelled()
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ secrets.GENURL }}/updategh
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation cancelled, try again"}'

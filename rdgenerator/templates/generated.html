@@ -1,1 +1,11 @@
-<a href='/download?filename={{filename}}&uuid={{uuid}}'>{{filename}}</a>
+{% if platform == 'windows' %}
+<a href='/download?filename={{filename}}.exe&uuid={{uuid}}'>{{filename}}.exe</a>
+{% elif platform == 'linux' %}
+<a href='/download?filename={{filename}}.deb&uuid={{uuid}}'>{{filename}}.deb</a><br>
+<a href='/download?filename={{filename}}.rpm&uuid={{uuid}}'>{{filename}}.rpm</a><br>
+<a href='/download?filename={{filename}}-suse.rpm&uuid={{uuid}}'>{{filename}}-suse.rpm</a>
+{% elif platform == 'android' %}
+<a href='/download?filename={{filename}}.apk&uuid={{uuid}}'>{{filename}}.apk</a>
+{% else %}
+Error, no file generated
+{% endif %}
