@@ -216,6 +216,7 @@ jobs:
           mv ./res/128x128.png ./res/128x128.png.bak
           mv ./res/128x128@2x.png ./res/128x128@2x.png.bak
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
+          magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/tray-icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
           magick ./res/icon.png -resize 32x32 ./res/32x32.png
           magick ./res/icon.png -resize 64x64 ./res/64x64.png
