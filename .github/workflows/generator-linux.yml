@@ -220,13 +220,13 @@ jobs:
           mv ./res/64x64.png ./res/64x64.png.bak
           mv ./res/128x128.png ./res/128x128.png.bak
           mv ./res/128x128@2x.png ./res/128x128@2x.png.bak
-          magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
-          magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/tray-icon.ico
+          convert ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
+          convert ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/tray-icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
-          magick ./res/icon.png -resize 32x32 ./res/32x32.png
-          magick ./res/icon.png -resize 64x64 ./res/64x64.png
-          magick ./res/icon.png -resize 128x128 ./res/128x128.png
-          magick ./res/128x128.png -resize 200% ./res/128x128@2x.png
+          convert ./res/icon.png -resize 32x32 ./res/32x32.png
+          convert ./res/icon.png -resize 64x64 ./res/64x64.png
+          convert ./res/icon.png -resize 128x128 ./res/128x128.png
+          convert ./res/128x128.png -resize 200% ./res/128x128@2x.png
 
 
       - name: ui.rs icon
