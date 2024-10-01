@@ -469,9 +469,9 @@ jobs:
       - name: Upload to FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
+          server: ${{ secrets.GEN_FTP_SERVER }}
+          username: ${{ secrets.GEN_FTP_USER }}
+          password: ${{ secrets.GEN_FTP_PASSWORD }}
           local-dir: /workspace/output/
           server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
 
