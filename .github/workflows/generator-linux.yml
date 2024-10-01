@@ -472,7 +472,7 @@ jobs:
           server: ${{ secrets.FTP_SERVER }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
-          local-dir: output/
+          local-dir: /workspace/output/
           server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
 
       - name: Upload deb
