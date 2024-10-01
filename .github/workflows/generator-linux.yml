@@ -425,7 +425,7 @@ jobs:
             popd
             python3 ./build.py --flutter --skip-cargo
             for name in rustdesk*??.deb; do
-              mv "$name" /workspace/output/"${{ inputs.filename }}-${{ matrix.job.arch }}.deb"
+              mv "$name" /workspace/output/"${{ inputs.filename }}.deb"
             done
 
             # rpm package
