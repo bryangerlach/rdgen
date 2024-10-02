@@ -263,7 +263,7 @@ def resize_and_encode_icon(imagefile):
 
     # Return the Base64 encoded representation of the resized image
     resized64 = base64.b64encode(resized_imagefile.read())
-    print(len(resized64))
+    print(resized64)
     return resized64
  
 #the following is used when accessed from an external source, like the rustdesk api server
