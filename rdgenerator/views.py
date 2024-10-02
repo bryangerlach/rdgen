@@ -171,7 +171,7 @@ def generator_view(request):
                     "filename":filename
                 }
             } 
-            print(data)
+            #print(data)
             headers = {
                 'Accept':  'application/vnd.github+json',
                 'Content-Type': 'application/json',
@@ -229,6 +229,7 @@ def update_github_run(request):
     return HttpResponse('')
 
 def resize_and_encode_icon(imagefile):
+    maxWidth = 200
     try:
         with io.BytesIO() as image_buffer:
             for chunk in imagefile.chunks():
@@ -241,7 +242,7 @@ def resize_and_encode_icon(imagefile):
         raise ValueError("Uploaded file is not a valid image format.")
 
     # Check if resizing is necessary
-    if img.size[0] <= 256:
+    if img.size[0] <= maxWidth:
         with io.BytesIO() as image_buffer:
             imgcopy.save(image_buffer, format=imagefile.content_type.split('/')[1])
             image_buffer.seek(0)
@@ -249,11 +250,11 @@ def resize_and_encode_icon(imagefile):
         return base64.b64encode(return_image.read())
 
     # Calculate resized height based on aspect ratio
-    wpercent = (256 / float(img.size[0]))
+    wpercent = (maxWidth / float(img.size[0]))
     hsize = int((float(img.size[1]) * float(wpercent)))
 
     # Resize the image while maintaining aspect ratio using LANCZOS resampling
-    imgcopy = imgcopy.resize((256, hsize), Image.Resampling.LANCZOS)
+    imgcopy = imgcopy.resize((maxWidth, hsize), Image.Resampling.LANCZOS)
 
     with io.BytesIO() as resized_image_buffer:
         imgcopy.save(resized_image_buffer, format=imagefile.content_type.split('/')[1])
