@@ -425,8 +425,8 @@ jobs:
             export CARGO_INCREMENTAL=0
             export DEB_ARCH=${{ matrix.job.deb_arch }}
             #echo "$(ls)"
-            mkdir -p ./build/linux/x64/release/bundle
-            echo -n "${{ env.CUSTOM }}" | cat > ./build/linux/x64/release/bundle/custom.txt
+            mkdir -p ./flutter/build/linux/x64/release/bundle
+            echo -n "${{ env.CUSTOM }}" | cat > ./flutter/build/linux/x64/release/bundle/custom.txt
             rm ./flutter/assets/logo.png
             echo "${{ inputs.logobase64 }}" | base64 -d > ./flutter/assets/logo.png
             mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
