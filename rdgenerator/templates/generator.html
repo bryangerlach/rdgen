@@ -123,6 +123,8 @@
                     <option value="linux">Linux (testing, will likely have issues)</option>
                     <option value="android">Android (testing, will likely have issues)</option>
                 </select>
+                <label for="{{ form.version.id_for_label }}">Rustdesk Version:</label>
+                {{ form.version }}
                 <label for="{{ form.delayFix.id_for_label }}">{{ form.delayFix }} Fix connection delay when using third-party API</label>
             </div>
         </div>
