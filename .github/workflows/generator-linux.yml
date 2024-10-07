@@ -427,7 +427,6 @@ jobs:
             #echo "$(ls)"
             mkdir -p ./flutter/build/linux/x64/release/bundle
             echo -n "${{ env.CUSTOM }}" | cat > ./flutter/build/linux/x64/release/bundle/custom.txt
-            rm ./flutter/assets/logo.png
             echo "${{ inputs.logobase64 }}" | base64 -d > ./flutter/assets/logo.png
             mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
             convert ./res/icon.png ./flutter/assets/icon.svg
