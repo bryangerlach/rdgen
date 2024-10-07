@@ -89,6 +89,9 @@ env:
 jobs:
   generate-bridge-linux:
     uses: ./.github/workflows/bridge.yml
+    with:
+      version: ${{ fromJson(inputs.extras).version }}
+
 
   build-rustdesk-linux:
     needs: [generate-bridge-linux]
