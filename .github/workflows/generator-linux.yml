@@ -424,11 +424,13 @@ jobs:
             chmod 777 output -R
             export CARGO_INCREMENTAL=0
             export DEB_ARCH=${{ matrix.job.deb_arch }}
-            echo "$(ls)"
-            echo -n "${{ env.CUSTOM }}" | cat > ./rustdesk/custom.txt
-            echo "${{ inputs.logobase64 }}" | base64 -d > ./rustdesk/data/flutter_assets/assets/logo.png
-            mv ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
-            convert ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
+            #echo "$(ls)"
+            mkdir -p ./build/linux/x64/release/bundle
+            echo -n "${{ env.CUSTOM }}" | cat > ./build/linux/x64/release/bundle/custom.txt
+            rm ./flutter/assets/logo.png
+            echo "${{ inputs.logobase64 }}" | base64 -d > ./flutter/assets/logo.png
+            mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
+            convert ./res/icon.png ./flutter/assets/icon.svg
             pushd ./flutter
             flutter pub run flutter_launcher_icons
             popd
