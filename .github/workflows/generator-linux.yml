@@ -295,6 +295,7 @@ jobs:
         run: |
           #mv ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
           convert ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
+          convert ./res/icon.png ./rustdesk/data/flutter_assets/assets/scalable.svg
 
       - uses: rustdesk-org/run-on-arch-action@amd64-support
         name: Build rustdesk

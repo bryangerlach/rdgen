@@ -148,6 +148,10 @@ jobs:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
 
+      - name: Install wget
+        run: |
+          choco install wget -y
+
       # - name: Install ImageMagick on Windows
       #   run: |
       #     choco install -y imagemagick.app --no-progress
@@ -217,13 +221,13 @@ jobs:
           mv ./res/icon.ico ./res/icon.ico.bak
           mv ./res/icon.png ./res/icon.png.bak
           mv ./res/tray-icon.ico ./res/tray-icon.ico.bak
-          #echo "${{ inputs.iconbase64 }}" | base64 -d > ./res/icon.png
-          wget -O ./res/icon.png ${{ inputs.iconlink }} 
+          #echo "${{ inputs.iconbase64 }}" | base64 -d > ./res/icon.png 
 
       - name: magick stuff
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
+          wget -O ./res/icon.png ${{ inputs.iconlink }}
           mv ./res/32x32.png ./res/32x32.png.bak
           mv ./res/64x64.png ./res/64x64.png.bak
           mv ./res/128x128.png ./res/128x128.png.bak
@@ -329,18 +333,19 @@ jobs:
           python .\build.py --portable --flutter --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
-      - name: logo stuff
-        if: ${{ inputs.logolink != 'false' }}
-        continue-on-error: true
-        shell: bash
-        run: |
-          #echo "${{ inputs.logobase64 }}" | base64 -d > ./rustdesk/data/flutter_assets/assets/logo.png
-          wget -O ./rustdesk/data/flutter_assets/assets/logo.png ${{ inputs.logolink }}
+      # - name: logo stuff
+      #   if: ${{ inputs.logolink != 'false' }}
+      #   continue-on-error: true
+      #   shell: bash
+      #   run: |
+      #     #echo "${{ inputs.logobase64 }}" | base64 -d > ./rustdesk/data/flutter_assets/assets/logo.png
+          
 
       - name: icon stuff
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
+          wget -O ./rustdesk/data/flutter_assets/assets/logo.png ${{ inputs.logolink }}
           mv ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
           magick ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
 
