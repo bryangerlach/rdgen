@@ -227,14 +227,10 @@ def download(request):
     return response
 
 def get_png(request):
-    print("get png")
     filename = request.GET['filename']
-    print(filename)
     uuid = request.GET['uuid']
-    print(uuid)
     #filename = filename+".exe"
     file_path = os.path.join('png',uuid,filename)
-    print(file_path)
     with open(file_path, 'rb') as file:
         response = HttpResponse(file, headers={
             'Content-Type': 'application/vnd.microsoft.portable-executable',

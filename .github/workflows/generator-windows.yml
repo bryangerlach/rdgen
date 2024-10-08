@@ -88,21 +88,21 @@ env:
 
 
 jobs:
-  # build-RustDeskTempTopMostWindow:
-  #   uses: ./.github/workflows/third-party-RustDeskTempTopMostWindow.yml
-  #   with:
-  #     upload-artifact: true
-  #     target: windows-2022
-  #     configuration: Release
-  #     platform: x64
-  #     target_version: Windows10
-  #   strategy:
-  #     fail-fast: false
+  build-RustDeskTempTopMostWindow:
+    uses: ./.github/workflows/third-party-RustDeskTempTopMostWindow.yml
+    with:
+      upload-artifact: true
+      target: windows-2022
+      configuration: Release
+      platform: x64
+      target_version: Windows10
+    strategy:
+      fail-fast: false
 
   build-for-windows-flutter:
     name: Build Windows
     #needs: [build-RustDeskTempTopMostWindow]
-    runs-on: [self-hosted, windows]
+    runs-on: windows-2022
     strategy:
       fail-fast: false
       matrix:
@@ -148,66 +148,66 @@ jobs:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
 
-      # - name: Install ImageMagick on Windows
-      #   run: |
-      #     choco install -y imagemagick.app --no-progress
-      #     Get-ChildItem -Path "${env:ProgramFiles}" | % { $_.FullName } | Select-String -Pattern "[\/\\]ImageMagick[^\/\\]*$" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+      - name: Install ImageMagick on Windows
+        run: |
+          choco install -y imagemagick.app --no-progress
+          Get-ChildItem -Path "${env:ProgramFiles}" | % { $_.FullName } | Select-String -Pattern "[\/\\]ImageMagick[^\/\\]*$" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
-      # - name: Install LLVM and Clang
-      #   uses: KyleMayes/install-llvm-action@v1
-      #   with:
-      #     version: ${{ env.LLVM_VERSION }}
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v1
+        with:
+          version: ${{ env.LLVM_VERSION }}
 
-      # - name: Install flutter
-      #   uses: subosito/flutter-action@v2.12.0 #https://github.com/subosito/flutter-action/issues/277
-      #   with:
-      #     channel: "stable"
-      #     flutter-version: ${{ env.FLUTTER_VERSION }}
-      #     cache: true
+      - name: Install flutter
+        uses: subosito/flutter-action@v2.12.0 #https://github.com/subosito/flutter-action/issues/277
+        with:
+          channel: "stable"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          cache: true
 
-      # - name: Install Rust toolchain
-      #   uses: dtolnay/rust-toolchain@v1
-      #   with:
-      #     toolchain: ${{ env.SCITER_RUST_VERSION }}
-      #     targets: ${{ matrix.job.target }}
-      #     components: "rustfmt"
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ env.SCITER_RUST_VERSION }}
+          targets: ${{ matrix.job.target }}
+          components: "rustfmt"
 
-      # - uses: Swatinem/rust-cache@v2
-      #   with:
-      #     prefix-key: ${{ matrix.job.os }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: ${{ matrix.job.os }}
 
-      # - name: Install flutter rust bridge deps
-      #   run: |
-      #     git config --global core.longpaths true
-      #     cargo install flutter_rust_bridge_codegen --version ${{ env.FLUTTER_RUST_BRIDGE_VERSION }} --features "uuid"
-      #     Push-Location flutter ; flutter pub get ; Pop-Location
-      #     ~/.cargo/bin/flutter_rust_bridge_codegen --rust-input ./src/flutter_ffi.rs --dart-output ./flutter/lib/generated_bridge.dart
+      - name: Install flutter rust bridge deps
+        run: |
+          git config --global core.longpaths true
+          cargo install flutter_rust_bridge_codegen --version ${{ env.FLUTTER_RUST_BRIDGE_VERSION }} --features "uuid"
+          Push-Location flutter ; flutter pub get ; Pop-Location
+          ~/.cargo/bin/flutter_rust_bridge_codegen --rust-input ./src/flutter_ffi.rs --dart-output ./flutter/lib/generated_bridge.dart
 
-      # - name: Setup vcpkg with Github Actions binary cache
-      #   uses: lukka/run-vcpkg@v11
-      #   with:
-      #     vcpkgDirectory: C:\vcpkg
-      #     vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-      #     doNotCache: false
+      - name: Setup vcpkg with Github Actions binary cache
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: C:\vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
 
-      # - name: Install vcpkg dependencies
-      #   env:
-      #     VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.job.vcpkg-triplet }}
-      #   run: |
-      #     if ! $VCPKG_ROOT/vcpkg \
-      #       install \
-      #       --triplet ${{ matrix.job.vcpkg-triplet }} \
-      #       --x-install-root="$VCPKG_ROOT/installed"; then
-      #       find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
-      #         echo "$_1:"
-      #         echo "======"
-      #         cat "$_1"
-      #         echo "======"
-      #         echo ""
-      #       done
-      #       exit 1
-      #     fi
-      #   shell: bash
+      - name: Install vcpkg dependencies
+        env:
+          VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.job.vcpkg-triplet }}
+        run: |
+          if ! $VCPKG_ROOT/vcpkg \
+            install \
+            --triplet ${{ matrix.job.vcpkg-triplet }} \
+            --x-install-root="$VCPKG_ROOT/installed"; then
+            find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
+              echo "$_1:"
+              echo "======"
+              cat "$_1"
+              echo "======"
+              echo ""
+            done
+            exit 1
+          fi
+        shell: bash
 
       - name: icon stuff
         if: ${{ inputs.iconlink != 'false' }}
@@ -326,8 +326,13 @@ jobs:
 
       - name: Build rustdesk
         run: |
-          python .\build.py --portable --flutter --skip-portable-pack
+          python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
+          Invoke-WebRequest -Uri https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip -OutFile usbmmidd_v2.zip
+          Expand-Archive usbmmidd_v2.zip -DestinationPath . -Force
+          Remove-Item -Path usbmmidd_v2\Win32 -Recurse
+          Remove-Item -Path "usbmmidd_v2\deviceinstaller64.exe", "usbmmidd_v2\deviceinstaller.exe", "usbmmidd_v2\usbmmidd.bat"
+          mv -Force .\usbmmidd_v2 ./rustdesk
 
       # - name: logo stuff
       #   if: ${{ inputs.logolink != 'false' }}
@@ -350,13 +355,6 @@ jobs:
         run: |
           Invoke-WebRequest -Uri https://${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}"&"uuid=${{ fromJson(inputs.logolink).uuid }} -OutFile ./res/logo.png 
 
-          
-      #lines removed from above:
-      #Invoke-WebRequest -Uri https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip -OutFile usbmmidd_v2.zip
-      #Expand-Archive usbmmidd_v2.zip -DestinationPath . -Force
-      #Remove-Item -Path usbmmidd_v2\Win32 -Recurse
-      #Remove-Item -Path "usbmmidd_v2\deviceinstaller64.exe", "usbmmidd_v2\deviceinstaller.exe", "usbmmidd_v2\usbmmidd.bat"
-      #mv -Force .\usbmmidd_v2 ./rustdesk
 
       - name: find Runner.res
         # Windows: find Runner.res (compiled from ./flutter/windows/runner/Runner.rc), copy to ./Runner.res
@@ -374,12 +372,12 @@ jobs:
             ls -l ./libs/portable/Runner.res;
           fi
 
-      # - name: Download RustDeskTempTopMostWindow artifacts
-      #   uses: actions/download-artifact@master
-      #   if: env.UPLOAD_ARTIFACT == 'true'
-      #   with:
-      #     name: topmostwindow-artifacts
-      #     path: "./rustdesk"
+      - name: Download RustDeskTempTopMostWindow artifacts
+        uses: actions/download-artifact@master
+        if: env.UPLOAD_ARTIFACT == 'true'
+        with:
+          name: topmostwindow-artifacts
+          path: "./rustdesk"
 
       - name: Upload unsigned
         if: env.UPLOAD_ARTIFACT == 'true'
@@ -419,8 +417,6 @@ jobs:
         run: |
           echo -n "${{ env.CUSTOM }}" | cat > ./rustdesk/custom.txt
         
-        #if [ "${{ env.DIRECTION }}" = "Incoming" ]; then echo -n "eyJjb25uLXR5cGUiOiJpbmNvbWluZyJ9" | cat > ./rustdesk/custom.txt; fi
-        #if [ "${{ env.DIRECTION }}" = "Outgoing" ]; then echo -n "eyJjb25uLXR5cGUiOiJvdXRnb2luZyJ9" | cat > ./rustdesk/custom.txt; fi
 
       - name: Build self-extracted executable
         shell: bash
@@ -430,7 +426,7 @@ jobs:
           sed -i '/dpiAware/d' res/manifest.xml
           pushd ./libs/portable
           pip3 install -r requirements.txt
-          python ./generate.py -f ../../rustdesk/ -o . -e "../../rustdesk/${{ inputs.appname }}.exe"
+          python3 ./generate.py -f ../../rustdesk/ -o . -e "../../rustdesk/${{ inputs.appname }}.exe"
           popd
           mkdir -p ./SignOutput
           mv ./target/release/rustdesk-portable-packer.exe "./SignOutput/rustdesk.exe"
