@@ -1,6 +1,6 @@
 import io
 from pathlib import Path
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.core.files.base import ContentFile
 import os
@@ -191,8 +191,10 @@ def generator_view(request):
             create_github_run(myuuid)
             response = requests.post(url, json=data, headers=headers)
             print(response)
-
-            return render(request, 'waiting.html', {'filename':filename, 'uuid':myuuid, 'status':"Starting generator...please wait", 'platform':platform})
+            if response.status_code == 204:
+                return render(request, 'waiting.html', {'filename':filename, 'uuid':myuuid, 'status':"Starting generator...please wait", 'platform':platform})
+            else:
+                return JsonResponse({"error": "Something went wrong"})
     else:
         form = GenerateForm()
     return render(request, 'generator.html', {'form': form})
@@ -225,10 +227,12 @@ def download(request):
     return response
 
 def get_png(request):
+    print("get png")
     filename = request.GET['filename']
     uuid = request.GET['uuid']
     #filename = filename+".exe"
     file_path = os.path.join('png',uuid,filename)
+    print(file_path)
     with open(file_path, 'rb') as file:
         response = HttpResponse(file, headers={
             'Content-Type': 'application/vnd.microsoft.portable-executable',
