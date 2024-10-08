@@ -332,4 +332,4 @@ def save_png(file, uuid, domain):
     imageJson['uuid'] = uuid
     imageJson['file'] = file.name
     #return "%s/%s" % (domain, file_save_path)
-    return imageJson
+    return json.dumps(imageJson)
