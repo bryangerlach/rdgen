@@ -229,7 +229,9 @@ def download(request):
 def get_png(request):
     print("get png")
     filename = request.GET['filename']
+    print(filename)
     uuid = request.GET['uuid']
+    print(uuid)
     #filename = filename+".exe"
     file_path = os.path.join('png',uuid,filename)
     print(file_path)
