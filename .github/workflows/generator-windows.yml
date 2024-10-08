@@ -148,6 +148,11 @@ jobs:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
 
+      # - name: Install ImageMagick on Windows
+      #   run: |
+      #     choco install -y imagemagick.app --no-progress
+      #     Get-ChildItem -Path "${env:ProgramFiles}" | % { $_.FullName } | Select-String -Pattern "[\/\\]ImageMagick[^\/\\]*$" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+
       # - name: Install LLVM and Clang
       #   uses: KyleMayes/install-llvm-action@v1
       #   with:
@@ -482,7 +487,7 @@ jobs:
         if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
         shell: bash
         run: |
-          curl -i -X POST -H "Content-Type: multipart/form-data" -F "file=@./SignOutput/${{ inputs.filename }}.exe" ${{ inputs.apiServer }}/api/save_custom_client
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./SignOutput/${{ inputs.filename }}.exe" ${{ inputs.apiServer }}/api/save_custom_client
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
