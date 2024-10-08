@@ -272,7 +272,7 @@ def resize_and_encode_icon(imagefile):
  
 #the following is used when accessed from an external source, like the rustdesk api server
 def startgh(request):
-    #print(request)
+    print(request)
     data_ = json.loads(request.body)
     ####from here run the github action, we need user, repo, access token.
     url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rdgen/actions/workflows/generator-windows.yml/dispatches'  
