@@ -309,9 +309,9 @@ def startgh(request):
     return HttpResponse('')
 
 def save_png(file, uuid, domain):
-    file_save_path = "png/%s/%s" % uuid, file.name
+    file_save_path = "png/%s/%s" % (uuid, file.name)
     Path("png/%s" % uuid).mkdir(parents=True, exist_ok=True)
     with open(file_save_path, "wb+") as f:
         for chunk in file.chunks():
             f.write(chunk)
-    return "%s/%s" % domain, file_save_path
+    return "%s/%s" % (domain, file_save_path)
