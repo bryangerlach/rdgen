@@ -297,7 +297,7 @@ def startgh(request):
         'Authorization': 'Bearer '+_settings.GHBEARER,
         'X-GitHub-Api-Version': '2022-11-28'
     }
-    print(data)
+    print(data_)
     response = requests.post(url, json=data, headers=headers)
     print(response)
     return HttpResponse('')
