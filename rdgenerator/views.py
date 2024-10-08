@@ -145,6 +145,7 @@ def generator_view(request):
             extras['urlLink'] = urlLink
             extras['delayFix'] = 'true' if delayFix else 'false'
             extras['version'] = version
+            extras['rdgen'] = 'true'
             extra_input = json.dumps(extras)
 
             ####from here run the github action, we need user, repo, access token.
@@ -274,7 +275,7 @@ def startgh(request):
     #print(request)
     data_ = json.loads(request.body)
     ####from here run the github action, we need user, repo, access token.
-    url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rdgen/actions/workflows/generator.yml/dispatches'  
+    url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rdgen/actions/workflows/generator-windows.yml/dispatches'  
     data = {
         "ref":"master",
         "inputs":{

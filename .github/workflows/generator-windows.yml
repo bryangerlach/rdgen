@@ -71,7 +71,7 @@ env:
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   # vcpkg version: 2024.07.12
   VCPKG_COMMIT_ID: "1de2026f28ead93ff1773e6e680387643e914ea1"
-  VERSION: ${{ fromJson(inputs.extras).version }}
+  VERSION: "${{ fromJson(inputs.extras).version }}"
   NDK_VERSION: "r27"
   #signing keys env variable checks
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
@@ -84,6 +84,7 @@ env:
   API_SERVER: "${{ inputs.apiServer }}"
   UPLOAD_ARTIFACT: 'true'
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
+  STATUS_URL: "${{ secrets.GENURL }}/updategh"
 
 
 jobs:
@@ -122,11 +123,21 @@ jobs:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      
+      - name: Set rdgen value
+        if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
+        run: |
+          echo "STATUS_URL=${{ secrets.GENURL }}/updategh" >> "$GITHUB_ENV"
+
+      - name: Set rdgen value
+        if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
+        run: |
+          echo "STATUS_URL=${{ inputs.apiServer }}/api/updategh" >> "$GITHUB_ENV"
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.GENURL }}/updategh
+          url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "5% complete"}'
@@ -271,7 +282,7 @@ jobs:
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.GENURL }}/updategh
+          url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "15% complete"}'
@@ -285,7 +296,7 @@ jobs:
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.GENURL }}/updategh
+          url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "30% complete"}'
@@ -297,7 +308,7 @@ jobs:
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.GENURL }}/updategh
+          url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "50% complete, this step takes about 5 minutes, be patient."}'
@@ -367,7 +378,7 @@ jobs:
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.GENURL }}/updategh
+          url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "70% complete, this step takes about 5 minutes, be patient."}'
@@ -427,7 +438,7 @@ jobs:
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.GENURL }}/updategh
+          url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "85% complete"}'
@@ -458,6 +469,7 @@ jobs:
           mv ./SignOutput/rustdesk.exe "./SignOutput/${{ inputs.filename }}.exe"
 
       - name: Upload to FTP
+        if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
         uses: SamKirkland/FTP-Deploy-Action@v4.3.5
         with:
           server: ${{ secrets.GEN_FTP_SERVER }}
@@ -466,10 +478,16 @@ jobs:
           local-dir: ./SignOutput/
           server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
 
+      - name: send file to api server
+        if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
+        shell: bash
+        run: |
+          curl -i -X POST -H "Content-Type: multipart/form-data" -F "file=@./SignOutput/${{ inputs.filename }}.exe" ${{ inputs.apiServer }}/api/save_custom_client
+
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.GENURL }}/updategh
+          url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Success"}'
@@ -478,7 +496,7 @@ jobs:
         if: failure()
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.GENURL }}/updategh
+          url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation failed, try again"}'
@@ -487,7 +505,7 @@ jobs:
         if: cancelled()
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ secrets.GENURL }}/updategh
+          url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation cancelled, try again"}'
