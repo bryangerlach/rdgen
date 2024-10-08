@@ -227,7 +227,7 @@ jobs:
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
-          wget -O ./res/icon.png ${{ inputs.iconlink }}
+          wget -O ./res/icon.png ${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}&uuid=${{ fromJson(inputs.iconlink).uuid }}
           mv ./res/32x32.png ./res/32x32.png.bak
           mv ./res/64x64.png ./res/64x64.png.bak
           mv ./res/128x128.png ./res/128x128.png.bak
@@ -345,7 +345,7 @@ jobs:
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
-          wget -O ./rustdesk/data/flutter_assets/assets/logo.png ${{ inputs.logolink }}
+          wget -O ./rustdesk/data/flutter_assets/assets/logo.png ${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}&uuid=${{ fromJson(inputs.logolink).uuid }}
           mv ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
           magick ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
 

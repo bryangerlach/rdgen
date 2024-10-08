@@ -30,4 +30,5 @@ urlpatterns = [
     url(r'^creategh',views.create_github_run),
     url(r'^updategh',views.update_github_run),
     url(r'^startgh',views.startgh),
+    url(r'^get_png',views.get_png),
 ]
