@@ -148,10 +148,6 @@ jobs:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
 
-      - name: Install wget
-        run: |
-          choco install wget -y
-
       # - name: Install ImageMagick on Windows
       #   run: |
       #     choco install -y imagemagick.app --no-progress
@@ -227,7 +223,7 @@ jobs:
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
-          wget -O ./res/icon.png ${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}&uuid=${{ fromJson(inputs.iconlink).uuid }}
+          Invoke-WebRequest -Uri ${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}&uuid=${{ fromJson(inputs.iconlink).uuid }} -OutFile ./res/icon.png 
           mv ./res/32x32.png ./res/32x32.png.bak
           mv ./res/64x64.png ./res/64x64.png.bak
           mv ./res/128x128.png ./res/128x128.png.bak
@@ -345,9 +341,14 @@ jobs:
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
-          wget -O ./rustdesk/data/flutter_assets/assets/logo.png ${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}&uuid=${{ fromJson(inputs.logolink).uuid }}
           mv ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
           magick ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
+
+      - name: logo stuff
+        if: ${{ inputs.logolink != 'false' }}
+        continue-on-error: true
+        run: |
+          Invoke-WebRequest -Uri ${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}&uuid=${{ fromJson(inputs.logolink).uuid }} -OutFile ./res/logo.png 
 
           
       #lines removed from above:
