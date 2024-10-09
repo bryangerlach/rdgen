@@ -377,7 +377,7 @@ jobs:
         if: ${{ inputs.logolink != 'false' }}
         continue-on-error: true
         run: |
-          Invoke-WebRequest -Uri https://${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}"&"uuid=${{ fromJson(inputs.logolink).uuid }} -OutFile ./res/logo.png 
+          Invoke-WebRequest -Uri https://${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}"&"uuid=${{ fromJson(inputs.logolink).uuid }} -OutFile ./rustdesk/data/flutter_assets/assets/logo.png
 
 
       - name: find Runner.res
