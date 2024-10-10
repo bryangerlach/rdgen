@@ -277,8 +277,7 @@ jobs:
           sed -i -e 's|rustdesk|${{ inputs.appname }}|' ./flutter/linux/my_application.cc
           #sed -i -e 's|Package: rustdesk|Package: ${{ inputs.appname }}|' ./build.py
           sed -i -e 's|Homepage: https://rustdesk.com|Homepage: ${{ fromJson(inputs.extras).urlLink }}|' ./build.py
-          sed -i "\system2('mkdir -p tmpdeb/usr/lib/rustdesk')\a system2('echo {binary_folder}')\" ./build.py
-          sed -i "\system2('mkdir -p tmpdeb/usr/lib/rustdesk')\a system2('echo -n '${{ env.CUSTOM }}' | cat > ./tmpdeb/usr/lib/rustdesk/custom.txt')\" ./build.py
+          sed -i "\system2('mkdir -p tmpdeb/usr/lib/rustdesk')\a system2('echo -n ${{ env.CUSTOM }} | cat > ./tmpdeb/usr/lib/rustdesk/custom.txt')\" ./build.py
           sed -i -e 's|set(BINARY_NAME "rustdesk")|set(BINARY_NAME "${{ inputs.appname }}")|' ./flutter/linux/CMakeLists.txt
           cp ./src/lang/en.rs ./src/lang/en.rs.bak
           sed -i -e 's|RustDesk|${{ inputs.appname }}|' ./src/lang/en.rs
