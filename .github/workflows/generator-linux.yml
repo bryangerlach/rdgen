@@ -275,8 +275,9 @@ jobs:
           sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ inputs.appname }}.exe"|' ./libs/portable/Cargo.toml
           #linux stuff
           sed -i -e 's|rustdesk|${{ inputs.appname }}|' ./flutter/linux/my_application.cc
-          sed -i -e 's|Package: rustdesk|Package: ${{ inputs.appname }}|' ./build.py
+          #sed -i -e 's|Package: rustdesk|Package: ${{ inputs.appname }}|' ./build.py
           sed -i -e 's|Homepage: https://rustdesk.com|Homepage: ${{ fromJson(inputs.extras).urlLink }}|' ./build.py
+          sed -i "\system2('mkdir -p tmpdeb/usr/lib/rustdesk/')\a system2('echo -n '${{ env.CUSTOM }}' | cat > ./tmpdeb/usr/lib/rustdesk/custom.txt')\" ./build.py
           sed -i -e 's|set(BINARY_NAME "rustdesk")|set(BINARY_NAME "${{ inputs.appname }}")|' ./flutter/linux/CMakeLists.txt
           cp ./src/lang/en.rs ./src/lang/en.rs.bak
           sed -i -e 's|RustDesk|${{ inputs.appname }}|' ./src/lang/en.rs
@@ -456,8 +457,8 @@ jobs:
             export CARGO_INCREMENTAL=0
             export DEB_ARCH=${{ matrix.job.deb_arch }}
             #echo "$(ls)"
-            mkdir -p ./build/linux/x64/release/bundle
-            echo -n "${{ env.CUSTOM }}" | cat > ./build/linux/x64/release/bundle/custom.txt
+            #mkdir -p ./flutter/build/linux/x64/release/bundle
+            #echo -n "${{ env.CUSTOM }}" | cat > ./flutter/build/linux/x64/release/bundle/custom.txt
             if [[ "${{ inputs.logolink }}" != "false" ]]; then
               #echo "${{ inputs.logobase64 }}" | base64 -d > ./flutter/assets/logo.png
               wget -O ./flutter/assets/logo.png https://${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}"&"uuid=${{ fromJson(inputs.logolink).uuid }}
