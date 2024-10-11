@@ -277,7 +277,6 @@ jobs:
           sed -i -e 's|rustdesk|${{ inputs.appname }}|' ./flutter/linux/my_application.cc
           #sed -i -e 's|Package: rustdesk|Package: ${{ inputs.appname }}|' ./build.py
           sed -i -e 's|Homepage: https://rustdesk.com|Homepage: ${{ fromJson(inputs.extras).urlLink }}|' ./build.py
-          awk '/-p tmpdeb\/usr\/lib\/rustdesk/ { count++; print; if (count <= 2) print "\ \ \ \ system2(\'echo -n \"${{ inputs.custom }}\" | cat > .\/tmpdeb\/usr\/lib\/rustdesk\/custom.txt\'"; next }1' ./build.py
           sed -i -e 's|set(BINARY_NAME "rustdesk")|set(BINARY_NAME "${{ inputs.appname }}")|' ./flutter/linux/CMakeLists.txt
           cp ./src/lang/en.rs ./src/lang/en.rs.bak
           sed -i -e 's|RustDesk|${{ inputs.appname }}|' ./src/lang/en.rs
@@ -287,6 +286,7 @@ jobs:
           sed -i -e "s|const url = 'https://rustdesk.com/';|const url = '${{ fromJson(inputs.extras).urlLink }}';|" ./flutter/lib/mobile/pages/settings_page.dart
           sed -i -e '/const KEY:/,/};/d' ./src/common.rs
           sed -i -e '/let Ok(data) = sign::verify(&data, &pk)/,/};/d' ./src/common.rs
+          echo -n "${{ env.CUSTOM }}" | cat > ./custom.txt
 
       - name: fix connection delay
         continue-on-error: true
@@ -303,21 +303,21 @@ jobs:
           name: bridge-artifact
           path: ./
 
-      - name: logo stuff
-        if: ${{ inputs.logolink != 'false' }}
-        continue-on-error: true
-        shell: bash
-        run: |
-          #echo "${{ inputs.logobase64 }}" | base64 -d > ./rustdesk/data/flutter_assets/assets/logo.png
-          wget -O ./rustdesk/data/flutter_assets/assets/logo.png https://${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}"&"uuid=${{ fromJson(inputs.logolink).uuid }}
+      # - name: logo stuff
+      #   if: ${{ inputs.logolink != 'false' }}
+      #   continue-on-error: true
+      #   shell: bash
+      #   run: |
+      #     #echo "${{ inputs.logobase64 }}" | base64 -d > ./rustdesk/data/flutter_assets/assets/logo.png
+      #     wget -O ./rustdesk/data/flutter_assets/assets/logo.png https://${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}"&"uuid=${{ fromJson(inputs.logolink).uuid }}
 
-      - name: icon stuff
-        if: ${{ inputs.iconlink != 'false' }}
-        continue-on-error: true
-        run: |
-          #mv ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
-          convert ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
-          convert ./res/icon.png ./rustdesk/data/flutter_assets/assets/scalable.svg
+      # - name: icon stuff
+      #   if: ${{ inputs.iconlink != 'false' }}
+      #   continue-on-error: true
+      #   run: |
+      #     #mv ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
+      #     convert ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
+      #     convert ./res/icon.png ./rustdesk/data/flutter_assets/assets/scalable.svg
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
@@ -459,6 +459,8 @@ jobs:
             #echo "$(ls)"
             #mkdir -p ./flutter/build/linux/x64/release/bundle
             #echo -n "${{ env.CUSTOM }}" | cat > ./flutter/build/linux/x64/release/bundle/custom.txt
+            mkdir -p flutter/tmpdeb/usr/lib/rustdesk
+            cp ./custom.txt ./flutter/tmpdeb/usr/lib/rustdesk/custom.txt
             if [[ "${{ inputs.logolink }}" != "false" ]]; then
               #echo "${{ inputs.logobase64 }}" | base64 -d > ./flutter/assets/logo.png
               wget -O ./flutter/assets/logo.png https://${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}"&"uuid=${{ fromJson(inputs.logolink).uuid }}
