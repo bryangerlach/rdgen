@@ -335,13 +335,3 @@ def save_png(file, uuid, domain):
     imageJson['file'] = file.name
     #return "%s/%s" % (domain, file_save_path)
     return json.dumps(imageJson)
-
-def save_custom_client(request):
-    file = request.FILES['file']
-    file_save_path = "clients/custom/%s" % file.name
-    Path("clients/custom").mkdir(parents=True, exist_ok=True)
-    with open(file_save_path, "wb+") as f:
-        for chunk in file.chunks():
-            f.write(chunk)
-
-    return HttpResponse("File saved successfully!")

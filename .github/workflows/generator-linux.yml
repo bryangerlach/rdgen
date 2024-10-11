@@ -289,7 +289,6 @@ jobs:
           sed -i -e '/const KEY:/,/};/d' ./src/common.rs
           sed -i -e '/let Ok(data) = sign::verify(&data, &pk)/,/};/d' ./src/common.rs
           echo -n "${{ env.CUSTOM }}" | cat > ./custom.txt
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./build.py" ${{ secrets.GENURL }}/save_custom_client
 
       - name: fix connection delay
         continue-on-error: true
@@ -298,6 +297,12 @@ jobs:
         run: |
           sed -i -e '/if !key.is_empty() && !token.is_empty() {/,/}/d' ./src/client.rs
 
+      - name: Upload Artifact
+        uses: actions/upload-artifact@master
+        with:
+          name: build.py
+          path: |
+            ./build.py
 
       - name: Restore bridge files
         if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
