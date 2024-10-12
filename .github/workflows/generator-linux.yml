@@ -279,6 +279,8 @@ jobs:
           sed -i -e 's|Homepage: https://rustdesk.com|Homepage: ${{ fromJson(inputs.extras).urlLink }}|' ./build.py
           sed -i -e '/-p tmpdeb\/usr\/lib\/rustdesk/d' ./build.py
           #sed -i -e 's|set(BINARY_NAME "rustdesk")|set(BINARY_NAME "${{ inputs.appname }}")|' ./flutter/linux/CMakeLists.txt
+          sed -i -e 's|rs-ny.rustdesk.com|${{ env.RENDEZVOUS_SERVER }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.RS_PUB_KEY }}|' ./libs/hbb_common/src/config.rs
           cp ./src/lang/en.rs ./src/lang/en.rs.bak
           sed -i -e 's|RustDesk|${{ inputs.appname }}|' ./src/lang/en.rs
           sed -i -e 's|Homepage: https://rustdesk.com|Homepage: ${{ fromJson(inputs.extras).urlLink }}|' ./build.py
