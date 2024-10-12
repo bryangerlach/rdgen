@@ -283,6 +283,7 @@ jobs:
           sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.RS_PUB_KEY }}|' ./libs/hbb_common/src/config.rs
           cp ./src/lang/en.rs ./src/lang/en.rs.bak
           sed -i -e 's|RustDesk|${{ inputs.appname }}|' ./src/lang/en.rs
+          sed -i -e 's|For faster connection, please set up your own server||' ./src/lang/en.rs
           sed -i -e 's|Homepage: https://rustdesk.com|Homepage: ${{ fromJson(inputs.extras).urlLink }}|' ./build.py
           sed -i -e "s|launchUrl(Uri.parse('https://rustdesk.com'));|launchUrl(Uri.parse('${{ fromJson(inputs.extras).urlLink }}'));|" ./flutter/lib/common.dart
           sed -i -e "s|launchUrlString('https://rustdesk.com');|launchUrlString('${{ fromJson(inputs.extras).urlLink }}');|" ./flutter/lib/desktop/pages/desktop_setting_page.dart
