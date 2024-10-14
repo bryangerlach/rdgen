@@ -282,6 +282,7 @@ jobs:
           flutter pub get
           cd lib
           find . | grep dart | xargs sed -i 's/textScaler: TextScaler.linear(\(.*\)),/textScaleFactor: \1,/g'
+          cd ../..
 
       ##########################################################
       - name: icon stuff
@@ -357,10 +358,11 @@ jobs:
           sed -i -e "s|return 'RustDesk';|return '${{ inputs.appname }}';|" ./flutter/lib/web/bridge.dart
           sed -i 's|android:label="RustDesk"|android:label="${{ inputs.appname }}"|' ./flutter/android/app/src/main/AndroidManifest.xml
           sed -i 's|android:label="RustDesk Input"|android:label="${{ inputs.appname }} Input"|' ./flutter/android/app/src/main/AndroidManifest.xml
-          sed -i 's|RustDesk is Open|${{ inputs.appname }} is Open|' ./flutter/android/app/src/main/kotlin/carriez/flutter_hbb/BootReceiver.kt
-          sed -i 's|Show Rustdesk|Show ${{ inputs.appname }}|' ./flutter/android/app/src/main/kotlin/carriez/flutter_hbb/FloatingWindowService.kt
-          sed -i 's|"RustDesk"|"${{ inputs.appname }}"|' ./flutter/android/app/src/main/kotlin/carriez/flutter_hbb/MainService.kt
-          sed -i 's|"RustDesk Service|"${{ inputs.appname }} Service|' ./flutter/android/app/src/main/kotlin/carriez/flutter_hbb/MainService.kt
+          sed -i 's|RustDesk is Open|${{ inputs.appname }} is Open|' ./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/BootReceiver.kt
+          sed -i 's|Show Rustdesk|Show ${{ inputs.appname }}|' ./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/FloatingWindowService.kt
+          sed -i 's|"RustDesk"|"${{ inputs.appname }}"|' ./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/MainService.kt
+          sed -i 's|"RustDesk Service|"${{ inputs.appname }} Service|' ./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/MainService.kt
+          sed -i 's|RustDesk|${{ inputs.appname }}|' ./flutter/lib/main.dart
 
       - name: fix connection delay
         continue-on-error: true
