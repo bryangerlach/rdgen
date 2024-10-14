@@ -285,15 +285,18 @@ jobs:
 
       ##########################################################
       - name: icon stuff
+        if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         shell: bash
         run: |
           mv ./res/icon.ico ./res/icon.ico.bak
           mv ./res/icon.png ./res/icon.png.bak
           mv ./res/tray-icon.ico ./res/tray-icon.ico.bak
-          echo "${{ inputs.iconbase64 }}" | base64 -d > ./res/icon.png
+          #echo "${{ inputs.iconbase64 }}" | base64 -d > ./res/icon.png
+          wget -O ./res/icon.png https://${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}"&"uuid=${{ fromJson(inputs.iconlink).uuid }}
 
       - name: magick stuff
+        if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
           mv ./res/32x32.png ./res/32x32.png.bak
@@ -309,6 +312,7 @@ jobs:
 
 
       - name: ui.rs icon
+        if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         shell: bash
         run: |
@@ -364,10 +368,11 @@ jobs:
           data: '{"uuid": "${{ inputs.uuid }}", "status": "35% complete"}'
 
       - name: replace flutter icons
+        if: ${{ inputs.iconlink != 'false' }}
         run: |
-          cd ./flutter
+          pushd ./flutter
           flutter pub run flutter_launcher_icons
-          cd ..
+          popd
       ##########################################################
 
       - name: Build rustdesk lib
@@ -429,7 +434,9 @@ jobs:
           cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
           echo -n "${{ env.CUSTOM }}" | cat > ./flutter/assets/custom.txt
           sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
-          convert ./res/icon.png ./flutter/assets/icon.svg
+          if [[ "${{ inputs.iconlink }}" != "false" ]]; then
+            convert ./res/icon.png ./flutter/assets/icon.svg
+          fi
           # build flutter
           pushd flutter
           flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-arm64 --split-per-abi
