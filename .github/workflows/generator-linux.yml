@@ -299,13 +299,6 @@ jobs:
         run: |
           sed -i -e '/if !key.is_empty() && !token.is_empty() {/,/}/d' ./src/client.rs
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@master
-        with:
-          name: build.py
-          path: |
-            ./build.py
-
       - name: Restore bridge files
         if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
         uses: actions/download-artifact@master
