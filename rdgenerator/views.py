@@ -14,6 +14,7 @@ from django.db.models import Q
 from .forms import GenerateForm
 from .models import GithubRun
 from PIL import Image
+from urllib.parse import quote
 
 def generator_view(request):
     if request.method == 'POST':
@@ -324,7 +325,7 @@ def startgh(request):
     return HttpResponse('')
 
 def save_png(file, uuid, domain):
-    file_save_path = "png/%s/%s" % (uuid, file.name)
+    file_save_path = "png/%s/%s" % (uuid, quote(file.name))
     Path("png/%s" % uuid).mkdir(parents=True, exist_ok=True)
     with open(file_save_path, "wb+") as f:
         for chunk in file.chunks():
@@ -332,6 +333,6 @@ def save_png(file, uuid, domain):
     imageJson = {}
     imageJson['url'] = domain
     imageJson['uuid'] = uuid
-    imageJson['file'] = file.name
+    imageJson['file'] = quote(file.name)
     #return "%s/%s" % (domain, file_save_path)
     return json.dumps(imageJson)
