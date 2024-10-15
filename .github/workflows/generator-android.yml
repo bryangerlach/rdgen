@@ -363,8 +363,8 @@ jobs:
           sed -i 's|"RustDesk"|"${{ inputs.appname }}"|' ./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/MainService.kt
           sed -i 's|"RustDesk Service|"${{ inputs.appname }} Service|' ./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/MainService.kt
           sed -i 's|RustDesk|${{ inputs.appname }}|' ./flutter/lib/main.dart
-          sed -i 's|"RustDesk"|"${{ inputs.appname }}|' ./flutter/lib/desktop/widgets/tabbar_widget.dart
-          sed -i 's|"RustDesk"|"${{ inputs.appname }}|' ./libs/hbb_common/src/config.rs
+          sed -i 's|"RustDesk"|"${{ inputs.appname }}"|' ./flutter/lib/desktop/widgets/tabbar_widget.dart
+          sed -i 's|"RustDesk"|"${{ inputs.appname }}"|' ./libs/hbb_common/src/config.rs
 
       - name: fix connection delay
         continue-on-error: true
