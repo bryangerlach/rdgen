@@ -158,10 +158,17 @@ jobs:
           sudo apt-get install -y imagemagick
 
       - name: Checkout source code
+        if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
+
+      - name: Checkout source code
+        if: ${{ env.VERSION == 'master' }}
+        uses: actions/checkout@v4
+        with:
+          repository: rustdesk/rustdesk
 
       - name: Set Swap Space
         if: ${{ matrix.job.arch == 'x86_64' }}

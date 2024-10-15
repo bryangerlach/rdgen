@@ -143,10 +143,17 @@ jobs:
           data: '{"uuid": "${{ inputs.uuid }}", "status": "5% complete"}'
 
       - name: Checkout source code
+        if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
+
+      - name: Checkout source code
+        if: ${{ env.VERSION == 'master' }}
+        uses: actions/checkout@v4
+        with:
+          repository: rustdesk/rustdesk
 
       - name: Install ImageMagick on Windows
         run: |

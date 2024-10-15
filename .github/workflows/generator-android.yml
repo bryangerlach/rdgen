@@ -196,10 +196,17 @@ jobs:
                wget
 
       - name: Checkout source code
+        if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
+       
+      - name: Checkout source code
+        if: ${{ env.VERSION == 'master' }}
+        uses: actions/checkout@v4
+        with:
+          repository: rustdesk/rustdesk
 
       - name: Install flutter
         uses: subosito/flutter-action@v2
