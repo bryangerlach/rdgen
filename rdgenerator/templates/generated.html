@@ -5,8 +5,8 @@
 <a href='/download?filename={{filename}}.rpm&uuid={{uuid}}'>{{filename}}.rpm</a><br>
 <a href='/download?filename={{filename}}-suse.rpm&uuid={{uuid}}'>{{filename}}-suse.rpm</a>
 {% elif platform == 'android' %}
-<a href='/download?filename={{filename}}-aarch64.apk&uuid={{uuid}}'>{{filename}}.apk</a><br>
-<a href='/download?filename={{filename}}-x86_64.apk&uuid={{uuid}}'>{{filename}}.apk</a>
+<a href='/download?filename={{filename}}-aarch64.apk&uuid={{uuid}}'>{{filename}}-aarch64.apk</a><br>
+<a href='/download?filename={{filename}}-x86_64.apk&uuid={{uuid}}'>{{filename}}-x86_64.apk</a>
 {% else %}
 Error, no file generated
 {% endif %}
