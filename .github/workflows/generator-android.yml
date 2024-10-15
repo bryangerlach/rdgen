@@ -417,7 +417,7 @@ jobs:
           #     mkdir -p ./flutter/android/app/src/main/jniLibs/x86
           #     cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86/librustdesk.so
           #   ;;
-          # esac
+          esac
 
       - name: Upload Rustdesk library to Artifacts
         uses: actions/upload-artifact@master
