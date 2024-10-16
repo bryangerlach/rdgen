@@ -551,18 +551,26 @@ jobs:
       #     files: |
       #       signed-apk/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.apk
 
+      # - name: Upload to FTP
+      #   uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      #   with:
+      #     server: ${{ secrets.GEN_FTP_SERVER }}
+      #     username: ${{ secrets.GEN_FTP_USER }}
+      #     password: ${{ secrets.GEN_FTP_PASSWORD }}
+      #     local-dir: ./signed-apk/
+      #     server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
+      #     exclude: | 
+      #       *.idsig
+      #       *.jks
+      #       *aligned.apk
       - name: Upload to FTP
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        uses: genietim/ftp-action@releases/v4
         with:
-          server: ${{ secrets.GEN_FTP_SERVER }}
-          username: ${{ secrets.GEN_FTP_USER }}
+          host: ${{ secrets.GEN_FTP_SERVER }}
+          user: ${{ secrets.GEN_FTP_USER }}
           password: ${{ secrets.GEN_FTP_PASSWORD }}
-          local-dir: ./signed-apk/
-          server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
-          exclude: | 
-            *.idsig
-            *.jks
-            *aligned.apk
+          localDir: "./signed-apk/"
+          remoteDir: "/root/rdgen/exe/${{ env.UUIDFOLDER }}/"
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
