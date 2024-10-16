@@ -564,13 +564,13 @@ jobs:
       #       *.jks
       #       *aligned.apk
       - name: Upload to FTP
-        uses: genietim/ftp-action@releases/v2
-        with:
-          host: ${{ secrets.GEN_FTP_SERVER }}
-          user: ${{ secrets.GEN_FTP_USER }}
-          password: ${{ secrets.GEN_FTP_PASSWORD }}
-          localDir: "./signed-apk/"
-          remoteDir: "/root/rdgen/exe/${{ env.UUIDFOLDER }}/"
+        shell: bash
+        run: |
+          ftp -n -v "${{ secrets.GEN_FTP_USER }}" "${{ secrets.GEN_FTP_PASSWORD }}" ${{ secrets.GEN_FTP_SERVER }} <<EOF
+          cd /root/rdgen/exe/${{ env.UUIDFOLDER }}/
+          put ./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk
+          quit
+          EOF
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
