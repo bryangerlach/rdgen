@@ -564,7 +564,7 @@ jobs:
       #       *.jks
       #       *aligned.apk
       - name: Upload to FTP
-        uses: genietim/ftp-action@releases/v4
+        uses: genietim/ftp-action@releases/v2
         with:
           host: ${{ secrets.GEN_FTP_SERVER }}
           user: ${{ secrets.GEN_FTP_USER }}
