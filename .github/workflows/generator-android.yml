@@ -442,9 +442,15 @@ jobs:
             cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/
             cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
             echo -n "${{ env.CUSTOM }}" | cat > ./flutter/assets/custom.txt
-            sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
+            #sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
             if [[ "${{ inputs.iconlink }}" != "false" ]]; then
+              mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
               convert ./res/icon.png ./flutter/assets/icon.svg
+              convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png
+              convert ./res/icon.png ./res/scalable.svg
+              pushd ./flutter
+              flutter pub run flutter_launcher_icons
+              popd
             fi
             # build flutter
             pushd flutter
@@ -466,9 +472,15 @@ jobs:
               cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/x86_64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/x86_64/
               cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86_64/librustdesk.so
               echo -n "${{ env.CUSTOM }}" | cat > ./flutter/assets/custom.txt
-              sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
+              #sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
               if [[ "${{ inputs.iconlink }}" != "false" ]]; then
+                mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
                 convert ./res/icon.png ./flutter/assets/icon.svg
+                convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png
+                convert ./res/icon.png ./res/scalable.svg
+                pushd ./flutter
+                flutter pub run flutter_launcher_icons
+                popd
               fi
               # build flutter
               pushd flutter
