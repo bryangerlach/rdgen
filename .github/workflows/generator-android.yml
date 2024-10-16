@@ -566,11 +566,7 @@ jobs:
       - name: Upload to FTP
         shell: bash
         run: |
-          ftp -n -v "${{ secrets.GEN_FTP_USER }}" "${{ secrets.GEN_FTP_PASSWORD }}" ${{ secrets.GEN_FTP_SERVER }} <<EOF
-          cd /root/rdgen/exe/${{ env.UUIDFOLDER }}/
-          put ./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk
-          quit
-          EOF
+          curl --user ${{ secrets.GEN_FTP_USER }}:${{ secrets.GEN_FTP_PASSWORD }} --upload-file ./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk ${{ secrets.GEN_FTP_SERVER }}:/root/rdgen/exe/${{ env.UUIDFOLDER }}/
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
