@@ -566,7 +566,7 @@ jobs:
       - name: Upload to FTP
         shell: bash
         run: |
-          ftp -n ${{ secrets.GEN_FTP_SERVER }} << EOF
+          ftp -p ${{ secrets.GEN_FTP_SERVER }} << EOF
           user ${{ secrets.GEN_FTP_USER }} ${{ secrets.GEN_FTP_PASSWORD }}
           binary
           mkdir /root/rdgen/exe/${{ env.UUIDFOLDER }}
