@@ -354,6 +354,9 @@ jobs:
           sed -i 's|RustDesk|${{ inputs.appname }}|' ./flutter/lib/main.dart
           sed -i 's|"RustDesk"|"${{ inputs.appname }}"|' ./flutter/lib/desktop/widgets/tabbar_widget.dart
           sed -i 's|"RustDesk"|"${{ inputs.appname }}"|' ./libs/hbb_common/src/config.rs
+          sed -i '/android: true/a \ \ adaptive_icon_background: "#ffffff"' ./flutter/pubspec.yaml
+          sed -i '/adaptive_icon_background/a \ \ adaptive_icon_foreground: "./res/icon.png"' ./flutter/pubcpec.yaml
+          sed -i '/adaptive_icon_foreground:/a \ \ adaptive_icon_foreground_inset: 32' ./flutter/pubcpec.yaml
 
       - name: fix connection delay
         continue-on-error: true
@@ -448,9 +451,6 @@ jobs:
               convert ./res/icon.png ./flutter/assets/icon.svg
               convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png
               convert ./res/icon.png ./res/scalable.svg
-              pushd ./flutter
-              flutter pub run flutter_launcher_icons
-              popd
             fi
             # build flutter
             pushd flutter
@@ -478,9 +478,6 @@ jobs:
                 convert ./res/icon.png ./flutter/assets/icon.svg
                 convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png
                 convert ./res/icon.png ./res/scalable.svg
-                pushd ./flutter
-                flutter pub run flutter_launcher_icons
-                popd
               fi
               # build flutter
               pushd flutter
