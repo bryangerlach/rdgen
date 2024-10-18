@@ -355,8 +355,8 @@ jobs:
           sed -i 's|"RustDesk"|"${{ inputs.appname }}"|' ./flutter/lib/desktop/widgets/tabbar_widget.dart
           sed -i 's|"RustDesk"|"${{ inputs.appname }}"|' ./libs/hbb_common/src/config.rs
           sed -i '/android: true/a \ \ adaptive_icon_background: "#ffffff"' ./flutter/pubspec.yaml
-          sed -i '/adaptive_icon_background/a \ \ adaptive_icon_foreground: "./res/icon.png"' ./flutter/pubcpec.yaml
-          sed -i '/adaptive_icon_foreground:/a \ \ adaptive_icon_foreground_inset: 32' ./flutter/pubcpec.yaml
+          sed -i '/adaptive_icon_background/a \ \ adaptive_icon_foreground: "./res/icon.png"' ./flutter/pubspec.yaml
+          sed -i '/adaptive_icon_foreground:/a \ \ adaptive_icon_foreground_inset: 32' ./flutter/pubspec.yaml
 
       - name: fix connection delay
         continue-on-error: true
