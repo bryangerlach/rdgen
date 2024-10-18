@@ -549,9 +549,6 @@ jobs:
       #       signed-apk/rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.apk
 
       #
-      - name: change directory
-        run: |
-          pushd signed-apk
       
       - name: Upload to FTP
         uses: nerdoza/action-simple-file-upload@v2
@@ -559,8 +556,8 @@ jobs:
           user: ${{ secrets.GEN_FTP_USER }}
           password: ${{ secrets.GEN_FTP_PASSWORD }}
           host: ${{ secrets.GEN_FTP_SERVER }}
-          src: ./*.apk
-          dest: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
+          src: ./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk
+          dest: /root/rdgen/exe/${{ env.UUIDFOLDER }}/${{ inputs.filename }}-${{ matrix.job.arch }}.apk
       #   uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       #   with:
       #     server: ${{ secrets.GEN_FTP_SERVER }}
