@@ -24,4 +24,4 @@ To fully host the client generator yourself, you will need to following:
         WINDOWS_PFX_BASE64
         WINDOWS_PFX_PASSWORD
         WINDOWS_PFX_SHA1_THUMBPRINT
-4) A windows computer or VM that is set up to build rustdesk, and is setup as a self-hosted github runner
+
