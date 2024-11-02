@@ -2,6 +2,15 @@ To fully host the client generator yourself, you will need to following:
 
 1) A Github account with a fork of this repo
 2) A Github fine-grained access token with permissions for your rdgen repository
+    a) login to your github account
+    b) click on your profile picture at the top right, click Settings
+    c) at the bottom of the left panel, click Developer Settings
+    d) click Personal access tokens
+    e) click Fine-grained tokens
+    f) click Generate new token
+    g) give a token name, change expiration to whatever you want
+    h) under Repository acces, select Only select repositories, then pick your rdgen repo
+    i) give Read and Write access to actions and workflows
 3) On the server running the client generator:
     a) environment variables:
         GHUSER="your github username"

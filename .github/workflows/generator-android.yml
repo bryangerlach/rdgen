@@ -295,7 +295,7 @@ jobs:
           mv ./res/icon.png ./res/icon.png.bak
           mv ./res/tray-icon.ico ./res/tray-icon.ico.bak
           #echo "${{ inputs.iconbase64 }}" | base64 -d > ./res/icon.png
-          wget -O ./res/icon.png https://${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}"&"uuid=${{ fromJson(inputs.iconlink).uuid }}
+          wget -O ./res/icon.png ${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}"&"uuid=${{ fromJson(inputs.iconlink).uuid }}
           mv ./res/32x32.png ./res/32x32.png.bak
           mv ./res/64x64.png ./res/64x64.png.bak
           mv ./res/128x128.png ./res/128x128.png.bak
@@ -553,6 +553,7 @@ jobs:
       #
       
       - name: Upload to FTP
+        if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
         uses: nerdoza/action-simple-file-upload@v2
         with:
           user: ${{ secrets.GEN_FTP_USER }}
@@ -560,6 +561,12 @@ jobs:
           host: ${{ secrets.GEN_FTP_SERVER }}
           src: ./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk
           dest: /root/rdgen/exe/${{ env.UUIDFOLDER }}/${{ inputs.filename }}-${{ matrix.job.arch }}.apk
+
+      - name: send file to api server
+        if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
+        shell: bash
+        run: |
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk" ${{ inputs.apiServer }}/api/save_custom_client
       #   uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       #   with:
       #     server: ${{ secrets.GEN_FTP_SERVER }}
