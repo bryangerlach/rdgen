@@ -69,7 +69,7 @@ def generator_view(request):
             myuuid = str(uuid.uuid4())
             protocol = 'https'
             host = request.get_host()
-            full_url = f"{protocol}://{host}/api"
+            full_url = f"{protocol}://{host}"
             try:
                 iconfile = form.cleaned_data['iconfile']
                 #iconbase64 = resize_and_encode_icon(iconfile)
