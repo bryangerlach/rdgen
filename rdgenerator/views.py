@@ -80,7 +80,7 @@ def generator_view(request):
                 iconlink = "false"
             try:
                 logofile = form.cleaned_data['logofile']
-                logobase64 = resize_and_encode_icon(logofile)
+                #logobase64 = resize_and_encode_icon(logofile)
                 logolink = save_png(logofile,myuuid,full_url)
             except:
                 print("failed to get logo")
