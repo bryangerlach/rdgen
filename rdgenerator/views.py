@@ -67,7 +67,7 @@ def generator_view(request):
 
             filename = re.sub(r'[^\w\s-]', '_', filename).strip()
             myuuid = str(uuid.uuid4())
-            protocol = 'https' if request.is_secure() else 'http'
+            protocol = 'https'
             host = request.get_host()
             full_url = f"{protocol}://{host}/api"
             try:
