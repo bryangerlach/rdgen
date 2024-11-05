@@ -46,7 +46,7 @@ source rdgen/bin/activate
 pip install -r requirements.txt
 
 #setup the database
-python manage.py manage.py migrate
+python manage.py migrate
 
 #run the server, change 8000 with whatever you want
 python manage.py runserver 0.0.0.0:8000
