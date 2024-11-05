@@ -562,11 +562,11 @@ jobs:
       #     src: ./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk
       #     dest: /root/rdgen/exe/${{ env.UUIDFOLDER }}/${{ inputs.filename }}-${{ matrix.job.arch }}.apk
 
-      - name: send file to api server
+      - name: send file to rdgen server
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
         shell: bash
         run: |
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk" ${{ secrets.GENURL }}/save_custom_client
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
 
       - name: send file to api server
         if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
@@ -579,7 +579,7 @@ jobs:
       #     username: ${{ secrets.GEN_FTP_USER }}
       #     password: ${{ secrets.GEN_FTP_PASSWORD }}
       #     local-dir: ./signed-apk/
-      #     server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
+      #     server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/ 
       #     exclude: | 
       #       *.idsig
       #       *.jks
