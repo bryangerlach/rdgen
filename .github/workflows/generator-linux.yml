@@ -524,15 +524,23 @@ jobs:
       #       rustdesk-*.deb
       #       rustdesk-*.rpm
 
-      - name: Upload to FTP
+      # - name: Upload to FTP
+      #   if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
+      #   uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      #   with:
+      #     server: ${{ secrets.GEN_FTP_SERVER }}
+      #     username: ${{ secrets.GEN_FTP_USER }}
+      #     password: ${{ secrets.GEN_FTP_PASSWORD }}
+      #     local-dir: output/
+      #     server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
+
+      - name: send file to rdgen server
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.GEN_FTP_SERVER }}
-          username: ${{ secrets.GEN_FTP_USER }}
-          password: ${{ secrets.GEN_FTP_PASSWORD }}
-          local-dir: output/
-          server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
+        shell: bash
+        run: |
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.deb" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.rpm" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}-suse.rpm" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
 
       - name: send file to api server
         if: ${{ fromJson(inputs.extras).rdgen == 'false' }}

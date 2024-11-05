@@ -515,15 +515,20 @@ jobs:
         run: |
           mv ./SignOutput/rustdesk.exe "./SignOutput/${{ inputs.filename }}.exe" || echo "rustdesk"
 
-      - name: Upload to FTP
+      # - name: Upload to FTP
+      #   if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
+      #   uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+      #   with:
+      #     server: ${{ secrets.GEN_FTP_SERVER }}
+      #     username: ${{ secrets.GEN_FTP_USER }}
+      #     password: ${{ secrets.GEN_FTP_PASSWORD }}
+      #     local-dir: ./SignOutput/
+      #     server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
+      - name: send file to rdgen server
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.GEN_FTP_SERVER }}
-          username: ${{ secrets.GEN_FTP_USER }}
-          password: ${{ secrets.GEN_FTP_PASSWORD }}
-          local-dir: ./SignOutput/
-          server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
+        shell: bash
+        run: |
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./SignOutput/${{ inputs.filename }}.exe" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
 
       - name: send file to api server
         if: ${{ fromJson(inputs.extras).rdgen == 'false' }}

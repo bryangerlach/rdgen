@@ -552,15 +552,21 @@ jobs:
 
       #
       
-      - name: Upload to FTP
+      # - name: Upload to FTP
+      #   if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
+      #   uses: nerdoza/action-simple-file-upload@v2
+      #   with:
+      #     user: ${{ secrets.GEN_FTP_USER }}
+      #     password: ${{ secrets.GEN_FTP_PASSWORD }}
+      #     host: ${{ secrets.GEN_FTP_SERVER }}
+      #     src: ./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk
+      #     dest: /root/rdgen/exe/${{ env.UUIDFOLDER }}/${{ inputs.filename }}-${{ matrix.job.arch }}.apk
+
+      - name: send file to api server
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
-        uses: nerdoza/action-simple-file-upload@v2
-        with:
-          user: ${{ secrets.GEN_FTP_USER }}
-          password: ${{ secrets.GEN_FTP_PASSWORD }}
-          host: ${{ secrets.GEN_FTP_SERVER }}
-          src: ./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk
-          dest: /root/rdgen/exe/${{ env.UUIDFOLDER }}/${{ inputs.filename }}-${{ matrix.job.arch }}.apk
+        shell: bash
+        run: |
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk" ${{ secrets.GENURL }}/save_custom_client
 
       - name: send file to api server
         if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
