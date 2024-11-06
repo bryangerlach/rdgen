@@ -25,7 +25,7 @@
             <li>github secrets (setup on your github account for your rdgen repo):  
                 <oul>
                 <li>GENURL="example.com:8000"  </li>
-                *this is the domain and port that your are running rdgen on, needs to be accesible on the internet
+                *this is the domain and port that your are running rdgen on, needs to be accesible on the internet, depending on how you have this setup the port may not be needed
                 </ul></li>
             <li>optional github secrets (for signing the code):  
                 <ul>
@@ -74,3 +74,10 @@
 ### open your web browser to yourdomain:8000
 
 ### use nginx, caddy, traefik, etc. for ssl reverse proxy
+
+## A few notes:
+
+<ul>
+    <li>If you change your repository name, make sure to change the url on lines 161-168 of views.py to reflect the change</li>
+    <li>If you are running on http instead of https, make sure to make the change on line 70 of views.py</li>
+</ul>
