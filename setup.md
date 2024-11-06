@@ -24,7 +24,7 @@
                 </ul></li>
             <li>github secrets (setup on your github account for your rdgen repo):  
                 <oul>
-                <li>GENURL="example.com:8083"  </li>
+                <li>GENURL="example.com:8000"  </li>
                 *this is the domain and port that your are running rdgen on, needs to be accesible on the internet
                 </ul></li>
             <li>optional github secrets (for signing the code):  
