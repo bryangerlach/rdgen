@@ -86,14 +86,16 @@
 
 replace user, group, and port if you need to  
 replace /opt with wherever you have installed rdgen  
-save the following file as /etc/systed/system/rdgen.service  
+save the following file as /etc/systed/system/rdgen.service, and make sure to change GHUSER, GHBEARER
 ```
 [Unit]
 Description=Rustdesk Client Generator
 [Service]
 Type=simple
 LimitNOFILE=1000000
-ExecStart=/usr/bin/python3 /opt/rdgen/manage.py runserver 0.0.0.0:8000
+Environment="GHUSER=yourgithubusername"
+Environment="GHBEARER=yourgithubtoken"
+ExecStart=/opt/rdgen/rdgen/bin/python3 /opt/rdgen/manage.py runserver 0.0.0.0:8000
 WorkingDirectory=/opt/rdgen/
 User=root
 Group=root
