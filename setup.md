@@ -86,7 +86,7 @@
 
 replace user, group, and port if you need to  
 replace /opt with wherever you have installed rdgen  
-save the following file as /etc/systed/system/rdgen.service, and make sure to change GHUSER, GHBEARER
+save the following file as /etc/systemd/system/rdgen.service, and make sure to change GHUSER, GHBEARER
 ```
 [Unit]
 Description=Rustdesk Client Generator
