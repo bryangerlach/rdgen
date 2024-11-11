@@ -95,6 +95,7 @@ Type=simple
 LimitNOFILE=1000000
 Environment="GHUSER=yourgithubusername"
 Environment="GHBEARER=yourgithubtoken"
+PassEnvironment=GHUSER GHBEARER
 ExecStart=/opt/rdgen/rdgen/bin/python3 /opt/rdgen/manage.py runserver 0.0.0.0:8000
 WorkingDirectory=/opt/rdgen/
 User=root
