@@ -325,7 +325,7 @@ def startgh(request):
     }
     response = requests.post(url, json=data, headers=headers)
     print(response)
-    return HttpResponse('')
+    return HttpResponse(status=204)
 
 def save_png(file, uuid, domain):
     file_save_path = "png/%s/%s" % (uuid, quote(file.name))
