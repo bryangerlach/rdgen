@@ -92,7 +92,7 @@ jobs:
     uses: ./.github/workflows/bridge.yml
     with:
       version: ${{ fromJson(inputs.extras).version }}
-      
+
   build-RustDeskTempTopMostWindow:
     uses: ./.github/workflows/third-party-RustDeskTempTopMostWindow.yml
     with:
@@ -106,7 +106,7 @@ jobs:
 
   build-for-windows-flutter:
     name: Build Windows
-    needs: [build-RustDeskTempTopMostWindow]
+    needs: [build-RustDeskTempTopMostWindow, generate-bridge]
     runs-on: windows-2022
     strategy:
       fail-fast: false
