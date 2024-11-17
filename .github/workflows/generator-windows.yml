@@ -155,6 +155,12 @@ jobs:
         with:
           repository: rustdesk/rustdesk
 
+      - name: Restore bridge files
+        uses: actions/download-artifact@master
+        with:
+          name: bridge-artifact
+          path: ./
+
       - name: Install ImageMagick on Windows
         run: |
           choco install -y imagemagick.app --no-progress
@@ -247,13 +253,6 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: ${{ matrix.job.os }}
-
-      - name: Install flutter rust bridge deps
-        run: |
-          git config --global core.longpaths true
-          cargo install flutter_rust_bridge_codegen --version ${{ env.FLUTTER_RUST_BRIDGE_VERSION }} --features "uuid"
-          Push-Location flutter ; flutter pub get ; Pop-Location
-          ~/.cargo/bin/flutter_rust_bridge_codegen --rust-input ./src/flutter_ffi.rs --dart-output ./flutter/lib/generated_bridge.dart
         
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
@@ -361,18 +360,6 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "30% complete"}'
-
-      # - name: generate rustbridge
-      #   run: |
-      #     ~/.cargo/bin/flutter_rust_bridge_codegen --rust-input ./src/flutter_ffi.rs --dart-output ./flutter/lib/generated_bridge.dart
-
-      - name: Report Status
-        uses: fjogeleit/http-request-action@v1
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "50% complete, this step takes about 5 minutes, be patient."}'
 
       - name: Build rustdesk
@@ -383,15 +370,7 @@ jobs:
           Remove-Item -Path usbmmidd_v2\Win32 -Recurse
           Remove-Item -Path "usbmmidd_v2\deviceinstaller64.exe", "usbmmidd_v2\deviceinstaller.exe", "usbmmidd_v2\usbmmidd.bat"
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
-          mv -Force .\usbmmidd_v2 ./rustdesk
-
-      # - name: logo stuff
-      #   if: ${{ inputs.logolink != 'false' }}
-      #   continue-on-error: true
-      #   shell: bash
-      #   run: |
-      #     #echo "${{ inputs.logobase64 }}" | base64 -d > ./rustdesk/data/flutter_assets/assets/logo.png
-          
+          mv -Force .\usbmmidd_v2 ./rustdesk   
 
       - name: icon stuff
         if: ${{ inputs.iconlink != 'false' }}
