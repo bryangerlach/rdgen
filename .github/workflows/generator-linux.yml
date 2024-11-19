@@ -301,6 +301,8 @@ jobs:
           sed -i -e '/const KEY:/,/};/d' ./src/common.rs
           sed -i -e '/let Ok(data) = sign::verify(&data, &pk)/,/};/d' ./src/common.rs
           echo -n "${{ env.CUSTOM }}" | cat > ./custom.txt
+          cp ./flutter/pubspec.yaml ./flutter/pubspec.yaml.bak
+          sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
 
       - name: fix connection delay
         continue-on-error: true
