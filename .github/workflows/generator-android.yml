@@ -171,7 +171,7 @@ jobs:
                g++ \
                g++-multilib \
                imagemagick \
-               libappindicator3-dev \
+               libayatana-appindicator3-dev \
                libasound2-dev \
                libc6-dev \
                libclang-10-dev \
@@ -213,6 +213,13 @@ jobs:
         with:
           channel: "stable"
           flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
+
+      - name: Patch flutter
+        continue-on-error: true
+        run: |
+          cd $(dirname $(dirname $(which flutter)))
+          [[ "3.24.4" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
+  
 
       - uses: nttld/setup-ndk@v1
         id: setup-ndk
@@ -262,6 +269,12 @@ jobs:
             exit 1
           fi
         shell: bash
+
+      - name: Restore bridge files
+        uses: actions/download-artifact@master
+        with:
+          name: bridge-artifact
+          path: ./
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@v1
