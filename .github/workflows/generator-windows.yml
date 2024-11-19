@@ -356,6 +356,7 @@ jobs:
       - name: replace flutter icons
         run: |
           cd ./flutter
+          flutter pub upgrade win32
           flutter pub get
           flutter pub run flutter_launcher_icons
           cd ..
