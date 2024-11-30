@@ -72,7 +72,7 @@ env:
   # vcpkg version: 2024.07.12
   VCPKG_COMMIT_ID: "1de2026f28ead93ff1773e6e680387643e914ea1"
   VERSION: "${{ fromJson(inputs.extras).version }}"
-  NDK_VERSION: "r27"
+  NDK_VERSION: "r27c"
   #signing keys env variable checks
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
@@ -96,7 +96,7 @@ jobs:
   build-rustdesk-android:
     needs: [generate-bridge-linux]
     name: build rustdesk android apk ${{ matrix.job.target }}
-    runs-on: ubuntu-20.04
+    runs-on: ${{ matrix.job.os }}
     strategy:
       fail-fast: false
       matrix:
@@ -190,7 +190,7 @@ jobs:
                llvm-10-dev \
                nasm \
                ninja-build \
-               openjdk-11-jdk-headless \
+               openjdk-17-jdk-headless \
                pkg-config \
                tree \
                wget
@@ -218,7 +218,7 @@ jobs:
         continue-on-error: true
         run: |
           cd $(dirname $(dirname $(which flutter)))
-          [[ "3.24.4" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
+          [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
   
 
       - uses: nttld/setup-ndk@v1
