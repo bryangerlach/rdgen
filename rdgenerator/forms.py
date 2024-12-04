@@ -3,7 +3,7 @@ from django import forms
 class GenerateForm(forms.Form):
     #Platform
     platform = forms.ChoiceField(choices=[('windows','Windows'),('linux','Linux (currently unavailable)'),('android','Android (testing now available)')], initial='windows')
-    version = forms.ChoiceField(choices=[('master','nightly'),('1.3.3','1.3.3'),('1.3.2','1.3.2'),('1.3.1','1.3.1'),('1.3.0','1.3.0')], initial='1.3.3')
+    version = forms.ChoiceField(choices=[('master','nightly'),('1.3.4','1.3.4'),('1.3.3','1.3.3'),('1.3.2','1.3.2'),('1.3.1','1.3.1'),('1.3.0','1.3.0')], initial='1.3.4')
     delayFix = forms.BooleanField(initial=True, required=False)
 
     #General
