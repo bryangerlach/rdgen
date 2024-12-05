@@ -356,6 +356,7 @@ jobs:
           data: '{"uuid": "${{ inputs.uuid }}", "status": "25% complete"}'
 
       - name: replace flutter icons
+        continue-on-error: true
         run: |
           cd ./flutter
           flutter pub upgrade win32
