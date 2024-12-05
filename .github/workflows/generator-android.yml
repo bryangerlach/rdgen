@@ -384,7 +384,8 @@ jobs:
         if: ${{ inputs.iconlink != 'false' }}
         run: |
           pushd ./flutter
-          flutter pub run flutter_launcher_icons
+          flutter pub get
+          dart run flutter_launcher_icons
           popd
           sed -i '/ic_launcher_background/d' ./flutter/android/app/src/main/res/values/colors.xml
       ##########################################################
