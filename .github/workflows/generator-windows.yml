@@ -357,58 +357,7 @@ jobs:
         if: fromJson(inputs.extras).cycleMonitor == 'true'
         shell: bash
         run: |
-          #add cycle monitor button to ./flutter/lib/desktop/widgets/remote_toolbar.dart
-          new_code="class _CycleMonitorMenu extends StatelessWidget {
-            final String id;
-            final FFI ffi;
-
-            const _CycleMonitorMenu({
-              Key? key,
-              required this.id,
-              required this.ffi,
-            }) : super(key: key);
-
-            @override
-            Widget build(BuildContext context) {
-              final pi = ffi.ffiModel.pi;
-
-              //for (int i = 0; i < pi.displays.length; i++) {
-              return TextButton(
-                onPressed: () {
-                  RxInt display = CurrentDisplayState.find(id);
-                  display.value = display.value + 1;
-                  if (display.value >= pi.displays.length) {
-                    display.value = 0;
-                  }
-                  openMonitorInTheSameTab(display.value, ffi, pi);
-                  pi.currentDisplay = display.value;
-                },
-                child: Stack(children: [
-                  Container(
-                      child: Align(
-                          alignment: Alignment.center,
-                          child: const Icon(
-                            Icons.personal_video,
-                            color: _ToolbarTheme.blueColor,
-                            size: 20.0,
-                          ))),
-                  Container(
-                      child: Align(
-                          alignment: Alignment(0.0, -0.4),
-                          child: Text(
-                            '  ${CurrentDisplayState.find(id).value + 1}/${pi.displays.length}',
-                            style: const TextStyle(
-                                color: _ToolbarTheme.blueColor, fontSize: 8),
-                          ))),
-                ]),
-              );
-            }
-          }"
-          echo $new_code >> ./flutter/lib/desktop/widgets/remote_toolbar.dart
-          sed -i '/_buildDraggable(context),/a\\ \ \ \ \ \ \ \ _CycleMonitorMenu(id: widget.id, ffi: widget.ffi),' ./flutter/lib/desktop/widgets/remote_toolbar.dart
-          sed -i '/dragging: _dragging,/a\\ \ \ \ \ \ \ \ \ \ \ \ \ \ ffi: widget.ffi,' ./flutter/lib/desktop/widgets/remote_toolbar.dart
-          sed -i '/final SessionID sessionId;/a\\ \ final FFI ffi;' ./flutter/lib/desktop/widgets/remote_toolbar.dart
-          sed -i '/required this.sessionId,/a\\ \ \ \ required this.ffi,' ./flutter/lib/desktop/widgets/remote_toolbar.dart
+          git apply .github/patches/cycle_monitor.diff
 
 
       - name: run as admin
