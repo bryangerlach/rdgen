@@ -171,28 +171,35 @@ jobs:
           choco install -y imagemagick.app --no-progress
           Get-ChildItem -Path "${env:ProgramFiles}" | % { $_.FullName } | Select-String -Pattern "[\/\\]ImageMagick[^\/\\]*$" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
 
-      - name: cargo.toml, runner.rc name, en.rs
+      - name: change appname to custom
+        if: inputs.appname != 'rustdesk'
         continue-on-error: true
         shell: bash
         run: |
-          cp ./Cargo.toml ./Cargo.toml.bak
+          # ./Cargo.toml
           sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ inputs.appname }}"|' ./Cargo.toml
           sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ inputs.appname }}"|' ./Cargo.toml
           sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ inputs.appname }}"|' ./Cargo.toml
           sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ inputs.appname }}.exe"|' ./Cargo.toml
-          cp ./libs/portable/Cargo.toml ./libs/portable/Cargo.toml.bak
+          # ./libs/portable/Cargo.toml
           sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ inputs.appname }}"|' ./libs/portable/Cargo.toml
           sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ inputs.appname }}"|' ./libs/portable/Cargo.toml
           sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ inputs.appname }}"|' ./libs/portable/Cargo.toml
           sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ inputs.appname }}.exe"|' ./libs/portable/Cargo.toml
-          cp ./flutter/windows/runner/Runner.rc ./flutter/windows/runner/Runner.rc.bak
+          # ./flutter/windows/runner/Runner.rc
           sed -i -e 's|"RustDesk Remote Desktop"|"${{ inputs.appname }}"|' ./flutter/windows/runner/Runner.rc
           sed -i -e 's|VALUE "InternalName", "rustdesk" "\0"|VALUE "InternalName", "${{ inputs.appname }}" "\0"|' ./flutter/windows/runner/Runner.rc
           sed -i -e 's|"Copyright © 2024 Purslane Ltd. All rights reserved."|"Copyright © 2024"|' ./flutter/windows/runner/Runner.rc
           sed -i -e 's|"rustdesk.exe"|"${{ inputs.filename }}"|' ./flutter/windows/runner/Runner.rc
           sed -i -e 's|"RustDesk"|"${{ inputs.appname }}"|' ./flutter/windows/runner/Runner.rc
-          cp ./src/lang/en.rs ./src/lang/en.rs.bak
+          # ./src/lang/en.rs
           sed -i -e 's|RustDesk|${{ inputs.appname }}|' ./src/lang/en.rs
+             
+      - name: change url to custom
+        if: fromJson(inputs.extras).urlLink != 'https://rustdesk.com'
+        continue-on-error: true
+        shell: bash
+        run: |
           sed -i -e 's|Homepage: https://rustdesk.com|Homepage: ${{ fromJson(inputs.extras).urlLink }}|' ./build.py
           sed -i -e "s|launchUrl(Uri.parse('https://rustdesk.com'));|launchUrl(Uri.parse('${{ fromJson(inputs.extras).urlLink }}'));|" ./flutter/lib/common.dart
           sed -i -e "s|launchUrlString('https://rustdesk.com');|launchUrlString('${{ fromJson(inputs.extras).urlLink }}');|" ./flutter/lib/desktop/pages/desktop_setting_page.dart
@@ -200,10 +207,16 @@ jobs:
           sed -i -e "s|const url = 'https://rustdesk.com/';|const url = '${{ fromJson(inputs.extras).urlLink }}';|" ./flutter/lib/mobile/pages/settings_page.dart
           sed -i -e "s|launchUrlString('https://rustdesk.com/privacy.html')|launchUrlString('${{ fromJson(inputs.extras).urlLink }}/privacy.html')|" ./flutter/lib/mobile/pages/settings_page.dart
           sed -i -e "s|https://rustdesk.com/privacy.html|${{ fromJson(inputs.extras).urlLink }}/privacy.html|" ./flutter/lib/desktop/pages/install_page.dart
+
+      - name: allow custom.txt
+        continue-on-error: true
+        shell: bash
+        run: |
           sed -i -e '/const KEY:/,/};/d' ./src/common.rs
           sed -i -e '/let Ok(data) = sign::verify(&data, &pk)/,/};/d' ./src/common.rs
-          cp ./flutter/pubspec.yaml ./flutter/pubspec.yaml.bak
+          # ./flutter/pubspec.yaml
           sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
+
 
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v1
@@ -356,6 +369,7 @@ jobs:
           data: '{"uuid": "${{ inputs.uuid }}", "status": "25% complete"}'
 
       - name: replace flutter icons
+        if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
           cd ./flutter
