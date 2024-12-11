@@ -355,9 +355,8 @@ jobs:
       - name: add cycle monitors to toolbar
         continue-on-error: true
         if: fromJson(inputs.extras).cycleMonitor == 'true'
-        shell: bash
         run: |
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/cycle_monitor.diff
+          Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/cycle_monitor.diff -OutFile cycle_monitor.diff
           git apply cycle_monitor.diff
 
 
