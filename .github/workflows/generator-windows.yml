@@ -357,7 +357,7 @@ jobs:
         if: fromJson(inputs.extras).cycleMonitor == 'true'
         shell: bash
         run: |
-          git apply .github/patches/cycle_monitor.diff
+          git apply ./github/patches/cycle_monitor.diff
 
 
       - name: run as admin
