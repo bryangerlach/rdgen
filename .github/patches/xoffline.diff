@@ -13,7 +13,7 @@ index 0a15eb45b..d776dd556 100644
 +              : Icon(
 +                  Icons.close, // Red X for offline (Material Icon)
 +                  color: Colors.red,
-+                  size: 15.0, // Adjust size as needed
++                  size: 12.0, // Adjust size as needed
 +                )));
  }
  
