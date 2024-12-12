@@ -359,6 +359,13 @@ jobs:
           Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/cycle_monitor.diff -OutFile cycle_monitor.diff
           git apply cycle_monitor.diff
 
+      - name: use X for offline display instead of orange circle
+        continue-on-error: true
+        if: fromJson(inputs.extras).xOffline == 'true'
+        run: |
+          Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/xoffline.diff -OutFile xoffline.diff
+          git apply xoffline.diff
+
 
       - name: run as admin
         continue-on-error: true

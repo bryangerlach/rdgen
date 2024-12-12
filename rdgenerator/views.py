@@ -24,6 +24,7 @@ def generator_view(request):
             version = form.cleaned_data['version']
             delayFix = form.cleaned_data['delayFix']
             cycleMonitor = form.cleaned_data['cycleMonitor']
+            xOffline = form.cleaned_data['xOffline']
             server = form.cleaned_data['serverIP']
             key = form.cleaned_data['key']
             apiServer = form.cleaned_data['apiServer']
@@ -157,6 +158,7 @@ def generator_view(request):
             extras['version'] = version
             extras['rdgen'] = 'true'
             extras['cycleMonitor'] = 'true' if cycleMonitor else 'false'
+            extras['xOffline'] = 'true' if xOffline else 'false'
             extra_input = json.dumps(extras)
 
             ####from here run the github action, we need user, repo, access token.
