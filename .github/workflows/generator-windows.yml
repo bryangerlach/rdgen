@@ -367,6 +367,13 @@ jobs:
           Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/xoffline.diff -OutFile xoffline.diff
           git apply xoffline.diff
 
+      - name: hide-cm
+        continue-on-error: true
+        if: fromJson(inputs.extras).hidecm == 'true'
+        run: |
+          Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/hidecm.diff -OutFile hidecm.diff
+          git apply hidecm.diff
+
 
       - name: run as admin
         continue-on-error: true

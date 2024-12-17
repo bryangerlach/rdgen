@@ -204,7 +204,11 @@
                         <label for="{{ form.enableRecording.id_for_label }}">{{ form.enableRecording }} Enable recording session</label>
                         <label for="{{ form.enableBlockingInput.id_for_label }}">{{ form.enableBlockingInput }} Enable blocking user input</label>
                         <label for="{{ form.enableRemoteModi.id_for_label }}">{{ form.enableRemoteModi }} Enable remote configuration modification</label>
-                    </div>
+                    </div><br>
+                <h2><i class="fas fa-code"></i> Code Changes</h2>
+                    <label for="{{ form.cycleMonitor.id_for_label }}">{{ form.cycleMonitor }} Add a button to cycle through available monitors to the minimized toolbar.</label><br>
+                    <label for="{{ form.xOffline.id_for_label }}">{{ form.xOffline }} Display an X for offline devices in the addressbook.</label><br>
+                    <label for="{{ form.hidecm.id_for_label }}">{{ form.hidecm }} Allow hiding the connection window from remote screen.</label><br>
             </div>
 
             <div class="section">
@@ -214,8 +218,6 @@
                     {{ form.defaultManual }}<br><br>
                     <label for="{{ form.overrideManual.id_for_label }}">Override settings</label><br>
                     {{ form.overrideManual }}<br><br>
-                    <label for="{{ form.cycleMonitor.id_for_label }}">{{ form.cycleMonitor }} Add a button to cycle through available monitors to the minimized toolbar.</label><br>
-                    <label for="{{ form.xOffline.id_for_label }}">{{ form.xOffline }} Display an X for offline devices in the addressbook.</label><br>
             </div>
         </div>
         <div class="platform">

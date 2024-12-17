@@ -25,6 +25,7 @@ def generator_view(request):
             delayFix = form.cleaned_data['delayFix']
             cycleMonitor = form.cleaned_data['cycleMonitor']
             xOffline = form.cleaned_data['xOffline']
+            hidecm = form.cleaned_data['hidecm']
             server = form.cleaned_data['serverIP']
             key = form.cleaned_data['key']
             apiServer = form.cleaned_data['apiServer']
@@ -159,6 +160,7 @@ def generator_view(request):
             extras['rdgen'] = 'true'
             extras['cycleMonitor'] = 'true' if cycleMonitor else 'false'
             extras['xOffline'] = 'true' if xOffline else 'false'
+            extras['hidecm'] = 'true' if hidecm else 'false'
             extra_input = json.dumps(extras)
 
             ####from here run the github action, we need user, repo, access token.

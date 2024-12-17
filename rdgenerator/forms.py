@@ -70,3 +70,4 @@ class GenerateForm(forms.Form):
     #custom added features
     cycleMonitor = forms.BooleanField(initial=False, required=False)
     xOffline = forms.BooleanField(initial=False, required=False)
+    hidecm = forms.BooleanField(initial=False, required=False)
