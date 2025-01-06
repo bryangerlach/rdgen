@@ -153,6 +153,7 @@ def generator_view(request):
 
             #github limits inputs to 10, so lump extras into one with json
             extras = {}
+            extras['genurl'] = _settings.GENURL
             extras['runasadmin'] = runasadmin
             extras['urlLink'] = urlLink
             extras['delayFix'] = 'true' if delayFix else 'false'
@@ -170,6 +171,8 @@ def generator_view(request):
                 url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rdgen/actions/workflows/generator-linux.yml/dispatches'  
             elif platform == 'android':
                 url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rdgen/actions/workflows/generator-android.yml/dispatches'
+            elif platform == 'macos':
+                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rdgen/actions/workflows/generator-macos.yml/dispatches'
             else:
                 url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rdgen/actions/workflows/generator-windows.yml/dispatches'
             ####breaking changes were made in 1.3.3 version, so if 1.3.2 or lower, use:

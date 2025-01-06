@@ -117,11 +117,13 @@
                     <i class="fab fa-windows platform-icon active" data-platform="windows"></i>
                     <i class="fab fa-linux platform-icon" data-platform="linux"></i>
                     <i class="fab fa-android platform-icon" data-platform="android"></i>
+                    <i class="fab fa-apple platform-icon" data-platform="macos"></i>
                 </div>
                 <select name="platform" id="id_platform">
                     <option value="windows" selected>Windows</option>
                     <option value="linux">Linux</option>
                     <option value="android">Android</option>
+                    <option value="macos">macOS</option>
                 </select>
                 <label for="{{ form.version.id_for_label }}">Rustdesk Version:</label>
                 {{ form.version }}

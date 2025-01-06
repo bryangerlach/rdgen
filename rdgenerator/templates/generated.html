@@ -1,12 +1,191 @@
-{% if platform == 'windows' %}
-<a href='/download?filename={{filename}}.exe&uuid={{uuid}}'>{{filename}}.exe</a>
-{% elif platform == 'linux' %}
-<a href='/download?filename={{filename}}.deb&uuid={{uuid}}'>{{filename}}.deb</a><br>
-<a href='/download?filename={{filename}}.rpm&uuid={{uuid}}'>{{filename}}.rpm</a><br>
-<a href='/download?filename={{filename}}-suse.rpm&uuid={{uuid}}'>{{filename}}-suse.rpm</a>
-{% elif platform == 'android' %}
-<a href='/download?filename={{filename}}-aarch64.apk&uuid={{uuid}}'>{{filename}}-aarch64.apk</a><br>
-<a href='/download?filename={{filename}}-x86_64.apk&uuid={{uuid}}'>{{filename}}-x86_64.apk</a>
-{% else %}
-Error, no file generated
-{% endif %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title id="pageTitle">Build Generated Successfully</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        .platform-logo {
+            width: 150px;
+            height: 150px;
+            margin-bottom: 30px;
+            display: none;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2));
+            transition: transform 0.3s ease;
+        }
+        .platform-logo:hover {
+            transform: scale(1.1);
+        }
+        .success-text {
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .download-section {
+            background: rgba(255,255,255,0.8);
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            margin-top: 20px;
+        }
+        .download-link {
+            display: block;
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        .download-link:hover {
+            background-color: #2980b9;
+        }
+        .platform-note {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 15px;
+            background: rgba(255,255,255,0.7);
+            padding: 10px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <svg id="windowsLogo" class="platform-logo" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="windowsGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#00A4EF;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#0078D7;stop-opacity:1" />
+            </linearGradient>
+        </defs>
+        <rect width="256" height="256" rx="50" ry="50" fill="url(#windowsGradient)"/>
+        <path d="M60 60 L196 60 L196 196 L60 196 Z" fill="white" opacity="0.2"/>
+        <path d="M128 60 L196 60 L196 128 Z" fill="white" opacity="0.1"/>
+        <text x="128" y="200" font-family="Arial" font-size="50" font-weight="bold" text-anchor="middle" fill="white">Win</text>
+    </svg>
+
+    <svg id="macosLogo" class="platform-logo" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="macosGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#A2AAAD;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#4A4A4A;stop-opacity:1" />
+            </linearGradient>
+            <filter id="macosGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur class="blur" result="coloredBlur" stdDeviation="4"></feGaussianBlur>
+                <feMerge>
+                    <feMergeNode in="coloredBlur"></feMergeNode>
+                    <feMergeNode in="SourceGraphic"></feMergeNode>
+                </feMerge>
+            </filter>
+        </defs>
+        <rect width="256" height="256" rx="50" ry="50" fill="url(#macosGradient)" filter="url(#macosGlow)"/>
+        <path d="M128 80 C100 120, 156 140, 128 200" fill="none" stroke="white" stroke-width="10" opacity="0.3"/>
+        <text x="128" y="200" font-family="Arial" font-size="50" font-weight="bold" text-anchor="middle" fill="white">Mac</text>
+    </svg>
+
+    <svg id="linuxLogo" class="platform-logo" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="linuxGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#FFA500;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#FF4500;stop-opacity:1" />
+            </linearGradient>
+        </defs>
+        <rect width="256" height="256" rx="50" ry="50" fill="url(#linuxGradient)"/>
+        <path d="M128 80 C100 120, 156 140, 128 200" fill="none" stroke="white" stroke-width="10" opacity="0.3"/>
+        <text x="128" y="200" font-family="Arial" font-size="50" font-weight="bold" text-anchor="middle" fill="white">Linux</text>
+    </svg>
+
+    <svg id="androidLogo" class="platform-logo" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="androidGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#A4C639;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#78C257;stop-opacity:1" />
+            </linearGradient>
+        </defs>
+        <rect width="256" height="256" rx="50" ry="50" fill="url(#androidGradient)"/>
+        <path d="M128 80 
+                 C100 100, 156 100, 128 130 
+                 Q110 160, 128 190 
+                 Q146 160, 128 130 Z" 
+              fill="white" opacity="0.3"/>
+        <path d="M90 100 L70 140" stroke="white" stroke-width="10" stroke-linecap="round"/>
+        <path d="M166 100 L186 140" stroke="white" stroke-width="10" stroke-linecap="round"/>
+        <text x="128" y="200" font-family="Arial" font-size="50" font-weight="bold" text-anchor="middle" fill="white">Android</text>
+    </svg>
+
+    <div>
+        <h2 class="success-text">Build Generated Successfully</h2>
+        <div class="download-section">
+            {% if platform == 'windows' %}
+                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">Download {{filename}}.exe</a>
+            {% elif platform == 'linux' %}
+                <a href='/download?filename={{filename}}.deb&uuid={{uuid}}' class="download-link">Download {{filename}}.deb</a>
+                <a href='/download?filename={{filename}}.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}.rpm</a>
+                <a href='/download?filename={{filename}}-suse.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-suse.rpm</a>
+            {% elif platform == 'android' %}
+                <a href='/download?filename={{filename}}-aarch64.apk&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.apk</a>
+                <a href='/download?filename={{filename}}-x86_64.apk&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.apk</a>
+                <a href='/download?filename={{filename}}-armv7.apk&uuid={{uuid}}' class="download-link">Download {{filename}}-armv7.apk</a>
+            {% elif platform == 'macos' %}
+                <a href='/download?filename={{filename}}.dmg&uuid={{uuid}}' class="download-link">Download {{filename}}.dmg</a>
+            {% else %}
+                <p>Error: No file generated</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div id="platformNote" class="platform-note"></div>
+
+    <script>
+        function updatePlatformUI() {
+            const platform = '{{platform}}'.toLowerCase();
+            const platformLogos = {
+                'windows': document.getElementById('windowsLogo'),
+                'macos': document.getElementById('macosLogo'),
+                'linux': document.getElementById('linuxLogo'),
+                'android': document.getElementById('androidLogo')
+            };
+            const platformNote = document.getElementById('platformNote');
+
+            // Reset all logos
+            Object.values(platformLogos).forEach(logo => logo.style.display = 'none');
+
+            // Set appropriate logo and title
+            if (platform === 'macos') {
+                document.getElementById('pageTitle').textContent = 'MacOS Build Generated';
+                platformLogos.macos.style.display = 'block';
+                platformNote.textContent = 'Note: For macOS, you may need to adjust security settings to run the application.';
+                platformNote.style.display = 'block';
+            } else if (platform === 'windows') {
+                document.getElementById('pageTitle').textContent = 'Windows Build Generated';
+                platformLogos.windows.style.display = 'block';
+                platformNote.textContent = 'Note: You might need to disable SmartScreen or adjust Windows security settings.';
+                platformNote.style.display = 'block';
+            } else if (platform === 'linux') {
+                document.getElementById('pageTitle').textContent = 'Linux Build Generated';
+                platformLogos.linux.style.display = 'block';
+                platformNote.textContent = 'Note: Ensure you have the necessary dependencies installed.';
+                platformNote.style.display = 'block';
+            } else if (platform === 'android') {
+                document.getElementById('pageTitle').textContent = 'Android Build Generated';
+                platformLogos.android.style.display = 'block';
+                platformNote.textContent = 'Note: You may need to enable "Unknown Sources" in device settings.';
+                platformNote.style.display = 'block';
+            }
+        }
+
+        // Call on page load
+        updatePlatformUI();
+    </script>
+</body>
+</html>{{ ... }}

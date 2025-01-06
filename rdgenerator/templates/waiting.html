@@ -1,12 +1,214 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Generating Exe File</title>
+    <title id="pageTitle">Generating Build</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        }
+        .platform-logo {
+            width: 150px;
+            height: 150px;
+            margin-bottom: 30px;
+            display: none;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2));
+            transition: transform 0.3s ease;
+        }
+        .platform-logo:hover {
+            transform: scale(1.1);
+        }
+        .loading-text {
+            color: #333;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        .status-text {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .macos-note {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 15px;
+            background: rgba(255,255,255,0.7);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .progress-bar {
+            width: 300px;
+            height: 10px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            overflow: hidden;
+            margin: 20px auto;
+        }
+        .progress-bar-fill {
+            width: 0%;
+            height: 100%;
+            background-color: #3498db;
+            transition: width 0.5s ease-in-out;
+        }
+    </style>
 </head>
 <body>
-    Please wait...This can take 20-30 minutes (or longer if there are other users).<br><br>
-    Status: {{status}}
+    <svg id="windowsLogo" class="platform-logo" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="windowsGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#00A4EF;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#0078D7;stop-opacity:1" />
+            </linearGradient>
+        </defs>
+        <rect width="256" height="256" rx="50" ry="50" fill="url(#windowsGradient)"/>
+        <path d="M60 60 L196 60 L196 196 L60 196 Z" fill="white" opacity="0.2"/>
+        <path d="M128 60 L196 60 L196 128 Z" fill="white" opacity="0.1"/>
+        <text x="128" y="200" font-family="Arial" font-size="50" font-weight="bold" text-anchor="middle" fill="white">Win</text>
+    </svg>
+
+    <svg id="macosLogo" class="platform-logo" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="macosGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#A2AAAD;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#4A4A4A;stop-opacity:1" />
+            </linearGradient>
+            <filter id="macosGlow" x="-20%" y="-20%" width="140%" height="140%">
+                <feGaussianBlur class="blur" result="coloredBlur" stdDeviation="4"></feGaussianBlur>
+                <feMerge>
+                    <feMergeNode in="coloredBlur"></feMergeNode>
+                    <feMergeNode in="SourceGraphic"></feMergeNode>
+                </feMerge>
+            </filter>
+        </defs>
+        <rect width="256" height="256" rx="50" ry="50" fill="url(#macosGradient)" filter="url(#macosGlow)"/>
+        <path d="M128 80 C100 120, 156 140, 128 200" fill="none" stroke="white" stroke-width="10" opacity="0.3"/>
+        <text x="128" y="200" font-family="Arial" font-size="50" font-weight="bold" text-anchor="middle" fill="white">Mac</text>
+    </svg>
+
+    <svg id="linuxLogo" class="platform-logo" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="linuxGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#FFA500;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#FF4500;stop-opacity:1" />
+            </linearGradient>
+        </defs>
+        <rect width="256" height="256" rx="50" ry="50" fill="url(#linuxGradient)"/>
+        <path d="M128 80 C100 120, 156 140, 128 200" fill="none" stroke="white" stroke-width="10" opacity="0.3"/>
+        <text x="128" y="200" font-family="Arial" font-size="50" font-weight="bold" text-anchor="middle" fill="white">Linux</text>
+    </svg>
+
+    <svg id="androidLogo" class="platform-logo" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+            <linearGradient id="androidGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" style="stop-color:#A4C639;stop-opacity:1" />
+                <stop offset="100%" style="stop-color:#78C257;stop-opacity:1" />
+            </linearGradient>
+        </defs>
+        <rect width="256" height="256" rx="50" ry="50" fill="url(#androidGradient)"/>
+        <path d="M128 80 
+                 C100 100, 156 100, 128 130 
+                 Q110 160, 128 190 
+                 Q146 160, 128 130 Z" 
+              fill="white" opacity="0.3"/>
+        <path d="M90 100 L70 140" stroke="white" stroke-width="10" stroke-linecap="round"/>
+        <path d="M166 100 L186 140" stroke="white" stroke-width="10" stroke-linecap="round"/>
+        <text x="128" y="200" font-family="Arial" font-size="50" font-weight="bold" text-anchor="middle" fill="white">Android</text>
+    </svg>
+
+    <div>
+        <h2 class="loading-text">Build in Progress</h2>
+        <div class="loading-spinner"></div>
+        <div class="progress-bar">
+            <div id="progressBarFill" class="progress-bar-fill"></div>
+        </div>
+        <p class="status-text">This can take 20-30 minutes (or longer if there are other users).</p>
+        <p class="status-text">Status: <span id="statusText">{{status}}</span></p>
+    </div>
+
+    <div id="macosNote" class="macos-note">
+        Note for macOS users: Generating an executable may require additional steps or permissions.
+    </div>
+
     <script>
+        // Detect platform and update logo, title, and notes
+        function updatePlatformUI() {
+            const platform = '{{platform}}'.toLowerCase();
+            const platformLogos = {
+                'windows': document.getElementById('windowsLogo'),
+                'macos': document.getElementById('macosLogo'),
+                'linux': document.getElementById('linuxLogo'),
+                'android': document.getElementById('androidLogo')
+            };
+
+            // Reset all logos
+            Object.values(platformLogos).forEach(logo => logo.style.display = 'none');
+
+            // Set appropriate logo and title
+            if (platform === 'macos') {
+                document.getElementById('pageTitle').textContent = 'Generating MacOS Build';
+                platformLogos.macos.style.display = 'block';
+                document.getElementById('macosNote').style.display = 'block';
+            } else if (platform === 'windows') {
+                document.getElementById('pageTitle').textContent = 'Generating Windows Build';
+                platformLogos.windows.style.display = 'block';
+            } else if (platform === 'linux') {
+                document.getElementById('pageTitle').textContent = 'Generating Linux Build';
+                platformLogos.linux.style.display = 'block';
+            } else if (platform === 'android') {
+                document.getElementById('pageTitle').textContent = 'Generating Android Build';
+                platformLogos.android.style.display = 'block';
+            }
+        }
+
+        // Simulate progress (replace with actual progress tracking if possible)
+        function simulateProgress() {
+            const progressBar = document.getElementById('progressBarFill');
+            const statusText = document.getElementById('statusText');
+            let progress = 0;
+            const stages = [
+                'Initializing build process',
+                'Compiling source code',
+                'Generating platform-specific binaries',
+                'Packaging application',
+                'Finalizing build'
+            ];
+
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 20;
+                progressBar.style.width = `${Math.min(progress, 100)}%`;
+                
+                const stageIndex = Math.floor(progress / 20);
+                statusText.textContent = stages[Math.min(stageIndex, stages.length - 1)];
+
+                if (progress >= 100) {
+                    clearInterval(progressInterval);
+                }
+            }, 1000);
+        }
+
+        // Call on page load
+        updatePlatformUI();
+        simulateProgress();
+
         setTimeout(function() {
             window.location.replace('/check_for_file?filename={{filename}}&uuid={{uuid}}&platform={{platform}}');
         }, 5000); // 5000 milliseconds = 5 seconds
