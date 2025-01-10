@@ -128,6 +128,7 @@
         <div class="download-section">
             {% if platform == 'windows' %}
                 <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">Download {{filename}}.exe</a>
+                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">Download {{filename}}.msi</a>
             {% elif platform == 'linux' %}
                 <a href='/download?filename={{filename}}.deb&uuid={{uuid}}' class="download-link">Download {{filename}}.deb</a>
                 <a href='/download?filename={{filename}}.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}.rpm</a>
