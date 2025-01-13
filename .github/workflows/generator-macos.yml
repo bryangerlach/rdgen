@@ -437,26 +437,33 @@ jobs:
         run: |
           sed -i '' -e '/if !key.is_empty() && !token.is_empty() {/,/}/d' ./src/client.rs
 
-      - name: add cycle monitors to toolbar
-        continue-on-error: true
-        if: fromJson(inputs.extras).cycleMonitor == 'true'
-        run: |
-          Invoke-WebRequest -Uri https://raw.githubusercontent.com/VenimK/creator/refs/heads/master/.github/patches/cycle_monitor.diff -OutFile cycle_monitor.diff
-          git apply cycle_monitor.diff
+          - name: add cycle monitors to toolbar
+          continue-on-error: true
+          if: fromJson(inputs.extras).cycleMonitor == 'true'
+          run: |
+            wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/cycle_monitor.diff
+            git apply cycle_monitor.diff
   
       - name: use X for offline display instead of orange circle
         continue-on-error: true
         if: fromJson(inputs.extras).xOffline == 'true'
         run: |
-          Invoke-WebRequest -Uri https://raw.githubusercontent.com/VenimK/creator/refs/heads/master/.github/patches/xoffline.diff -OutFile xoffline.diff
+          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/xoffline.diff
           git apply xoffline.diff
-  
+
       - name: hide-cm
         continue-on-error: true
         if: fromJson(inputs.extras).hidecm == 'true'
         run: |
-          Invoke-WebRequest -Uri https://raw.githubusercontent.com/VenimK/creator/refs/heads/master/.github/patches/hidecm.diff -OutFile hidecm.diff
+          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/hidecm.diff
           git apply hidecm.diff
+
+      - name: statussort
+        continue-on-error: true
+        if: fromJson(inputs.extras).statussort == 'true'
+        run: |
+          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/statussort.diff
+          git apply statussort.diff
       
       
       - name: Install Rust toolchain

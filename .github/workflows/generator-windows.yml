@@ -374,6 +374,13 @@ jobs:
           Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/hidecm.diff -OutFile hidecm.diff
           git apply hidecm.diff
 
+      - name: statussort
+        continue-on-error: true
+        if: fromJson(inputs.extras).statussort == 'true'
+        run: |
+          Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/statussort.diff -OutFile statussort.diff
+          git apply statussort.diff
+
 
       - name: run as admin
         continue-on-error: true

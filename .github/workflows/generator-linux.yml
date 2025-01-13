@@ -337,6 +337,13 @@ jobs:
           wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/hidecm.diff
           git apply hidecm.diff
 
+      - name: statussort
+        continue-on-error: true
+        if: fromJson(inputs.extras).statussort == 'true'
+        run: |
+          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/statussort.diff
+          git apply statussort.diff
+
       - name: Restore bridge files
         if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
         uses: actions/download-artifact@master
