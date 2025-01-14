@@ -523,9 +523,9 @@ jobs:
         if: env.UPLOAD_ARTIFACT == 'true'
         run: |
           pushd ./res/msi
-          myappname = "${{ inputs.appname }}"
-          myappname_nospace = "${myappname// /_}"
-          python preprocess.py --app-name $myappname --arp -d ../../rustdesk
+          $myappname = "${{ inputs.appname }}"
+          $myappname = $myappname -replace '\s','_'
+          python preprocess.py --app-name "$myappname" --arp -d ../../rustdesk
           nuget restore msi.sln
           msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
           cp ./Package/bin/x64/Release/en-us/Package.msi ../../SignOutput/rustdesk-latest.msi
@@ -570,6 +570,10 @@ jobs:
       - name: rename rustdesk.exe to filename.exe
         run: |
           mv ./SignOutput/rustdesk.exe "./SignOutput/${{ inputs.filename }}.exe" || echo "rustdesk"
+
+      - name: rename rustdesk.msi to filename.msi
+        continue-on-error: true
+        run: |
           mv ./SignOutput/rustdesk.msi "./SignOutput/${{ inputs.filename }}.msi" || echo "rustdesk"
 
       # - name: Upload to FTP
