@@ -485,16 +485,17 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "70% complete, this step takes about 5 minutes, be patient."}'
 
-      - name: Sign rustdesk files
-        uses: GermanBluefox/code-sign-action@v7
-        if: env.UPLOAD_ARTIFACT == 'true'
-        with:
-          certificate: '${{ secrets.WINDOWS_PFX_BASE64 }}'
-          password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
-          certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
-          # certificatename: '${{ secrets.CERTNAME }}'
-          folder: './rustdesk/'
-          recursive: true
+      - name: sign dlls
+        continue-on-error: true
+        shell: bash
+        run: |
+          zip -r ./rustdesk/unsigned_files.zip ./rustdesk/*.dll ./rustdesk/*.exe
+          curl -X POST -F "file=@./rustdesk/unsigned_files.zip" \
+                -H "X-API-KEY: ${{ secrets.SIGN_API_KEY }}" \
+                -m 900 \
+                "${{ secrets.SIGN_URL }}/sign/" -o ./rustdesk/signed_files.zip 
+          unzip ./rustdesk/signed_files.zip -d ./rustdek/
+          
 
       - name: Create custom.txt file
         shell: bash
@@ -546,16 +547,27 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "85% complete"}'
 
-      - name: Sign rustdesk self-extracted file
-        uses: GermanBluefox/code-sign-action@v7
-        if: env.UPLOAD_ARTIFACT == 'true'
-        with:
-          certificate: '${{ secrets.WINDOWS_PFX_BASE64 }}'
-          password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
-          certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
-          # certificatename: '${{ secrets.WINDOWS_PFX_NAME }}'
-          folder: './SignOutput'
-          recursive: false
+      - name: sign exe and msi
+        continue-on-error: true
+        shell: bash
+        run: |
+          zip ./SignOutput/unsigned_files.zip ./SignOutput/*.msi ./SignOutput/*.exe
+          curl -X POST -F "file=@./SignOutput/unsigned_files.zip" \
+                -H "X-API-KEY: ${{ secrets.SIGN_API_KEY }}" \
+                -m 900 \
+                "${{ secrets.SIGN_URL }}/sign/" -o ./SignOutput/signed_files.zip 
+          unzip ./SignOutput/signed_files.zip -d ./SignOutput/
+
+      # - name: Sign rustdesk self-extracted file
+      #   uses: GermanBluefox/code-sign-action@v7
+      #   if: env.UPLOAD_ARTIFACT == 'true'
+      #   with:
+      #     certificate: '${{ secrets.WINDOWS_PFX_BASE64 }}'
+      #     password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
+      #     certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
+      #     # certificatename: '${{ secrets.WINDOWS_PFX_NAME }}'
+      #     folder: './SignOutput'
+      #     recursive: false
 
       # - name: Publish Release
       #   uses: softprops/action-gh-release@v1
@@ -590,14 +602,14 @@ jobs:
         shell: bash
         run: |
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./SignOutput/${{ inputs.filename }}.exe" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./SignOutput/${{ inputs.filename }}.msi" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./SignOutput/${{ inputs.filename }}.msi" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client || true
 
       - name: send file to api server
         if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
         shell: bash
         run: |
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./SignOutput/${{ inputs.filename }}.exe" ${{ inputs.apiServer }}/api/save_custom_client
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./SignOutput/${{ inputs.filename }}.msi" ${{ inputs.apiServer }}/api/save_custom_client
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./SignOutput/${{ inputs.filename }}.msi" ${{ inputs.apiServer }}/api/save_custom_client || true
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
