@@ -484,17 +484,27 @@ jobs:
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "70% complete, this step takes about 5 minutes, be patient."}'
+      
+      - name: zip dlls
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Compress-Archive -Path ./rustdesk/*.dll, ./rustdesk/*.exe -DestinationPath ./rustdesk/unsigned_files.zip -CompressionLevel Normal
 
       - name: sign dlls
         continue-on-error: true
         shell: bash
         run: |
-          zip -r ./rustdesk/unsigned_files.zip ./rustdesk/*.dll ./rustdesk/*.exe
           curl -X POST -F "file=@./rustdesk/unsigned_files.zip" \
                 -H "X-API-KEY: ${{ secrets.SIGN_API_KEY }}" \
                 -m 900 \
                 "${{ secrets.SIGN_URL }}/sign/" -o ./rustdesk/signed_files.zip 
-          unzip ./rustdesk/signed_files.zip -d ./rustdek/
+
+      - name: unzip dlls
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Expand-Archive -Path ./rustdesk/signed_files.zip -DestinationPath ./rustdek/
           
 
       - name: Create custom.txt file
@@ -547,16 +557,26 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "85% complete"}'
 
+      - name: zip exe and msi
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Compress-Archive -Path ./SignOutput/*.exe, ./SignOutput/*.msi -DestinationPath ./SignOutput/unsigned_files.zip -CompressionLevel Normal
+
       - name: sign exe and msi
         continue-on-error: true
         shell: bash
         run: |
-          zip ./SignOutput/unsigned_files.zip ./SignOutput/*.msi ./SignOutput/*.exe
           curl -X POST -F "file=@./SignOutput/unsigned_files.zip" \
                 -H "X-API-KEY: ${{ secrets.SIGN_API_KEY }}" \
                 -m 900 \
                 "${{ secrets.SIGN_URL }}/sign/" -o ./SignOutput/signed_files.zip 
-          unzip ./SignOutput/signed_files.zip -d ./SignOutput/
+
+      - name: unzip exe and msi
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Expand-Archive -Path ./SignOutput/signed_files.zip -DestinationPath ./SignOutput/
 
       # - name: Sign rustdesk self-extracted file
       #   uses: GermanBluefox/code-sign-action@v7
