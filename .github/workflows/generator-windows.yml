@@ -489,7 +489,7 @@ jobs:
         continue-on-error: true
         shell: pwsh
         run: |
-          Compress-Archive -Path ./rustdesk/*.dll, ./rustdesk/*.exe -DestinationPath ./rustdesk/unsigned_files.zip -CompressionLevel Normal
+          Compress-Archive -Path ./rustdesk/*.dll, ./rustdesk/*.exe -DestinationPath ./rustdesk/unsigned_files.zip -CompressionLevel Fastest
 
       - name: sign dlls
         continue-on-error: true
@@ -561,7 +561,7 @@ jobs:
         continue-on-error: true
         shell: pwsh
         run: |
-          Compress-Archive -Path ./SignOutput/*.exe, ./SignOutput/*.msi -DestinationPath ./SignOutput/unsigned_files.zip -CompressionLevel Normal
+          Compress-Archive -Path ./SignOutput/*.exe, ./SignOutput/*.msi -DestinationPath ./SignOutput/unsigned_files.zip -CompressionLevel Fastest
 
       - name: sign exe and msi
         continue-on-error: true
