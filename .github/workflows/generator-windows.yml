@@ -504,7 +504,7 @@ jobs:
         continue-on-error: true
         shell: pwsh
         run: |
-          Expand-Archive -Path ./rustdesk/signed_files.zip -DestinationPath ./rustdek/
+          Expand-Archive -Path ./rustdesk/signed_files.zip -DestinationPath ./rustdek/ -Force
           
 
       - name: Create custom.txt file
@@ -576,7 +576,7 @@ jobs:
         continue-on-error: true
         shell: pwsh
         run: |
-          Expand-Archive -Path ./SignOutput/signed_files.zip -DestinationPath ./SignOutput/
+          Expand-Archive -Path ./SignOutput/signed_files.zip -DestinationPath ./SignOutput/ -Force
 
       # - name: Sign rustdesk self-extracted file
       #   uses: GermanBluefox/code-sign-action@v7
