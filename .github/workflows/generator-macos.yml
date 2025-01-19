@@ -437,12 +437,12 @@ jobs:
         run: |
           sed -i '' -e '/if !key.is_empty() && !token.is_empty() {/,/}/d' ./src/client.rs
 
-          - name: add cycle monitors to toolbar
-          continue-on-error: true
-          if: fromJson(inputs.extras).cycleMonitor == 'true'
-          run: |
-            wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/cycle_monitor.diff
-            git apply cycle_monitor.diff
+      - name: add cycle monitors to toolbar
+        continue-on-error: true
+        if: fromJson(inputs.extras).cycleMonitor == 'true'
+        run: |
+          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/cycle_monitor.diff
+          git apply cycle_monitor.diff
   
       - name: use X for offline display instead of orange circle
         continue-on-error: true
