@@ -679,7 +679,7 @@ jobs:
 
       - name: Create DMG
         run: |
-          cd /Users/runner/work/creator/creator/flutter/build/macos/Build/Products/Release
+          cd /Users/runner/work/rdgen/rdgen/flutter/build/macos/Build/Products/Release
           # Print directory contents for debugging
           echo "Directory contents:"
           ls -la
