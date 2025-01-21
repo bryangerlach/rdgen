@@ -88,7 +88,7 @@ env:
 
 jobs:
   generate-bridge-linux:
-    uses: ./.github/workflows/bridge.yml
+    uses: ./.github/workflows/pre137-bridge.yml
     with:
       version: ${{ fromJson(inputs.extras).version }}
 
@@ -163,14 +163,12 @@ jobs:
         with:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
-          submodules: recursive
 
       - name: Checkout source code
         if: ${{ env.VERSION == 'master' }}
         uses: actions/checkout@v4
         with:
           repository: rustdesk/rustdesk
-          submodules: recursive
 
       - name: Set Swap Space
         if: ${{ matrix.job.arch == 'x86_64' }}
