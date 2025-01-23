@@ -100,6 +100,13 @@ jobs:
       matrix:
         job:
           - {
+            target: x86_64-apple-darwin,
+            os: macos-13, #macos-latest or macos-14 use M1 now, https://docs.github.com/en/actions/using-github-hosted-runners/about-github-hosted-runners/about-github-hosted-runners#:~:text=14%20GB-,macos%2Dlatest%20or%20macos%2D14,-The%20macos%2Dlatestlabel
+            extra-build-args: "",
+            arch: x86_64,
+            vcpkg-triplet: x64-osx,
+          }
+          - {
               target: aarch64-apple-darwin,
               os: macos-latest,
               # extra-build-args: "--disable-flutter-texture-render", # disable this for mac, because we see a lot of users reporting flickering both on arm and x64, and we can not confirm if texture rendering has better performance if htere is no vram, https://github.com/rustdesk/rustdesk/issues/6296
@@ -133,8 +140,6 @@ jobs:
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "5% complete"}'
-
-      
 
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
@@ -525,6 +530,10 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "25% complete"}'
 
+      - name: Create MacOS directory structure
+        run: |
+          mkdir -p ./build/macos/Build/Products/Release/RustDesk.app/Contents/MacOS
+
       - name: Build rustdesk
         run: |
           if [ "${{ matrix.job.target }}" = "aarch64-apple-darwin" ]; then
@@ -535,6 +544,10 @@ jobs:
             sed -i -e "s/MACOSX_DEPLOYMENT_TARGET = [0-9]*.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = ${MIN_MACOS_VERSION};/" flutter/macos/Runner.xcodeproj/project.pbxproj
           fi
           ./build.py --flutter --hwcodec ${{ matrix.job.extra-build-args }}
+
+      - name: Copy service file
+        run: |
+          cp -rf ../target/release/service ./build/macos/Build/Products/Release/RustDesk.app/Contents/MacOS/
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
