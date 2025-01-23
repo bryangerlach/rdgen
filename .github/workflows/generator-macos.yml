@@ -545,9 +545,9 @@ jobs:
           fi
           ./build.py --flutter --hwcodec ${{ matrix.job.extra-build-args }}
 
-      - name: Copy service file
-        run: |
-          cp -rf ../target/release/service ./build/macos/Build/Products/Release/RustDesk.app/Contents/MacOS/
+      # - name: Copy service file
+      #   run: |
+      #     cp -rf ../target/release/service ./build/macos/Build/Products/Release/RustDesk.app/Contents/MacOS/
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
