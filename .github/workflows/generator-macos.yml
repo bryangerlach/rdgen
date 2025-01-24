@@ -334,13 +334,13 @@ jobs:
           rm ./temp_icon.pbm
           
           # Create macOS app icons
-          magick ./res/icon.png -resize 16x16 png32:"flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_16.png"
-          magick ./res/icon.png -resize 32x32 png32:"flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_32.png"
-          magick ./res/icon.png -resize 64x64 png32:"flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_64.png"
-          magick ./res/icon.png -resize 128x128 png32:"flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_128.png"
-          magick ./res/icon.png -resize 256x256 png32:"flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_256.png"
-          magick ./res/icon.png -resize 512x512 png32:"flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png"
-          magick ./res/icon.png -resize 1024x1024 png32:"flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_1024.png"
+          magick ./res/icon.png -resize 16x16 -alpha set "flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_16.png"
+          magick ./res/icon.png -resize 32x32 -alpha set "flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_32.png"
+          magick ./res/icon.png -resize 64x64 -alpha set "flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_64.png"
+          magick ./res/icon.png -resize 128x128 -alpha set "flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_128.png"
+          magick ./res/icon.png -resize 256x256 -alpha set "flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_256.png"
+          magick ./res/icon.png -resize 512x512 -alpha set "flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_512.png"
+          magick ./res/icon.png -resize 1024x1024 -alpha set "flutter/macos/Runner/Assets.xcassets/AppIcon.appiconset/app_icon_1024.png"
 
           # Create macOS specific icons
           magick ./res/icon.png -resize 128x128 ./res/mac-icon.png
