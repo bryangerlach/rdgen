@@ -27,6 +27,7 @@ def generator_view(request):
             xOffline = form.cleaned_data['xOffline']
             hidecm = form.cleaned_data['hidecm']
             statussort = form.cleaned_data['statussort']
+            removeNewVersionNotif = form.cleaned_data['removeNewVersionNotif']
             server = form.cleaned_data['serverIP']
             key = form.cleaned_data['key']
             apiServer = form.cleaned_data['apiServer']
@@ -164,6 +165,7 @@ def generator_view(request):
             extras['xOffline'] = 'true' if xOffline else 'false'
             extras['hidecm'] = 'true' if hidecm else 'false'
             extras['statussort'] = 'true' if statussort else 'false'
+            extras['removeNewVersionNotif'] = 'true' if removeNewVersionNotif else 'false'
             extra_input = json.dumps(extras)
 
             ####from here run the github action, we need user, repo, access token.

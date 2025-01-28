@@ -1,0 +1,22 @@
+diff --git a/flutter/lib/desktop/pages/desktop_home_page.dart b/flutter/lib/desktop/pages/desktop_home_page.dart
+index ba724eed5..cb66cdaed 100644
+--- a/flutter/lib/desktop/pages/desktop_home_page.dart
++++ b/flutter/lib/desktop/pages/desktop_home_page.dart
+@@ -424,7 +424,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
+   }
+ 
+   Widget buildHelpCards(String updateUrl) {
+-    if (!bind.isCustomClient() &&
++    /*if (!bind.isCustomClient() &&
+         updateUrl.isNotEmpty &&
+         !isCardClosed &&
+         bind.mainUriPrefixSync().contains('rustdesk')) {
+@@ -435,7 +435,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
+         final Uri url = Uri.parse('https://rustdesk.com/download');
+         await launchUrl(url);
+       }, closeButton: true);
+-    }
++    }*/
+     if (systemError.isNotEmpty) {
+       return buildInstallCard("", systemError, "", () {});
+     }

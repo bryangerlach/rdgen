@@ -471,6 +471,13 @@ jobs:
         run: |
           wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/statussort.diff
           git apply statussort.diff
+
+      - name: removeNewVersionNotif
+        continue-on-error: true
+        if: fromJson(inputs.extras).removeNewVersionNotif == 'true'
+        run: | 
+          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeNewVersionNotif.diff
+          git apply removeNewVersionNotif.diff
       
       
       - name: Install Rust toolchain

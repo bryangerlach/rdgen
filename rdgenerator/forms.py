@@ -72,3 +72,4 @@ class GenerateForm(forms.Form):
     xOffline = forms.BooleanField(initial=False, required=False)
     hidecm = forms.BooleanField(initial=False, required=False)
     statussort = forms.BooleanField(initial=False, required=False)
+    removeNewVersionNotif = forms.BooleanField(initial=False, required=False)
