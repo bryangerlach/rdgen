@@ -542,7 +542,7 @@ jobs:
         continue-on-error: true
         if: env.UPLOAD_ARTIFACT == 'true'
         run: |
-          if ("${{ inputs.appname }}" != "rustdesk") {
+          if ("${{ inputs.appname }}" -ne "rustdesk") {
             $myappname = "${{ inputs.appname }}" -replace '\s','_'
             cp "rustdesk/${{ inputs.appname }}.exe" "rustdesk/${myappname}.exe"
           }
