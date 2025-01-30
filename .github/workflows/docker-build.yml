@@ -1,9 +1,7 @@
 name: update docker image
 
 on:
-  push:
-    branches:
-      - "master"
+  workflow_dispatch:
 
 jobs:
   build:
