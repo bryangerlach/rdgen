@@ -72,7 +72,7 @@ def generator_view(request):
 
             filename = re.sub(r'[^\w\s-]', '_', filename).strip()
             myuuid = str(uuid.uuid4())
-            protocol = 'httpp'
+            protocol = 'http'
             host = request.get_host()
             full_url = f"{protocol}://{host}"
             try:
