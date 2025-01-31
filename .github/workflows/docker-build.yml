@@ -2,8 +2,8 @@ name: update docker image
 
 on:
   push:
-    branches:
-      - "master"
+    tags:
+      - 'v*.*.*'
 
 jobs:
   build:
