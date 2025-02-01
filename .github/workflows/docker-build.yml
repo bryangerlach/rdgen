@@ -8,6 +8,10 @@ on:
     tags:
       - 'v*.*.*'
 
+env:
+  CREATE_IMAGE: "true"
+  IMAGE_TAG: "dev"
+
 jobs:
   build:
     runs-on: ubuntu-latest
