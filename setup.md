@@ -13,10 +13,13 @@
     * under Repository access, select Only select repositories, then pick your
       rdgen repo  
     * give Read and Write access to actions and workflows  
+    * You might have to go to: https://github.com/USERNAME/rdgen/actions and hit green Enable Actions button so it works.
 3. Setup environment variables/secrets:
     * environment variables on the server running rdgen:  
         * GHUSER="your github username"  
         * GHBEARER="your fine-grained access token"  
+        * PROTOCOL="https" *optional - defaults to "https", change to "http" if you need to
+        * REPONAME="rdgen" *optional - defaults to "rdgen", change this if you renamed the repo when you forked it
     * github secrets (setup on your github account for your rdgen repo):  
         * GENURL="example.com:8000"  *this is the domain and port that you are
           running rdgen on, needs to be accessible on the internet, depending
@@ -25,7 +28,7 @@
         * WINDOWS_PFX_BASE64  
         * WINDOWS_PFX_PASSWORD  
         * WINDOWS_PFX_SHA1_THUMBPRINT  
-    * You might have to go to: https://github.com/USERNAME/rdgen/actions and hit green Enable Actions button so it works.
+    
 
 ## A few notes:
 
