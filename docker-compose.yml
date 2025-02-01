@@ -7,6 +7,8 @@ services:
       GHUSER: "github_username"
       GHBEARER: "github_access_token"
       GENURL: "accessible_url_of_server"
+      PROTOCOL: "https"
+      REPONAME: "rdgen"
     ports:
       - "8000:8000"
     dns:
