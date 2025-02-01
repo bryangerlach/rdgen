@@ -187,6 +187,7 @@ jobs:
           cp ./flutter/macos/Runner/Configs/AppInfo.xcconfig ./flutter/macos/Runner/Configs/AppInfo.xcconfig.bak
           sed -i '' -e 's|PRODUCT_NAME = .*|PRODUCT_NAME = ${{ inputs.appname }}|' ./flutter/macos/Runner/Configs/AppInfo.xcconfig
           sed -i '' -e 's|PRODUCT_BUNDLE_IDENTIFIER = .*|PRODUCT_BUNDLE_IDENTIFIER = com.${{ inputs.appname }}.app|' ./flutter/macos/Runner/Configs/AppInfo.xcconfig
+          sed -i '' -e 's|PRODUCT_COPYRIGHT = .*|PRODUCT_COPYRIGHT = ${{ inputs.appname }} All rights reserved.|' ./flutter/macos/Runner/Configs/AppInfo.xcconfig
           # Keep DEVELOPMENT_TEAM if it exists, don't blank it out
           
           # Update Xcode project settings
