@@ -1,57 +1,58 @@
 name: Custom Linux Client Generator
 run-name: Custom Linux Client Generator
-on: 
+
+on:
   workflow_dispatch:
     inputs:
       server:
-        description: 'Rendezvous Server'
+        description: "Rendezvous Server"
         required: true
-        default: ''
+        default: ""
         type: string
       key:
-        description: 'Public Key'
+        description: "Public Key"
         required: true
-        default: ''
+        default: ""
         type: string
       apiServer:
-        description: 'API Server'
+        description: "API Server"
         required: true
-        default: ''
+        default: ""
         type: string
       custom:
         description: "Custom JSON"
         required: true
-        default: ''
+        default: ""
         type: string
       uuid:
         description: "uuid of request"
         required: true
-        default: ''
+        default: ""
         type: string
       iconlink:
         description: "icon link"
         required: false
-        default: 'false'
+        default: "false"
         type: string
       logolink:
         description: "logo link"
         required: false
-        default: 'false'
+        default: "false"
         type: string
       appname:
         description: "app name"
         required: true
-        default: 'rustdesk'
+        default: "rustdesk"
         type: string
       filename:
         description: "Filename"
         required: true
-        default: 'rustdesk'
+        default: "rustdesk"
         type: string
       extras:
         description: "extra inputs in json"
         required: true
-        default: '{}'
+        default: "{}"
         type: string
 
 env:
@@ -62,7 +63,7 @@ env:
   SCITER_NASM_DEBVERSION: "2.14-1"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  ANDROID_FLUTTER_VERSION: "3.24.5" 
+  ANDROID_FLUTTER_VERSION: "3.24.5"
   FLUTTER_RUST_BRIDGE_VERSION: "1.80.1"
   # for arm64 linux because official Dart SDK does not work
   FLUTTER_ELINUX_VERSION: "3.16.9"
@@ -81,7 +82,7 @@ env:
   CUSTOM: "${{ inputs.custom }}"
   UUIDFOLDER: "${{ inputs.uuid }}"
   API_SERVER: "${{ inputs.apiServer }}"
-  UPLOAD_ARTIFACT: 'true'
+  UPLOAD_ARTIFACT: "true"
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
   ICONBASE64: "$${{ inputs.iconbase64 }}"
   STATUS_URL: "${{ secrets.GENURL }}/updategh"
@@ -139,7 +140,7 @@ jobs:
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
-          method: 'POST'
+          method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "5% complete"}'
 
@@ -151,7 +152,7 @@ jobs:
           sudo rm -rf /usr/share/dotnet
           sudo apt-get update -y
           sudo apt-get install -y nasm qemu-user-static
-      
+
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -205,7 +206,7 @@ jobs:
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
-          method: 'POST'
+          method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "15% complete"}'
 
@@ -285,7 +286,7 @@ jobs:
           sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ inputs.appname }}.exe"|' ./libs/portable/Cargo.toml
           sed -i -e 's|RustDesk|${{ inputs.appname }}|' ./src/lang/en.rs
           sed -i -e '/-p tmpdeb\/usr\/lib\/rustdesk/d' ./build.py
-          
+
       - name: allow custom.txt
         continue-on-error: true
         shell: bash
@@ -297,12 +298,12 @@ jobs:
           sed -i -e '/let Ok(data) = sign::verify(&data, &pk)/,/};/d' ./src/common.rs
           echo -n "${{ env.CUSTOM }}" | cat > ./custom.txt
           sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
-          
+
       - name: change url to custom
         if: fromJson(inputs.extras).urlLink != 'https://rustdesk.com'
         continue-on-error: true
         shell: bash
-        run: |  
+        run: |
           sed -i -e 's|Homepage: https://rustdesk.com|Homepage: ${{ fromJson(inputs.extras).urlLink }}|' ./build.py
           sed -i -e "s|launchUrl(Uri.parse('https://rustdesk.com'));|launchUrl(Uri.parse('${{ fromJson(inputs.extras).urlLink }}'));|" ./flutter/lib/common.dart
           sed -i -e "s|launchUrlString('https://rustdesk.com');|launchUrlString('${{ fromJson(inputs.extras).urlLink }}');|" ./flutter/lib/desktop/pages/desktop_setting_page.dart
@@ -354,11 +355,11 @@ jobs:
         run: |
           wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/statussort.diff
           git apply statussort.diff
-        
+
       - name: removeNewVersionNotif
         continue-on-error: true
         if: fromJson(inputs.extras).removeNewVersionNotif == 'true'
-        run: | 
+        run: |
           wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeNewVersionNotif.diff
           git apply removeNewVersionNotif.diff
 
@@ -389,7 +390,7 @@ jobs:
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
-          method: 'POST'
+          method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "65% complete"}'
 
@@ -631,7 +632,7 @@ jobs:
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
-          method: 'POST'
+          method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Success"}'
 
@@ -640,7 +641,7 @@ jobs:
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
-          method: 'POST'
+          method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation failed, try again"}'
 
@@ -649,6 +650,7 @@ jobs:
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
-          method: 'POST'
+          method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation cancelled, try again"}'
+
