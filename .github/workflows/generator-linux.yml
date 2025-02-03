@@ -154,6 +154,7 @@ jobs:
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        if: fromJson(inputs.extras).running_without_backend != 'true'
         with:
           url: ${{ env.STATUS_URL }}
           method: "POST"
@@ -220,6 +221,7 @@ jobs:
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        if: fromJson(inputs.extras).running_without_backend != 'true'
         with:
           url: ${{ env.STATUS_URL }}
           method: "POST"
@@ -404,6 +406,7 @@ jobs:
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        if: fromJson(inputs.extras).running_without_backend != 'true'
         with:
           url: ${{ env.STATUS_URL }}
           method: "POST"
@@ -622,7 +625,7 @@ jobs:
       #     server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
 
       - name: send file to rdgen server
-        if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
+        if: ${{ fromJson(inputs.extras).rdgen == 'true' && fromJson(inputs.extras).running_without_backend != 'true' }}
         shell: bash
         run: |
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.deb" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
@@ -630,7 +633,7 @@ jobs:
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}-suse.rpm" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
 
       - name: send file to api server
-        if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
+        if: ${{ fromJson(inputs.extras).rdgen == 'false' && fromJson(inputs.extras).running_without_backend != 'true' }}
         shell: bash
         run: |
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.deb" ${{ inputs.apiServer }}/api/save_custom_client
@@ -646,6 +649,7 @@ jobs:
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        if: fromJson(inputs.extras).running_without_backend != 'true'
         with:
           url: ${{ env.STATUS_URL }}
           method: "POST"
@@ -653,7 +657,7 @@ jobs:
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Success"}'
 
       - name: failed
-        if: failure()
+        if: failure() && fromJson(inputs.extras).running_without_backend != 'true'
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
@@ -662,7 +666,7 @@ jobs:
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation failed, try again"}'
 
       - name: failed
-        if: cancelled()
+        if: cancelled() && fromJson(inputs.extras).running_without_backend != 'true'
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
