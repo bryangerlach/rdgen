@@ -96,7 +96,6 @@ env:
   RS_PUB_KEY: "${{ inputs.key }}"
   RENDEZVOUS_SERVER: "${{ inputs.server }}"
   CUSTOM: "${{ inputs.custom }}"
-  UUIDFOLDER: "${{ inputs.uuid }}"
   API_SERVER: "${{ inputs.apiServer }}"
   UPLOAD_ARTIFACT: "true"
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
@@ -794,13 +793,3 @@ jobs:
           method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation cancelled, try again"}'
-
-      #- name: Publish DMG package
-      #  if: env.UPLOAD_ARTIFACT == 'true'
-      #  uses: softprops/action-gh-release@v1
-      #  with:
-      #    prerelease: true
-      #    tag_name: ${{ inputs.upload-tag }}
-      #    files: |
-      #      ${{ inputs.appname }}*-${{ matrix.job.arch }}.dmg
-

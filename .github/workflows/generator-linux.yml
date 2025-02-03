@@ -96,7 +96,6 @@ env:
   RS_PUB_KEY: "${{ inputs.key }}"
   RENDEZVOUS_SERVER: "${{ inputs.server }}"
   CUSTOM: "${{ inputs.custom }}"
-  UUIDFOLDER: "${{ inputs.uuid }}"
   API_SERVER: "${{ inputs.apiServer }}"
   UPLOAD_ARTIFACT: "true"
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
@@ -388,22 +387,6 @@ jobs:
           name: bridge-artifact
           path: ./
 
-      # - name: logo stuff
-      #   if: ${{ inputs.logolink != 'false' }}
-      #   continue-on-error: true
-      #   shell: bash
-      #   run: |
-      #     #echo "${{ inputs.logobase64 }}" | base64 -d > ./rustdesk/data/flutter_assets/assets/logo.png
-      #     wget -O ./rustdesk/data/flutter_assets/assets/logo.png https://${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}"&"uuid=${{ fromJson(inputs.logolink).uuid }}
-
-      # - name: icon stuff
-      #   if: ${{ inputs.iconlink != 'false' }}
-      #   continue-on-error: true
-      #   run: |
-      #     #mv ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
-      #     convert ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
-      #     convert ./res/icon.png ./rustdesk/data/flutter_assets/assets/scalable.svg
-
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
         if: fromJson(inputs.extras).running_without_backend != 'true'
@@ -604,26 +587,6 @@ jobs:
                 mv "$name" /workspace/output/"${{ inputs.filename }}-suse.rpm"
             done
 
-      # - name: Publish debian/rpm package
-      #   if: env.UPLOAD_ARTIFACT == 'true'
-      #   uses: softprops/action-gh-release@v1
-      #   with:
-      #     prerelease: true
-      #     tag_name: ${{ env.TAG_NAME }}
-      #     files: |
-      #       rustdesk-*.deb
-      #       rustdesk-*.rpm
-
-      # - name: Upload to FTP
-      #   if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
-      #   uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-      #   with:
-      #     server: ${{ secrets.GEN_FTP_SERVER }}
-      #     username: ${{ secrets.GEN_FTP_USER }}
-      #     password: ${{ secrets.GEN_FTP_PASSWORD }}
-      #     local-dir: output/
-      #     server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
-
       - name: send file to rdgen server
         if: ${{ fromJson(inputs.extras).rdgen == 'true' && fromJson(inputs.extras).running_without_backend != 'true' }}
         shell: bash
@@ -673,4 +636,3 @@ jobs:
           method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation cancelled, try again"}'
-
