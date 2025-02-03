@@ -170,6 +170,7 @@ def generator_view(request):
             extras['hidecm'] = 'true' if hidecm else 'false'
             extras['statussort'] = 'true' if statussort else 'false'
             extras['removeNewVersionNotif'] = 'true' if removeNewVersionNotif else 'false'
+            extras['running_without_backend'] = 'false'
             extra_input = json.dumps(extras)
 
             ####from here run the github action, we need user, repo, access token.

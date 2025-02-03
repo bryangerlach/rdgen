@@ -49,10 +49,26 @@ on:
         required: true
         default: "rustdesk"
         type: string
+      # There can be at maximum 10 `inputs` variable
+      # https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/manually-running-a-workflow#running-a-workflow-using-the-rest-api
       extras:
-        description: "extra inputs in json"
+        description: "JSON for extra inputs"
         required: true
-        default: "{}"
+        default: >-
+          {
+            "genurl": "",
+            "runasadmin": "false",
+            "urlLink": "https://rustdesk.com",
+            "delayFix": "false",
+            "version": "master",
+            "rdgen": "true",
+            "cycleMonitor": "false",
+            "xOffline": "false",
+            "hidecm": "false",
+            "statussort": "false",
+            "removeNewVersionNotif": "false",
+            "running_without_backend": "false"
+          }
         type: string
 
 env:
