@@ -1,0 +1,60 @@
+name: Apply patches
+
+inputs:
+  delayFix:
+    description: ''
+    required: true
+    default: "false"
+  cycleMonitor:
+    description: ''
+    required: true
+    default: "false"
+  xOffline:
+    description: ''
+    required: true
+    default: "false"
+  hidecm:
+    description: ''
+    required: true
+    default: "false"
+  statussort:
+    description: ''
+    required: true
+    default: "false"
+  removeNewVersionNotif:
+    description: ''
+    required: true
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Fix connection delay
+      if: inputs.delayFix == "true"
+      shell: bash
+      run: sed -i -e '/if !key.is_empty() && !token.is_empty() {/,/}/d' ./src/client.rs
+
+    - name: Apply add cycle monitors to toolbar
+      if: inputs.cycleMonitor == "true"
+      shell: bash
+      run: git apply rdgen/.github/patches/cycle_monitor.diff
+
+    - name: Apply use X for offline display instead of orange circle
+      if: inputs.xOffline == "true"
+      shell: bash
+      run: git apply rdgen/.github/patches/xoffline.diff
+
+    - name: Apply hide-cm
+      if: inputs.hidecm == "true"
+      shell: bash
+      run: git apply rdgen/.github/patches/hidecm.diff
+
+    - name: Apply statussort
+      if: inputs.statussort == "true"
+      shell: bash
+      run: git apply rdgen/.github/patches/statussort.diff
+
+    - name: Apply removeNewVersionNotif
+      if: inputs.removeNewVersionNotif == "true"
+      shell: bash
+      run: git apply rdgen/.github/patches/removeNewVersionNotif.diff
