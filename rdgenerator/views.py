@@ -80,6 +80,7 @@ def generator_view(request):
             full_url = f"{protocol}://{host}"
             try:
                 iconfile = form.cleaned_data['iconfile']
+                print(iconfile)
                 #iconbase64 = resize_and_encode_icon(iconfile)
                 iconlink = save_png(iconfile,myuuid,full_url,"icon.png")
             except:
