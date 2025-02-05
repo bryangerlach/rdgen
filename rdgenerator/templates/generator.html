@@ -106,11 +106,37 @@
             max-height: 100px;
             margin-top: 10px;
         }
+        .save-load-section-container { /* New container for fixed positioning */
+            position: fixed;
+            top: 20px; /* Adjust as needed */
+            left: 20px; /* Adjust as needed */
+            background-color: #111; /* Match your section background */
+            padding: 0px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 100; /* Ensure it's above other content */
+        }
+        .save-load-section {
+            display: none; /* Initially hidden */
+        }
+        .error {
+            color: red;
+        }
       </style>
 </head>
 <body>
     <h1><i class="fas fa-cogs"></i> RustDesk Custom Client Builder</h1>
-    <form action="/generator" method="post" enctype="multipart/form-data">
+    <form id="myForm" action="/generator" method="post" enctype="multipart/form-data">
+        <div class="save-load-section-container">
+            <div class="section">
+                <h2 id="saveLoadTitle">Save/Load Configuration <i class="fas fa-chevron-down"></i></h2>  
+                <div class="save-load-section">  
+                    <button type="button" onclick="saveFormData()">Save Configuration</button>
+                    <input type="file" id="fileInput" style="display:none;" accept=".json">
+                    <button type="button" onclick="loadFormData()">Load Configuration</button>
+                </div>
+            </div>
+        </div>
         <div class="platform">
             <h2><i class="fas fa-desktop"></i> Select Platform</h2>
                 <div class="platform-icons">
@@ -134,7 +160,7 @@
             <div class="section">
                 <h2><i class="fas fa-sliders-h"></i> General</h2>
                     <label for="{{ form.exename.id_for_label }}">Name of the configuration (no spaces or special characters, English characters only):</label>
-                    {{ form.exename }}<br><br>
+                    {{ form.exename }}<span id="filenameError" class="error"></span><br><br>
                     <label for="{{ form.appname.id_for_label }}">Custom Application Name (leave blank to use default):</label>
                     {{ form.appname }}<br><br>
                     <label for="{{ form.direction.id_for_label }}">Connection Type:</label>
@@ -155,6 +181,8 @@
                     {{ form.apiServer }}<br><br>
                     <label for="{{ form.urlLink.id_for_label }}">Custom URL for links (replaces https://rustdesk.com):</label>
                     {{ form.urlLink }}<br><br>
+                    <label for="{{ form.downloadLink.id_for_label }}">Custom URL for downloading updates (replaces https://rustdesk.com/download):</label>
+                    {{ form.downloadLink }}<br><br>
             </div>
         </div>
         <div class="container">
@@ -259,6 +287,140 @@
                 };
                 reader.readAsDataURL(input.files[0]);
             }
+        }
+        const saveLoadTitle = document.getElementById("saveLoadTitle");
+        const saveLoadSection = document.querySelector(".save-load-section");
+
+        saveLoadTitle.addEventListener("click", () => {
+            if (!saveLoadSection.style.display || saveLoadSection.style.display === "none") {
+                saveLoadSection.style.display = "block";
+            } else {
+                saveLoadSection.style.display = "none";
+            }
+
+            const icon = saveLoadTitle.querySelector("i");
+            icon.classList.toggle("fa-chevron-down");
+            icon.classList.toggle("fa-chevron-up");
+        });
+
+        async function saveFormData() {
+            const filename = document.getElementById("{{ form.exename.id_for_label }}").value;
+            if (!filename) {
+                document.getElementById("filenameError").textContent = "Filename is required.";
+                return;
+            } else {
+                document.getElementById("filenameError").textContent = "";
+            }
+
+            const formData = {};
+            const form = document.getElementById("myForm"); // Get the form element
+
+            // 1. Use FormData for robust data collection (handles most input types):
+            const formDataObj = new FormData(form);  // Create a FormData object
+
+            formDataObj.forEach((value, key) => {
+                formData[key] = value; // Add each key/value pair to the formData object.
+            });
+
+            // 2. Handle select elements separately (more reliable):
+            const selectElements = form.querySelectorAll('select');
+            selectElements.forEach(select => {
+                formData[select.name] = select.value;
+            });
+
+            // 3. Handle checkboxes and radio buttons (important!):
+            const checkboxRadioElements = form.querySelectorAll('input[type="checkbox"], input[type="radio"]');
+            checkboxRadioElements.forEach(input => {
+                if (input.name) { //only add to form data if it has a name
+                    if (input.checked) {
+                        formData[input.name] = input.value;
+                    } else if (!formData.hasOwnProperty(input.name) && input.type === 'checkbox') { //if it's a checkbox and it's not checked, add it as false
+                        formData[input.name] = false;
+                    }
+                }
+            });
+
+            // 4. Handle icon and logo
+            const iconPreview = document.getElementById('icon-preview');
+            if (iconPreview.firstChild && iconPreview.firstChild.src.startsWith('data:image/png;base64')) {
+                formData.iconfile = iconPreview.firstChild.src;  // Use existing base64
+            } else { //if it's a file upload
+                const iconFile = document.getElementById("{{ form.iconfile.id_for_label }}").files[0];
+                if (iconFile) {
+                    formData.iconfile = await readFileAsBase64(iconFile);
+                }
+            }
+
+            const logoPreview = document.getElementById('logo-preview');
+            if (logoPreview.firstChild && logoPreview.firstChild.src.startsWith('data:image/png;base64')) {
+                formData.logofile = logoPreview.firstChild.src; // Use existing base64
+            } else { //if it's a file upload
+                const logoFile = document.getElementById("{{ form.logofile.id_for_label }}").files[0];
+                if (logoFile) {
+                    formData.logofile = await readFileAsBase64(logoFile);
+                }
+            }
+
+            const jsonData = JSON.stringify(formData, null, 2);
+            const blob = new Blob([jsonData], { type: "application/json" });
+            const url = URL.createObjectURL(blob);
+
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = filename + ".json";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        async function readFileAsBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (event) => resolve(event.target.result);
+                reader.onerror = (error) => reject(error);
+                reader.readAsDataURL(file);
+            });
+        }
+
+
+        function loadFormData() {
+            const fileInput = document.getElementById("fileInput");
+            fileInput.click();
+
+            fileInput.addEventListener("change", (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        try {
+                            const formData = JSON.parse(e.target.result);
+                            for (const key in formData) {
+                                const element = document.querySelector(`[name="${key}"]`);
+
+                                if (element) { // Check if the element exists
+                                    if (element.type === 'checkbox' || element.type === 'radio') {
+                                        element.checked = formData[key]; // Set checked property
+                                    } else if (element.type !== 'file') { //for other elements
+                                        element.value = formData[key];
+                                    }
+
+                                    // Handle image previews (as before)
+                                    if (key === 'iconfile' && formData[key]) {
+                                        document.getElementById('icon-preview').innerHTML = `<img src="${formData[key]}" style="max-width: 300px; max-height: 60px;">`;
+                                    }
+                                    if (key === 'logofile' && formData[key]) {
+                                        document.getElementById('logo-preview').innerHTML = `<img src="${formData[key]}" style="max-width: 300px; max-height: 60px;">`;
+                                    }
+                                }
+                            }
+                        } catch (error) {
+                            alert("Error loading data. Invalid JSON file.");
+                        }
+                    };
+                    reader.readAsText(file);
+                }
+            });
         }
     </script>
 </body>

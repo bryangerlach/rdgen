@@ -32,6 +32,7 @@ def generator_view(request):
             key = form.cleaned_data['key']
             apiServer = form.cleaned_data['apiServer']
             urlLink = form.cleaned_data['urlLink']
+            downloadLink = form.cleaned_data['downloadLink']
             if not server:
                 server = 'rs-ny.rustdesk.com' #default rustdesk server
             if not key:
@@ -40,6 +41,8 @@ def generator_view(request):
                 apiServer = server+":21114"
             if not urlLink:
                 urlLink = "https://rustdesk.com"
+            if not downloadLink:
+                downloadLink = "https://rustdesk.com/download"
             direction = form.cleaned_data['direction']
             installation = form.cleaned_data['installation']
             settings = form.cleaned_data['settings']
@@ -158,6 +161,7 @@ def generator_view(request):
             extras['genurl'] = _settings.GENURL
             extras['runasadmin'] = runasadmin
             extras['urlLink'] = urlLink
+            extras['downloadLink'] = downloadLink
             extras['delayFix'] = 'true' if delayFix else 'false'
             extras['version'] = version
             extras['rdgen'] = 'true'
@@ -365,6 +369,19 @@ def startgh(request):
 def save_png(file, uuid, domain, name):
     file_save_path = "png/%s/%s" % (uuid, name)
     Path("png/%s" % uuid).mkdir(parents=True, exist_ok=True)
+
+    if isinstance(file, str):  # Check if it's a base64 string
+        try:
+            header, encoded = file.split(';base64,')
+            decoded_img = base64.b64decode(encoded)
+            file = ContentFile(decoded_img, name=name) # Create a file-like object
+        except ValueError:
+            print("Invalid base64 data")
+            return None  # Or handle the error as you see fit
+        except Exception as e:  # Catch general exceptions during decoding
+            print(f"Error decoding base64: {e}")
+            return None
+        
     with open(file_save_path, "wb+") as f:
         for chunk in file.chunks():
             f.write(chunk)
