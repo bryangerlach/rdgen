@@ -172,22 +172,21 @@ jobs:
         continue-on-error: false
         shell: bash
         run: |
-          # MACSTUFF Backup the original Info.plist
-          cp ./flutter/macos/Runner/Info.plist ./flutter/macos/Runner/Info.plist.bak
-         
-          # MACSTUFF Update application name and display name
-          sed -i '' -e 's|<key>CFBundleName</key>\s*<string>$(PRODUCT_NAME)</string>|<key>CFBundleName</key>\n\t<string>${{ inputs.appname }}</string>|' ./flutter/macos/Runner/Info.plist
-          sed -i '' -e 's|<key>CFBundleDisplayName</key>\s*<string>$(PRODUCT_NAME)</string>|<key>CFBundleDisplayName</key>\n\t<string>${{ inputs.appname }}</string>|' ./flutter/macos/Runner/Info.plist
-          sed -i '' -e 's|<key>CFBundleIdentifier</key>\s*<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>|<key>CFBundleIdentifier</key>\n\t<string>com.${{ inputs.appname }}.app</string>|' ./flutter/macos/Runner/Info.plist
 
-          # MACSTUFF Update copyright information if needed
-          sed -i '' -e 's|<key>NSHumanReadableCopyright</key>\s*<string>$(PRODUCT_COPYRIGHT)</string>|<key>NSHumanReadableCopyright</key>\n\t<string>${{ inputs.appname }}</string>|' ./flutter/macos/Runner/Info.plist
-          
-          # MACSTUFF Update window title and bundle settings
+          # MACSTUFF Backup the original files
+          cp ./flutter/macos/Runner/Info.plist ./flutter/macos/Runner/Info.plist.bak
           cp ./flutter/macos/Runner/Configs/AppInfo.xcconfig ./flutter/macos/Runner/Configs/AppInfo.xcconfig.bak
+         
+          # MACSTUFF Update Info.plist
+          sed -i '' -e 's|<key>CFBundleName</key>.*<string>.*</string>|<key>CFBundleName</key>\n\t<string>${{ inputs.appname }}</string>|' ./flutter/macos/Runner/Info.plist
+          sed -i '' -e 's|<key>CFBundleDisplayName</key>.*<string>.*</string>|<key>CFBundleDisplayName</key>\n\t<string>${{ inputs.appname }}</string>|' ./flutter/macos/Runner/Info.plist
+          sed -i '' -e 's|<key>CFBundleIdentifier</key>.*<string>.*</string>|<key>CFBundleIdentifier</key>\n\t<string>com.${{ inputs.appname }}.app</string>|' ./flutter/macos/Runner/Info.plist
+          # sed -i '' '/<key>NSHumanReadableCopyright<\/key>/{n;s/<string>.*<\/string>/<string>Copyright 2025 ${{ inputs.appname }}. All rights reserved.<\/string>/;}' ./flutter/macos/Runner/Info.plist
+          
+          # MACSTUFF Update AppInfo.xcconfig
           sed -i '' -e 's|PRODUCT_NAME = .*|PRODUCT_NAME = ${{ inputs.appname }}|' ./flutter/macos/Runner/Configs/AppInfo.xcconfig
           sed -i '' -e 's|PRODUCT_BUNDLE_IDENTIFIER = .*|PRODUCT_BUNDLE_IDENTIFIER = com.${{ inputs.appname }}.app|' ./flutter/macos/Runner/Configs/AppInfo.xcconfig
-          sed -i '' -e 's|PRODUCT_COPYRIGHT = .*|PRODUCT_COPYRIGHT = ${{ inputs.appname }} All rights reserved.|' ./flutter/macos/Runner/Configs/AppInfo.xcconfig
+          #sed -i '' -e 's|PRODUCT_COPYRIGHT = .*|PRODUCT_COPYRIGHT = Copyright 2025 ${{ inputs.appname }}. All rights reserved.|' ./flutter/macos/Runner/Configs/AppInfo.xcconfig
           # Keep DEVELOPMENT_TEAM if it exists, don't blank it out
           
           # Update Xcode project settings
@@ -216,7 +215,34 @@ jobs:
           sed -i '' -e "s|const url = 'https://rustdesk.com/';|const url = '${{ fromJson(inputs.extras).urlLink }}';|" ./flutter/lib/mobile/pages/settings_page.dart
           sed -i '' -e "s|launchUrlString('https://rustdesk.com/privacy.html')|launchUrlString('${{ fromJson(inputs.extras).urlLink }}/privacy.html')|" ./flutter/lib/mobile/pages/settings_page.dart
           sed -i '' -e "s|https://rustdesk.com/privacy.html|${{ fromJson(inputs.extras).urlLink }}/privacy.html|" ./flutter/lib/desktop/pages/install_page.dart
-            
+
+      - name: change download link to custom
+        if: fromJson(inputs.extras).downloadLink != 'https://rustdesk.com/download'
+        continue-on-error: true
+        shell: bash
+        run: |
+          sed -i -e 's|https://rustdesk.com/download|${{ fromJson(inputs.extras).downloadLink }}|' ./flutter/lib/desktop/pages/desktop_home_page.dart
+          sed -i -e 's|https://rustdesk.com/download|${{ fromJson(inputs.extras).downloadLink }}|' ./flutter/lib/mobile/pages/connection_page.dart
+          sed -i -e 's|https://rustdesk.com/download|${{ fromJson(inputs.extras).downloadLink }}|' ./src/ui/index.tis
+
+          # Update slogan
+          #sed -i '' '/<key>NSHumanReadableCopyright<\/key>/{n;s/<string>.*<\/string>/<string>Copyright 2025 ${{ inputs.appname }}. All rights reserved.<\/string>/;}' ./flutter/macos/Runner/Info.plist
+          
+          # Update slogan - About in en.rs 
+          sed -i '' -e 's/("Slogan_tip", "Made with heart in this chaotic world!")/("Slogan_tip", "Powered by ${{ inputs.appname }}")/' ./src/lang/en.rs
+          sed -i '' -e 's/("About RustDesk", "")/("About RustDesk", "About ${{ inputs.appname }}")/' ./src/lang/en.rs
+          
+
+          # Update slogan - About in nl.rs
+          sed -i '' -e 's/("Slogan_tip", "Ontwikkeld met het hart voor deze chaotische wereld!")/("Slogan_tip", "Powered by ${{ inputs.appname }}")/' ./src/lang/nl.rs
+          sed -i '' -e 's/("Your Desktop", "Uw Bureaublad")/("Your Desktop", "Uw ${{ inputs.appname }}")/' ./src/lang/nl.rs
+          sed -i '' -e 's/("About RustDesk", "Over RustDesk")/("About RustDesk", "Over ${{ inputs.appname }}")/' ./src/lang/nl.rs
+          sed -i '' -e 's/("About", "Over")/("About", "Over ${{ inputs.appname }}")/' ./src/lang/nl.rs
+
+          sed -i -e 's|rs-ny.rustdesk.com|${{ env.RENDEZVOUS_SERVER }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.RS_PUB_KEY }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|For faster connection, please set up your own server||' ./src/lang/en.rs
+          
           sed -i '' -e '/const KEY:/,/};/d' ./src/common.rs
           sed -i '' -e '/let Ok(data) = sign::verify(&data, &pk)/,/};/d' ./src/common.rs
             
