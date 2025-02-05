@@ -205,6 +205,8 @@
         
             <div class="section">
                 <h2><i class="fas fa-paint-brush"></i> Visual</h2>
+                    {{ form.iconbase64.as_hidden }}
+                    {{ form.logobase64.as_hidden }}
                     <label for="{{ form.iconfile.id_for_label }}">Custom App Icon (in .png format)</label>
                     {{ form.iconfile }}<br><br>
                     <!-- <input type="file" name="iconfile" id="iconfile" accept="image/png"> -->
@@ -407,9 +409,11 @@
 
                                     // Handle image previews (as before)
                                     if (key === 'iconfile' && formData[key]) {
+                                        document.getElementById('id_iconbase64').value = formData[key]
                                         document.getElementById('icon-preview').innerHTML = `<img src="${formData[key]}" style="max-width: 300px; max-height: 60px;">`;
                                     }
                                     if (key === 'logofile' && formData[key]) {
+                                        document.getElementById('id_logobase64').value = formData[key]
                                         document.getElementById('logo-preview').innerHTML = `<img src="${formData[key]}" style="max-width: 300px; max-height: 60px;">`;
                                     }
                                 }
