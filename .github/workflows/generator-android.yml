@@ -196,7 +196,7 @@ jobs:
                tree \
                wget
 
-      - name: Checkout source code
+      - name: Checkout RustDesk source code (tag)
         if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
@@ -204,12 +204,17 @@ jobs:
           ref: refs/tags/${{ env.VERSION }}
           submodules: recursive
 
-      - name: Checkout source code
+      - name: Checkout RustDesk source code (master)
         if: ${{ env.VERSION == 'master' }}
         uses: actions/checkout@v4
         with:
           repository: rustdesk/rustdesk
           submodules: recursive
+
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          path: rdgen
 
       - name: Install flutter
         uses: subosito/flutter-action@v2
@@ -383,47 +388,16 @@ jobs:
           sed -i -e '/let Ok(data) = sign::verify(&data, &pk)/,/};/d' ./src/common.rs
           sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
 
-      - name: fix connection delay
+      - name: Apply patches
         continue-on-error: true
-        if: ${{ fromJson(inputs.extras).delayFix == 'true' }}
-        shell: bash
-        run: |
-          sed -i -e '/if !key.is_empty() && !token.is_empty() {/,/}/d' ./src/client.rs
-
-      - name: add cycle monitors to toolbar
-        continue-on-error: true
-        if: fromJson(inputs.extras).cycleMonitor == 'true'
-        run: |
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/cycle_monitor.diff
-          git apply cycle_monitor.diff
-
-      - name: use X for offline display instead of orange circle
-        continue-on-error: true
-        if: fromJson(inputs.extras).xOffline == 'true'
-        run: |
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/xoffline.diff
-          git apply xoffline.diff
-
-      - name: hide-cm
-        continue-on-error: true
-        if: fromJson(inputs.extras).hidecm == 'true'
-        run: |
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/hidecm.diff
-          git apply hidecm.diff
-
-      - name: statussort
-        continue-on-error: true
-        if: fromJson(inputs.extras).statussort == 'true'
-        run: |
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/statussort.diff
-          git apply statussort.diff
-
-      - name: removeNewVersionNotif
-        continue-on-error: true
-        if: fromJson(inputs.extras).removeNewVersionNotif == 'true'
-        run: |
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeNewVersionNotif.diff
-          git apply removeNewVersionNotif.diff
+        uses: ./rdgen/.github/workflows/snippets/patches
+        with:
+          delayFix: ${{ fromJson(inputs.extras).delayFix }}
+          cycleMonitor: ${{ fromJson(inputs.extras).cycleMonitor }}
+          xOffline: ${{ fromJson(inputs.extras).xOffline }}
+          hidecm: ${{ fromJson(inputs.extras).hidecm }}
+          statussort: ${{ fromJson(inputs.extras).statussort }}
+          removeNewVersionNotif: ${{ fromJson(inputs.extras).removeNewVersionNotif }}
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
