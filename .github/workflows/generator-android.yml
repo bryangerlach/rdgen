@@ -1,90 +1,91 @@
 name: Custom Android Client Generator
 run-name: Custom Android Client Generator
-on: 
+
+on:
   workflow_dispatch:
     inputs:
       server:
-        description: 'Rendezvous Server'
+        description: "Rendezvous Server"
         required: true
-        default: ''
+        default: ""
         type: string
       key:
-        description: 'Public Key'
+        description: "Public Key"
         required: true
-        default: ''
+        default: ""
         type: string
       apiServer:
-        description: 'API Server'
+        description: "API Server"
         required: true
-        default: ''
+        default: ""
         type: string
       custom:
         description: "Custom JSON"
         required: true
-        default: ''
+        default: ""
         type: string
       uuid:
         description: "uuid of request"
         required: true
-        default: ''
+        default: ""
         type: string
       iconlink:
         description: "icon link"
         required: false
-        default: 'false'
+        default: "false"
         type: string
       logolink:
         description: "logo link"
         required: false
-        default: 'false'
+        default: "false"
         type: string
       appname:
         description: "app name"
         required: true
-        default: 'rustdesk'
+        default: "rustdesk"
         type: string
       filename:
         description: "Filename"
         required: true
-        default: 'rustdesk'
+        default: "rustdesk"
         type: string
+      # There can be at maximum 10 `inputs` variable
+      # https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/manually-running-a-workflow#running-a-workflow-using-the-rest-api
       extras:
-        description: "extra inputs in json"
+        description: "JSON for extra inputs"
         required: true
-        default: '{}'
+        default: >-
+          {
+            "genurl": "",
+            "runasadmin": "false",
+            "urlLink": "https://rustdesk.com",
+            "delayFix": "false",
+            "version": "master",
+            "rdgen": "true",
+            "cycleMonitor": "false",
+            "xOffline": "false",
+            "hidecm": "false",
+            "statussort": "false",
+            "removeNewVersionNotif": "false",
+            "running_without_backend": "false"
+          }
         type: string
-
 
 env:
-  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  RUST_VERSION: "1.75" # sciter failed on m1 with 1.78 because of https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  CARGO_NDK_VERSION: "3.1.2"
-  SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
-  SCITER_NASM_DEBVERSION: "2.14-1"
-  LLVM_VERSION: "15.0.6"
+  # Common env vars
+  RUST_VERSION: "1.75"
   FLUTTER_VERSION: "3.24.5"
-  ANDROID_FLUTTER_VERSION: "3.24.5" 
-  # for arm64 linux because official Dart SDK does not work
-  FLUTTER_ELINUX_VERSION: "3.16.9"
-  TAG_NAME: "${{ inputs.upload-tag }}"
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  # vcpkg version: 2024.07.12
-  VCPKG_COMMIT_ID: "b2cb0da531c2f1f740045bfe7c4dac59f0b2b69c"
-  VERSION: "${{ fromJson(inputs.extras).version }}"
-  NDK_VERSION: "r27c"
-  #signing keys env variable checks
-  ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
-  MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
-  # To make a custom build with your own servers set the below secret values
   RS_PUB_KEY: "${{ inputs.key }}"
   RENDEZVOUS_SERVER: "${{ inputs.server }}"
-  CUSTOM: "${{ inputs.custom }}"
-  UUIDFOLDER: "${{ inputs.uuid }}"
-  API_SERVER: "${{ inputs.apiServer }}"
-  UPLOAD_ARTIFACT: 'true'
-  SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
-  ICONBASE64: "$${{ inputs.iconbase64 }}"
+  UPLOAD_ARTIFACT: "true"
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  VCPKG_COMMIT_ID: "b2cb0da531c2f1f740045bfe7c4dac59f0b2b69c"
+  VERSION: "${{ fromJson(inputs.extras).version }}"
   STATUS_URL: "${{ secrets.GENURL }}/updategh"
+
+  ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
+  CARGO_NDK_VERSION: "3.1.2"
+  NDK_VERSION: "r27c"
 
 jobs:
   generate-bridge-linux:
@@ -152,9 +153,10 @@ jobs:
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        if: fromJson(inputs.extras).running_without_backend != 'true'
         with:
           url: ${{ env.STATUS_URL }}
-          method: 'POST'
+          method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "5% complete"}'
 
@@ -194,33 +196,37 @@ jobs:
                tree \
                wget
 
-      - name: Checkout source code
+      - name: Checkout RustDesk source code (tag)
         if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
           submodules: recursive
-       
-      - name: Checkout source code
+
+      - name: Checkout RustDesk source code (master)
         if: ${{ env.VERSION == 'master' }}
         uses: actions/checkout@v4
         with:
           repository: rustdesk/rustdesk
           submodules: recursive
 
+      - name: Checkout source code
+        uses: actions/checkout@v4
+        with:
+          path: rdgen
+
       - name: Install flutter
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
-          flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
 
       - name: Patch flutter
         continue-on-error: true
         run: |
           cd $(dirname $(dirname $(which flutter)))
-          [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
-  
+          [[ "3.24.5" == ${{env.FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
 
       - uses: nttld/setup-ndk@v1
         id: setup-ndk
@@ -237,9 +243,10 @@ jobs:
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        if: fromJson(inputs.extras).running_without_backend != 'true'
         with:
           url: ${{ env.STATUS_URL }}
-          method: 'POST'
+          method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "15% complete"}'
 
@@ -288,7 +295,6 @@ jobs:
           prefix-key: rustdesk-lib-cache-android # TODO: drop '-android' part after caches are invalidated
           key: ${{ matrix.job.target }}
 
-      ###########################################################echo "${{ inputs.iconbase64 }}" | base64 -d > ./res/icon.png
       - name: icon stuff
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
@@ -318,7 +324,7 @@ jobs:
           sed -i '/adaptive_icon_background/a \ \ adaptive_icon_foreground: "../res/icon.png"' ./flutter/pubspec.yaml
           sed -i '/adaptive_icon_foreground:/a \ \ adaptive_icon_foreground_inset: 32' ./flutter/pubspec.yaml
           sed -i '/ic_launcher_background/d' ./flutter/android/app/src/main/res/values/colors.xml
-          
+
       - name: change appname to custom
         if: inputs.appname != 'rustdesk'
         continue-on-error: true
@@ -356,7 +362,7 @@ jobs:
         if: fromJson(inputs.extras).urlLink != 'https://rustdesk.com'
         continue-on-error: true
         shell: bash
-        run: |  
+        run: |
           sed -i -e 's|Homepage: https://rustdesk.com|Homepage: ${{ fromJson(inputs.extras).urlLink }}|' ./build.py
           sed -i -e "s|launchUrl(Uri.parse('https://rustdesk.com'));|launchUrl(Uri.parse('${{ fromJson(inputs.extras).urlLink }}'));|" ./flutter/lib/common.dart
           sed -i -e "s|launchUrlString('https://rustdesk.com');|launchUrlString('${{ fromJson(inputs.extras).urlLink }}');|" ./flutter/lib/desktop/pages/desktop_setting_page.dart
@@ -382,53 +388,23 @@ jobs:
           sed -i -e '/let Ok(data) = sign::verify(&data, &pk)/,/};/d' ./src/common.rs
           sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
 
-      - name: fix connection delay
+      - name: Apply patches
         continue-on-error: true
-        if: ${{ fromJson(inputs.extras).delayFix == 'true' }}
-        shell: bash
-        run: |
-          sed -i -e '/if !key.is_empty() && !token.is_empty() {/,/}/d' ./src/client.rs
-
-      - name: add cycle monitors to toolbar
-        continue-on-error: true
-        if: fromJson(inputs.extras).cycleMonitor == 'true'
-        run: |
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/cycle_monitor.diff
-          git apply cycle_monitor.diff
-
-      - name: use X for offline display instead of orange circle
-        continue-on-error: true
-        if: fromJson(inputs.extras).xOffline == 'true'
-        run: |
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/xoffline.diff
-          git apply xoffline.diff
-
-      - name: hide-cm
-        continue-on-error: true
-        if: fromJson(inputs.extras).hidecm == 'true'
-        run: |
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/hidecm.diff
-          git apply hidecm.diff
-
-      - name: statussort
-        continue-on-error: true
-        if: fromJson(inputs.extras).statussort == 'true'
-        run: |
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/statussort.diff
-          git apply statussort.diff
-
-      - name: removeNewVersionNotif
-        continue-on-error: true
-        if: fromJson(inputs.extras).removeNewVersionNotif == 'true'
-        run: | 
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeNewVersionNotif.diff
-          git apply removeNewVersionNotif.diff
+        uses: ./rdgen/.github/workflows/snippets/patches
+        with:
+          delayFix: ${{ fromJson(inputs.extras).delayFix }}
+          cycleMonitor: ${{ fromJson(inputs.extras).cycleMonitor }}
+          xOffline: ${{ fromJson(inputs.extras).xOffline }}
+          hidecm: ${{ fromJson(inputs.extras).hidecm }}
+          statussort: ${{ fromJson(inputs.extras).statussort }}
+          removeNewVersionNotif: ${{ fromJson(inputs.extras).removeNewVersionNotif }}
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        if: fromJson(inputs.extras).running_without_backend != 'true'
         with:
           url: ${{ env.STATUS_URL }}
-          method: 'POST'
+          method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "35% complete"}'
 
@@ -440,7 +416,6 @@ jobs:
           dart run flutter_launcher_icons
           popd
           sed -i '/ic_launcher_background/d' ./flutter/android/app/src/main/res/values/colors.xml
-      ##########################################################
 
       - name: Build rustdesk lib
         env:
@@ -480,9 +455,10 @@ jobs:
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        if: fromJson(inputs.extras).running_without_backend != 'true'
         with:
           url: ${{ env.STATUS_URL }}
-          method: 'POST'
+          method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "45% complete"}'
 
@@ -499,7 +475,7 @@ jobs:
             mkdir -p ./flutter/android/app/src/main/jniLibs/arm64-v8a
             cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/
             cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
-            echo -n "${{ env.CUSTOM }}" | cat > ./flutter/assets/custom.txt
+            echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
             #sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
             if [[ "${{ inputs.iconlink }}" != "false" ]]; then
               mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
@@ -516,7 +492,7 @@ jobs:
               mkdir -p ./flutter/android/app/src/main/jniLibs/armeabi-v7a
               cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/
               cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/librustdesk.so
-              echo -n "${{ env.CUSTOM }}" | cat > ./flutter/assets/custom.txt
+              echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
               #sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
               if [[ "${{ inputs.iconlink }}" != "false" ]]; then
                 mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
@@ -533,7 +509,7 @@ jobs:
               mkdir -p ./flutter/android/app/src/main/jniLibs/x86_64
               cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/x86_64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/x86_64/
               cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86_64/librustdesk.so
-              echo -n "${{ env.CUSTOM }}" | cat > ./flutter/assets/custom.txt
+              echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
               #sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
               if [[ "${{ inputs.iconlink }}" != "false" ]]; then
                 mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
@@ -550,7 +526,7 @@ jobs:
               mkdir -p ./flutter/android/app/src/main/jniLibs/x86
               cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/i686-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/x86/
               cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86/librustdesk.so
-              echo -n "${{ env.CUSTOM }}" | cat > ./flutter/assets/custom.txt
+              echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
               #sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
               if [[ "${{ inputs.iconlink }}" != "false" ]]; then
                 mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
@@ -571,12 +547,13 @@ jobs:
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        if: fromJson(inputs.extras).running_without_backend != 'true'
         with:
           url: ${{ env.STATUS_URL }}
-          method: 'POST'
+          method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "75% complete"}'
-      
+
       - uses: r0adkll/sign-android-release@v1
         name: Sign app APK
         continue-on-error: true
@@ -593,50 +570,40 @@ jobs:
           BUILD_TOOLS_VERSION: "30.0.2"
 
       - name: send file to rdgen server
-        if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
+        if: ${{ fromJson(inputs.extras).rdgen == 'true' && fromJson(inputs.extras).running_without_backend != 'true' }}
         shell: bash
         run: |
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
 
       - name: send file to api server
-        if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
+        if: ${{ fromJson(inputs.extras).rdgen == 'false' && fromJson(inputs.extras).running_without_backend != 'true' }}
         shell: bash
         run: |
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk" ${{ inputs.apiServer }}/api/save_custom_client
-      #   uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-      #   with:
-      #     server: ${{ secrets.GEN_FTP_SERVER }}
-      #     username: ${{ secrets.GEN_FTP_USER }}
-      #     password: ${{ secrets.GEN_FTP_PASSWORD }}
-      #     local-dir: ./signed-apk/
-      #     server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/ 
-      #     exclude: | 
-      #       *.idsig
-      #       *.jks
-      #       *aligned.apk
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        if: fromJson(inputs.extras).running_without_backend != 'true'
         with:
           url: ${{ env.STATUS_URL }}
-          method: 'POST'
+          method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Success"}'
 
       - name: failed
-        if: failure()
+        if: failure() && fromJson(inputs.extras).running_without_backend != 'true'
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
-          method: 'POST'
+          method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation failed, try again"}'
 
       - name: failed
-        if: cancelled()
+        if: cancelled() && fromJson(inputs.extras).running_without_backend != 'true'
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
-          method: 'POST'
+          method: "POST"
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation cancelled, try again"}'
