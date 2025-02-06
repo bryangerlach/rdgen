@@ -515,16 +515,21 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          curl -X POST -F "file=@./rustdesk/unsigned_files.zip" \
-                -H "X-API-KEY: ${{ secrets.SIGN_API_KEY }}" \
-                -m 900 \
-                "${{ secrets.SIGN_URL }}/sign/" -o ./rustdesk/signed_files.zip 
+          if [ ! -z "${{ secrets.SIGN_BASE_URL }}" ] && [ ! -z "${{ secrets.SIGN_API_KEY }}" ]; then
+            curl -X POST -F "file=@./rustdesk/unsigned_files.zip" \
+              -H "X-API-KEY: ${{ secrets.SIGN_API_KEY }}" \
+              -m 900 \
+              "${{ secrets.SIGN_BASE_URL }}/sign/" -o ./rustdesk/signed_files.zip
+          else
+            echo "Signing skipped - signing URL or API key not configured"
+            cp ./rustdesk/unsigned_files.zip ./rustdesk/signed_files.zip
+          fi
 
       - name: unzip dlls
         continue-on-error: true
         shell: pwsh
         run: |
-          Expand-Archive -Path ./rustdesk/signed_files.zip -DestinationPath ./rustdek/ -Force
+          Expand-Archive -Path ./rustdesk/signed_files.zip -DestinationPath ./rustdesk/ -Force
           
 
       - name: Create custom.txt file
@@ -587,10 +592,15 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          curl -X POST -F "file=@./SignOutput/unsigned_files.zip" \
-                -H "X-API-KEY: ${{ secrets.SIGN_API_KEY }}" \
-                -m 900 \
-                "${{ secrets.SIGN_URL }}/sign/" -o ./SignOutput/signed_files.zip 
+          if [ ! -z "${{ secrets.SIGN_BASE_URL }}" ] && [ ! -z "${{ secrets.SIGN_API_KEY }}" ]; then
+            curl -X POST -F "file=@./SignOutput/unsigned_files.zip" \
+              -H "X-API-KEY: ${{ secrets.SIGN_API_KEY }}" \
+              -m 900 \
+              "${{ secrets.SIGN_BASE_URL }}/sign/" -o ./SignOutput/signed_files.zip
+          else
+            echo "Signing skipped - signing URL or API key not configured"
+            cp ./SignOutput/unsigned_files.zip ./SignOutput/signed_files.zip
+          fi
 
       - name: unzip exe and msi
         continue-on-error: true
