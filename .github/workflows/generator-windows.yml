@@ -483,20 +483,6 @@ jobs:
           name: topmostwindow-artifacts
           path: "./rustdesk"
 
-      - name: Upload unsigned
-        if: env.UPLOAD_ARTIFACT == 'true'
-        uses: actions/upload-artifact@master
-        with:
-          name: rustdesk-unsigned-windows-${{ matrix.job.arch }}
-          path: rustdesk
-
-      # - name: Sign rustdesk files
-      #   if: env.UPLOAD_ARTIFACT == 'true' && env.SIGN_BASE_URL != ''
-      #   shell: bash
-      #   run: |
-      #     pip3 install requests argparse
-      #     BASE_URL=${{ secrets.SIGN_BASE_URL }} SECRET_KEY=${{ secrets.SIGN_SECRET_KEY }} python3 res/job.py sign_files ./rustdesk/
-
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
         with:
@@ -568,12 +554,6 @@ jobs:
           mv ./Package/bin/x64/Release/en-us/Package.msi ../../SignOutput/rustdesk.msi
           sha256sum ../../SignOutput/rustdesk.msi
 
-      # - name: Sign rustdesk self-extracted file
-      #   if: env.UPLOAD_ARTIFACT == 'true' && env.SIGN_BASE_URL != ''
-      #   shell: bash
-      #   run: |
-      #     BASE_URL=${{ secrets.SIGN_BASE_URL }} SECRET_KEY=${{ secrets.SIGN_SECRET_KEY }} python3 res/job.py sign_files ./SignOutput
-
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
         with:
@@ -608,27 +588,6 @@ jobs:
         run: |
           Expand-Archive -Path ./SignOutput/signed_files.zip -DestinationPath ./SignOutput/ -Force
 
-      # - name: Sign rustdesk self-extracted file
-      #   uses: GermanBluefox/code-sign-action@v7
-      #   if: env.UPLOAD_ARTIFACT == 'true'
-      #   with:
-      #     certificate: '${{ secrets.WINDOWS_PFX_BASE64 }}'
-      #     password: '${{ secrets.WINDOWS_PFX_PASSWORD }}'
-      #     certificatesha1: '${{ secrets.WINDOWS_PFX_SHA1_THUMBPRINT }}'
-      #     # certificatename: '${{ secrets.WINDOWS_PFX_NAME }}'
-      #     folder: './SignOutput'
-      #     recursive: false
-
-      # - name: Publish Release
-      #   uses: softprops/action-gh-release@v1
-      #   if: env.UPLOAD_ARTIFACT == 'true'
-      #   with:
-      #     prerelease: true
-      #     tag_name: ${{ env.TAG_NAME }}
-      #     files: |
-      #       ./SignOutput/rustdesk-*.msi
-      #       ./SignOutput/rustdesk-*.exe
-
       - name: rename rustdesk.exe to filename.exe
         run: |
           mv ./SignOutput/rustdesk.exe "./SignOutput/${{ inputs.filename }}.exe" || echo "rustdesk"
@@ -638,15 +597,6 @@ jobs:
         run: |
           mv ./SignOutput/rustdesk.msi "./SignOutput/${{ inputs.filename }}.msi" || echo "rustdesk"
 
-      # - name: Upload to FTP
-      #   if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
-      #   uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-      #   with:
-      #     server: ${{ secrets.GEN_FTP_SERVER }}
-      #     username: ${{ secrets.GEN_FTP_USER }}
-      #     password: ${{ secrets.GEN_FTP_PASSWORD }}
-      #     local-dir: ./SignOutput/
-      #     server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
       - name: send file to rdgen server
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
         shell: bash
