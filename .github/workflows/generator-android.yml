@@ -79,7 +79,6 @@ env:
   RS_PUB_KEY: "${{ inputs.key }}"
   RENDEZVOUS_SERVER: "${{ inputs.server }}"
   CUSTOM: "${{ inputs.custom }}"
-  UUIDFOLDER: "${{ inputs.uuid }}"
   API_SERVER: "${{ inputs.apiServer }}"
   UPLOAD_ARTIFACT: 'true'
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
@@ -603,17 +602,6 @@ jobs:
         shell: bash
         run: |
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./signed-apk/${{ inputs.filename }}-${{ matrix.job.arch }}.apk" ${{ inputs.apiServer }}/api/save_custom_client
-      #   uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-      #   with:
-      #     server: ${{ secrets.GEN_FTP_SERVER }}
-      #     username: ${{ secrets.GEN_FTP_USER }}
-      #     password: ${{ secrets.GEN_FTP_PASSWORD }}
-      #     local-dir: ./signed-apk/
-      #     server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/ 
-      #     exclude: | 
-      #       *.idsig
-      #       *.jks
-      #       *aligned.apk
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1

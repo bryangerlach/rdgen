@@ -80,7 +80,6 @@ env:
   RS_PUB_KEY: "${{ inputs.key }}"
   RENDEZVOUS_SERVER: "${{ inputs.server }}"
   CUSTOM: "${{ inputs.custom }}"
-  UUIDFOLDER: "${{ inputs.uuid }}"
   API_SERVER: "${{ inputs.apiServer }}"
   UPLOAD_ARTIFACT: 'true'
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
