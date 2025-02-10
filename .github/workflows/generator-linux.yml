@@ -624,7 +624,7 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Success"}'
 
-      - name: failed
+      - name: Failed
         if: failure()
         uses: fjogeleit/http-request-action@v1
         with:
@@ -633,7 +633,7 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation failed, try again"}'
 
-      - name: failed
+      - name: Cancelled
         if: cancelled()
         uses: fjogeleit/http-request-action@v1
         with:
