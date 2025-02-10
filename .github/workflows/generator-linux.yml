@@ -48,10 +48,26 @@ on:
         required: true
         default: 'rustdesk'
         type: string
+      # There can be at maximum 10 `inputs` variable
+      # https://docs.github.com/en/actions/managing-workflow-runs-and-deployments/managing-workflow-runs/manually-running-a-workflow#running-a-workflow-using-the-rest-api
       extras:
-        description: "extra inputs in json"
+        description: "JSON for extra inputs"
         required: true
-        default: '{}'
+        default: >-
+          {
+            "genurl": "",
+            "runasadmin": "false",
+            "urlLink": "https://rustdesk.com",
+            "downloadLink": "https://rustdesk.com/download",
+            "delayFix": "true",
+            "version": "master",
+            "rdgen": "true",
+            "cycleMonitor": "false",
+            "xOffline": "false",
+            "hidecm": "false",
+            "statussort": "false",
+            "removeNewVersionNotif": "false"
+          }
         type: string
 
 env:
@@ -79,7 +95,6 @@ env:
   RS_PUB_KEY: "${{ inputs.key }}"
   RENDEZVOUS_SERVER: "${{ inputs.server }}"
   CUSTOM: "${{ inputs.custom }}"
-  UUIDFOLDER: "${{ inputs.uuid }}"
   API_SERVER: "${{ inputs.apiServer }}"
   UPLOAD_ARTIFACT: 'true'
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
@@ -594,16 +609,6 @@ jobs:
       #       rustdesk-*.deb
       #       rustdesk-*.rpm
 
-      # - name: Upload to FTP
-      #   if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
-      #   uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-      #   with:
-      #     server: ${{ secrets.GEN_FTP_SERVER }}
-      #     username: ${{ secrets.GEN_FTP_USER }}
-      #     password: ${{ secrets.GEN_FTP_PASSWORD }}
-      #     local-dir: output/
-      #     server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
-
       - name: send file to rdgen server
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
         shell: bash
@@ -635,7 +640,7 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Success"}'
 
-      - name: failed
+      - name: Failed
         if: failure()
         uses: fjogeleit/http-request-action@v1
         with:
@@ -644,7 +649,7 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation failed, try again"}'
 
-      - name: failed
+      - name: Cancelled
         if: cancelled()
         uses: fjogeleit/http-request-action@v1
         with:
