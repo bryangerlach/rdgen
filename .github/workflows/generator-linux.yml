@@ -580,7 +580,11 @@ jobs:
 
       - name: Rename archlinux package
         run: |
-          mv ./res/rustdesk-*.zst ./output/${{ inputs.filename }}.pkg.tar.zst
+          i=1
+          for file in ./res/rustdesk-*.pkg.tar.zst; do
+              mv "$file" ./output/${{ inputs.filename }}-$i.pkg.tar.zst
+              i=$((i+1))
+          done
 
       - name: send file to rdgen server
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
@@ -589,7 +593,7 @@ jobs:
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.deb" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.rpm" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}-suse.rpm" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.pkg.tar.zst" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}-1.pkg.tar.zst" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
 
       - name: send file to api server
         if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
@@ -598,7 +602,7 @@ jobs:
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.deb" ${{ inputs.apiServer }}/api/save_custom_client
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.rpm" ${{ inputs.apiServer }}/api/save_custom_client
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}-suse.rpm" ${{ inputs.apiServer }}/api/save_custom_client
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.pkg.tar.zst" ${{ inputs.apiServer }}/api/save_custom_client
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}-1.pkg.tar.zst" ${{ inputs.apiServer }}/api/save_custom_client
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
