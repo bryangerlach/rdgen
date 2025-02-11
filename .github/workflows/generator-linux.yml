@@ -580,7 +580,7 @@ jobs:
 
       - name: Rename archlinux package
         run: |
-          mv ./res/rustdesk-${{ env.VERSION }}-x86_64.pkg.tar.zst ./output/${{ inputs.filename }}.pkg.tar.zst
+          mv ./res/rustdesk-*.zst ./output/${{ inputs.filename }}.pkg.tar.zst
 
       - name: send file to rdgen server
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
