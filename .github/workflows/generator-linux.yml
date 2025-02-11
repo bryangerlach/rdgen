@@ -275,7 +275,7 @@ jobs:
           sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ inputs.appname }}"|' ./libs/portable/Cargo.toml
           sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ inputs.appname }}"|' ./libs/portable/Cargo.toml
           sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ inputs.appname }}.exe"|' ./libs/portable/Cargo.toml
-          sed -i -e 's|RustDesk|${{ inputs.appname }}|' ./src/lang/en.rs
+          find ./src/lang -name "*.rs" -exec sed -i -e 's|RustDesk|${{ inputs.appname }}|' {} \;
           sed -i -e '/-p tmpdeb\/usr\/lib\/rustdesk/d' ./build.py
           
       - name: allow custom.txt
@@ -360,22 +360,6 @@ jobs:
         with:
           name: bridge-artifact
           path: ./
-
-      # - name: logo stuff
-      #   if: ${{ inputs.logolink != 'false' }}
-      #   continue-on-error: true
-      #   shell: bash
-      #   run: |
-      #     #echo "${{ inputs.logobase64 }}" | base64 -d > ./rustdesk/data/flutter_assets/assets/logo.png
-      #     wget -O ./rustdesk/data/flutter_assets/assets/logo.png https://${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}"&"uuid=${{ fromJson(inputs.logolink).uuid }}
-
-      # - name: icon stuff
-      #   if: ${{ inputs.iconlink != 'false' }}
-      #   continue-on-error: true
-      #   run: |
-      #     #mv ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
-      #     convert ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
-      #     convert ./res/icon.png ./rustdesk/data/flutter_assets/assets/scalable.svg
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
@@ -575,25 +559,37 @@ jobs:
                 mv "$name" /workspace/output/"${{ inputs.filename }}-suse.rpm"
             done
 
-      # - name: Publish debian/rpm package
-      #   if: env.UPLOAD_ARTIFACT == 'true'
-      #   uses: softprops/action-gh-release@v1
-      #   with:
-      #     prerelease: true
-      #     tag_name: ${{ env.TAG_NAME }}
-      #     files: |
-      #       rustdesk-*.deb
-      #       rustdesk-*.rpm
+      # only x86_64 for arch since we can not find newest arm64 docker image to build
+      # old arch image does not make sense for arch since it is "arch" which always update to date
+      # and failed to makepkg arm64 on x86_64
+      - name: Patch archlinux PKGBUILD
+        if: matrix.job.arch == 'x86_64' && env.UPLOAD_ARTIFACT == 'true'
+        run: |
+          sed -i "s/x86_64/${{ matrix.job.arch }}/g" res/PKGBUILD
+          if [[ "${{ matrix.job.arch }}" == "aarch64" ]]; then
+            sed -i "s/x86_64/aarch64/g" ./res/PKGBUILD
+          fi
 
-      # - name: Upload to FTP
-      #   if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
-      #   uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-      #   with:
-      #     server: ${{ secrets.GEN_FTP_SERVER }}
-      #     username: ${{ secrets.GEN_FTP_USER }}
-      #     password: ${{ secrets.GEN_FTP_PASSWORD }}
-      #     local-dir: output/
-      #     server-dir: /root/rdgen/exe/${{ env.UUIDFOLDER }}/
+      - name: Build archlinux package
+        if: matrix.job.arch == 'x86_64' && env.UPLOAD_ARTIFACT == 'true'
+        uses: rustdesk-org/arch-makepkg-action@master
+        with:
+          packages:
+          scripts: |
+            cd res && HBB=`pwd`/.. FLUTTER=1 makepkg -f
+
+      - name: Publish archlinux package
+        if: matrix.job.arch == 'x86_64' && env.UPLOAD_ARTIFACT == 'true'
+        uses: softprops/action-gh-release@v1
+        with:
+          prerelease: true
+          tag_name: ${{ env.TAG_NAME }}
+          files: |
+            res/rustdesk-${{ env.VERSION }}*.zst
+
+      - name: Rename archlinux package
+        run: |
+          mv ./res/rustdesk-${{ env.VERSION }}-x86_64.pkg.tar.zst ./output/${{ inputs.filename }}.pkg.tar.zst
 
       - name: send file to rdgen server
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
@@ -602,6 +598,7 @@ jobs:
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.deb" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.rpm" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}-suse.rpm" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.pkg.tar.zst" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
 
       - name: send file to api server
         if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
@@ -610,13 +607,7 @@ jobs:
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.deb" ${{ inputs.apiServer }}/api/save_custom_client
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.rpm" ${{ inputs.apiServer }}/api/save_custom_client
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}-suse.rpm" ${{ inputs.apiServer }}/api/save_custom_client
-
-      - name: Upload deb
-        uses: actions/upload-artifact@master
-        if: env.UPLOAD_ARTIFACT == 'true'
-        with:
-          name: rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.deb
-          path: rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.deb
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./output/${{ inputs.filename }}.pkg.tar.zst" ${{ inputs.apiServer }}/api/save_custom_client
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1

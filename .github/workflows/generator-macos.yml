@@ -199,7 +199,7 @@ jobs:
 
           cp ./src/lang/en.rs ./src/lang/en.rs.bak
           cp ./src/lang/nl.rs ./src/lang/nl.rs.bak
-          sed -i '' -e 's|RustDesk|${{ inputs.appname }}|' ./src/lang/en.rs
+          find ./src/lang -name "*.rs" -exec sed -i '' -e 's|RustDesk|${{ inputs.appname }}|' {} \;
           sed -i '' -e 's|RustDesk|${{ inputs.appname }}|' ./src/lang/nl.rs
            
           sed -i '' -e 's|Homepage: https://rustdesk.com|Homepage: ${{ fromJson(inputs.extras).urlLink }}|' ./build.py
