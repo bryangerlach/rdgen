@@ -578,15 +578,6 @@ jobs:
           scripts: |
             cd res && HBB=`pwd`/.. FLUTTER=1 makepkg -f
 
-      - name: Publish archlinux package
-        if: matrix.job.arch == 'x86_64' && env.UPLOAD_ARTIFACT == 'true'
-        uses: softprops/action-gh-release@v1
-        with:
-          prerelease: true
-          tag_name: ${{ env.TAG_NAME }}
-          files: |
-            res/rustdesk-${{ env.VERSION }}*.zst
-
       - name: Rename archlinux package
         run: |
           mv ./res/rustdesk-${{ env.VERSION }}-x86_64.pkg.tar.zst ./output/${{ inputs.filename }}.pkg.tar.zst
