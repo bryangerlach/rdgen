@@ -398,24 +398,33 @@
                         try {
                             const formData = JSON.parse(e.target.result);
                             for (const key in formData) {
-                                const element = document.querySelector(`[name="${key}"]`);
+                                // More robust selector: checks for name OR id
+                                const elements = document.querySelectorAll(`[name="${key}"], [id="${key}"]`);
 
-                                if (element) { // Check if the element exists
-                                    if (element.type === 'checkbox' || element.type === 'radio') {
-                                        element.checked = formData[key]; // Set checked property
-                                    } else if (element.type !== 'file') { //for other elements
-                                        element.value = formData[key];
-                                    }
+                                if (elements.length > 0) { // Check if any element(s) exist
+                                    elements.forEach(element => { // Loop through all matching elements (important for radios)
+                                        if (element.type === 'radio') {
+                                            if (element.value === String(formData[key])) { // Compare value, crucial for radios
+                                                element.checked = true;
+                                            } else {
+                                                element.checked = false; // Uncheck others in the group
+                                            }
+                                        } else if (element.type === 'checkbox') {
+                                            element.checked = formData[key];
+                                        } else if (element.type !== 'file') {
+                                            element.value = formData[key];
+                                        }
 
-                                    // Handle image previews (as before)
-                                    if (key === 'iconfile' && formData[key]) {
-                                        document.getElementById('id_iconbase64').value = formData[key]
-                                        document.getElementById('icon-preview').innerHTML = `<img src="${formData[key]}" style="max-width: 300px; max-height: 60px;">`;
-                                    }
-                                    if (key === 'logofile' && formData[key]) {
-                                        document.getElementById('id_logobase64').value = formData[key]
-                                        document.getElementById('logo-preview').innerHTML = `<img src="${formData[key]}" style="max-width: 300px; max-height: 60px;">`;
-                                    }
+                                        // Handle image previews (as before)
+                                        if (key === 'iconfile' && formData[key]) {
+                                            document.getElementById('id_iconbase64').value = formData[key];
+                                            document.getElementById('icon-preview').innerHTML = `<img src="${formData[key]}" style="max-width: 300px; max-height: 60px;">`;
+                                        }
+                                        if (key === 'logofile' && formData[key]) {
+                                            document.getElementById('id_logobase64').value = formData[key];
+                                            document.getElementById('logo-preview').innerHTML = `<img src="${formData[key]}" style="max-width: 300px; max-height: 60px;">`;
+                                        }
+                                    });
                                 }
                             }
                         } catch (error) {

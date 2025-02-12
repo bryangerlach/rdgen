@@ -180,8 +180,11 @@ jobs:
           # MACSTUFF Update AppInfo.xcconfig
           sed -i '' -e 's|PRODUCT_NAME = .*|PRODUCT_NAME = ${{ inputs.appname }}|' ./flutter/macos/Runner/Configs/AppInfo.xcconfig
           sed -i '' -e 's|PRODUCT_BUNDLE_IDENTIFIER = .*|PRODUCT_BUNDLE_IDENTIFIER = com.${{ inputs.appname }}.app|' ./flutter/macos/Runner/Configs/AppInfo.xcconfig
-          #sed -i '' -e 's|PRODUCT_COPYRIGHT = .*|PRODUCT_COPYRIGHT = Copyright 2025 ${{ inputs.appname }}. All rights reserved.|' ./flutter/macos/Runner/Configs/AppInfo.xcconfig
+          sed -i '' -e 's|Purslane Ltd.|${{ inputs.appname }}|' ./flutter/macos/Runner/Configs/AppInfo.xcconfig
           # Keep DEVELOPMENT_TEAM if it exists, don't blank it out
+
+          sed -i -e 's|Purslane Ltd.|${{ inputs.appname }}|' ./Cargo.toml
+          sed -i -e 's|Purslane Ltd|${{ inputs.appname }}|' ./libs/portable/Cargo.toml
           
           # Update Xcode project settings
           sed -i '' -e 's/PRODUCT_NAME = "RustDesk"/PRODUCT_NAME = "${{ inputs.appname }}"/' ./flutter/macos/Runner.xcodeproj/project.pbxproj
