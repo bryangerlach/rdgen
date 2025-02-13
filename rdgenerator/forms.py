@@ -29,6 +29,7 @@ class GenerateForm(forms.Form):
     key = forms.CharField(label="Key", required=False)
     urlLink = forms.CharField(label="Custom URL for links", required=False)
     downloadLink = forms.CharField(label="Custom URL for downloading new versions", required=False)
+    compname = forms.CharField(label="Company name",require=False)
 
     #Visual
     iconfile = forms.FileField(label="Custom App Icon (in .png format)", required=False, widget=forms.FileInput(attrs={'accept': 'image/png'}))

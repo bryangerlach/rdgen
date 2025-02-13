@@ -48,6 +48,9 @@ def generator_view(request):
             settings = form.cleaned_data['settings']
             appname = form.cleaned_data['appname']
             filename = form.cleaned_data['exename']
+            compname = form.cleaned_data['compname']
+            if not compname:
+                compname = "Purslane Ltd"
             permPass = form.cleaned_data['permanentPassword']
             theme = form.cleaned_data['theme']
             themeDorO = form.cleaned_data['themeDorO']
@@ -170,6 +173,7 @@ def generator_view(request):
             extras['hidecm'] = 'true' if hidecm else 'false'
             extras['statussort'] = 'true' if statussort else 'false'
             extras['removeNewVersionNotif'] = 'true' if removeNewVersionNotif else 'false'
+            extras['compname'] = compname
             extra_input = json.dumps(extras)
 
             ####from here run the github action, we need user, repo, access token.
