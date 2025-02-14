@@ -122,6 +122,20 @@
         .error {
             color: red;
         }
+        .errorlist {
+            color: red;
+            display: flex; /* Enable flexbox for centering */
+            justify-content: center; /* Center horizontally */
+            align-items: center; /* Center vertically (if needed) */
+            list-style: none; /* Remove bullet points if it's a list */
+            padding: 0; /* Remove default padding */
+            margin: 10px auto; /* Center the list itself, add some top/bottom margin */
+            width: fit-content; /* Make the width fit the content */
+        }
+
+        .errorlist li {
+            margin: 5px; /* Add some spacing between list items */
+        }
       </style>
 </head>
 <body>
@@ -137,6 +151,13 @@
                 </div>
             </div>
         </div>
+        {% if form.iconfile.errors %}
+            <ul class="errorlist">
+                {% for error in form.iconfile.errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
         <div class="platform">
             <h2><i class="fas fa-desktop"></i> Select Platform</h2>
                 <div class="platform-icons">
