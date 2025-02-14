@@ -75,8 +75,11 @@ def generator_view(request):
             defaultManual = form.cleaned_data['defaultManual']
             overrideManual = form.cleaned_data['overrideManual']
 
-
-            filename = re.sub(r'[^\w\s-]', '_', filename).strip()
+            if all(char.isascii() for char in filename):
+                filename = re.sub(r'[^\w\s-]', '_', filename).strip()
+                filename = filename.replace(" ","_")
+            else:
+                filename = "rustdesk"
             myuuid = str(uuid.uuid4())
             protocol = _settings.PROTOCOL
             host = request.get_host()
