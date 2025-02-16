@@ -298,6 +298,7 @@ jobs:
           sed -i -e '/let Ok(data) = sign::verify(&data, &pk)/,/};/d' ./src/common.rs
           echo -n "${{ inputs.custom }}" | cat > ./custom.txt
           sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
+          sed -i -e '|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
           
       - name: change url to custom
         if: fromJson(inputs.extras).urlLink != 'https://rustdesk.com'

@@ -239,6 +239,7 @@ jobs:
           sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
           sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ inputs.key }}|' ./libs/hbb_common/src/config.rs
           sed -i -e 's|For faster connection, please set up your own server||' ./src/lang/en.rs
+          sed -i -e '|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
           
           sed -i '' -e '/const KEY:/,/};/d' ./src/common.rs
           sed -i '' -e '/let Ok(data) = sign::verify(&data, &pk)/,/};/d' ./src/common.rs
