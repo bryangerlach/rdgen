@@ -80,6 +80,8 @@ def generator_view(request):
                 filename = filename.replace(" ","_")
             else:
                 filename = "rustdesk"
+            if not all(char.isascii() for char in appname):
+                appname = "rustdesk"
             myuuid = str(uuid.uuid4())
             protocol = _settings.PROTOCOL
             host = request.get_host()
