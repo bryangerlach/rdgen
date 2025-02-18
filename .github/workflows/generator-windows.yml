@@ -237,7 +237,7 @@ jobs:
           sed -i -e 's|For faster connection, please set up your own server||' ./src/lang/en.rs
           sed -i -e '/const KEY:/,/};/d' ./src/common.rs
           sed -i -e '/let Ok(data) = sign::verify(&data, &pk)/,/};/d' ./src/common.rs
-          sed -i -e '|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
+          sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
           # ./flutter/pubspec.yaml
           sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
 
