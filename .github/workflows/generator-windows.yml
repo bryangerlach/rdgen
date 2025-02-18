@@ -525,6 +525,8 @@ jobs:
         shell: pwsh
         run: |
           Expand-Archive -Path ./rustdesk/signed_files.zip -DestinationPath ./rustdesk/ -Force
+          Remove-Item ./rustdesk/unsigned_files.zip
+          Remove-Item ./rustdesk/signed_files.zip
           
 
       - name: Create custom.txt file
@@ -596,6 +598,8 @@ jobs:
         shell: pwsh
         run: |
           Expand-Archive -Path ./SignOutput/signed_files.zip -DestinationPath ./SignOutput/ -Force
+          Remove-Item ./SignOutput/unsigned_files.zip
+          Remove-Item ./SignOutput/signed_files.zip
 
       - name: rename rustdesk.exe to filename.exe
         run: |
