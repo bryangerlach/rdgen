@@ -82,23 +82,24 @@ class GenerateForm(forms.Form):
     def clean_iconfile(self):
         print("checking icon")
         image = self.cleaned_data['iconfile']
-        try:
-            # Open the image using Pillow
-            img = Image.open(image)
+        if image:
+            try:
+                # Open the image using Pillow
+                img = Image.open(image)
 
-            # Check if the image is a PNG (optional, but good practice)
-            if img.format != 'PNG':
-                raise forms.ValidationError("Only PNG images are allowed.")
+                # Check if the image is a PNG (optional, but good practice)
+                if img.format != 'PNG':
+                    raise forms.ValidationError("Only PNG images are allowed.")
 
-            # Get image dimensions
-            width, height = img.size
+                # Get image dimensions
+                width, height = img.size
 
-            # Check for square dimensions
-            if width != height:
-                raise forms.ValidationError("Custom App Icon dimensions must be square.")
-            
-            return image
-        except OSError:  # Handle cases where the uploaded file is not a valid image
-            raise forms.ValidationError("Invalid icon file.")
-        except Exception as e: # Catch any other image processing errors
-            raise forms.ValidationError(f"Error processing icon: {e}")
+                # Check for square dimensions
+                if width != height:
+                    raise forms.ValidationError("Custom App Icon dimensions must be square.")
+                
+                return image
+            except OSError:  # Handle cases where the uploaded file is not a valid image
+                raise forms.ValidationError("Invalid icon file.")
+            except Exception as e: # Catch any other image processing errors
+                raise forms.ValidationError(f"Error processing icon: {e}")
