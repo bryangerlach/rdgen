@@ -483,6 +483,9 @@ jobs:
         env:
           JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         run: |
+          echo "MAGICK_MEMORY_LIMIT=512MiB" >> $GITHUB_ENV
+          echo "MAGICK_MAP_LIMIT=256MiB" >> $GITHUB_ENV
+          echo "MAGICK_DISK_LIMIT=1GiB" >> $GITHUB_ENV
           export PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH
           # temporary use debug sign config
           sed -i "s/signingConfigs.release/signingConfigs.debug/g" ./flutter/android/app/build.gradle
