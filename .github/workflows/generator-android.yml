@@ -516,8 +516,8 @@ jobs:
               if [[ "${{ inputs.iconlink }}" != "false" ]]; then
                 mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
                 convert ./res/icon.png ./flutter/assets/icon.svg
-                convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png
-                convert ./res/icon.png ./res/scalable.svg
+                convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png || true
+                cp ./flutter/assets/icon.svg ./res/scalable.svg
               fi
               # build flutter
               pushd flutter
@@ -533,8 +533,8 @@ jobs:
               if [[ "${{ inputs.iconlink }}" != "false" ]]; then
                 mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
                 convert ./res/icon.png ./flutter/assets/icon.svg
-                convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png
-                convert ./res/icon.png ./res/scalable.svg
+                convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png || true
+                cp ./flutter/assets/icon.svg ./res/scalable.svg
               fi
               # build flutter
               pushd flutter
@@ -550,8 +550,8 @@ jobs:
               if [[ "${{ inputs.iconlink }}" != "false" ]]; then
                 mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
                 convert ./res/icon.png ./flutter/assets/icon.svg
-                convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png
-                convert ./res/icon.png ./res/scalable.svg
+                convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png || true
+                cp ./flutter/assets/icon.svg ./res/scalable.svg
               fi
               # build flutter
               pushd flutter
