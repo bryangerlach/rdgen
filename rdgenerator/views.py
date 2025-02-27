@@ -26,7 +26,6 @@ def generator_view(request):
             cycleMonitor = form.cleaned_data['cycleMonitor']
             xOffline = form.cleaned_data['xOffline']
             hidecm = form.cleaned_data['hidecm']
-            statussort = form.cleaned_data['statussort']
             removeNewVersionNotif = form.cleaned_data['removeNewVersionNotif']
             server = form.cleaned_data['serverIP']
             key = form.cleaned_data['key']
@@ -176,7 +175,6 @@ def generator_view(request):
             extras['cycleMonitor'] = 'true' if cycleMonitor else 'false'
             extras['xOffline'] = 'true' if xOffline else 'false'
             extras['hidecm'] = 'true' if hidecm else 'false'
-            extras['statussort'] = 'true' if statussort else 'false'
             extras['removeNewVersionNotif'] = 'true' if removeNewVersionNotif else 'false'
             extras['compname'] = compname
             extra_input = json.dumps(extras)

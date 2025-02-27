@@ -64,7 +64,6 @@ env:
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
   ANDROID_FLUTTER_VERSION: "3.24.5" 
-  FLUTTER_RUST_BRIDGE_VERSION: "1.80.1"
   # for arm64 linux because official Dart SDK does not work
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
@@ -236,7 +235,7 @@ jobs:
           sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ inputs.key }}|' ./libs/hbb_common/src/config.rs
           sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
           # ./flutter/pubspec.yaml
-          sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
+          # sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
 
       - name: allow custom.txt
         continue-on-error: true
@@ -400,13 +399,6 @@ jobs:
         run: |
           Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/hidecm.diff -OutFile hidecm.diff
           git apply hidecm.diff
-
-      - name: statussort
-        continue-on-error: true
-        if: fromJson(inputs.extras).statussort == 'true'
-        run: |
-          Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/statussort.diff -OutFile statussort.diff
-          git apply statussort.diff
 
       - name: removeNewVersionNotif
         continue-on-error: true

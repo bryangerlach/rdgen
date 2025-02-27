@@ -298,7 +298,7 @@ jobs:
           wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeSetupServerTip.diff
           git apply removeSetupServerTip.diff
           echo -n "${{ inputs.custom }}" | cat > ./custom.txt
-          sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
+          # sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
           sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
           
       - name: change url to custom
@@ -350,13 +350,6 @@ jobs:
         run: |
           wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/hidecm.diff
           git apply hidecm.diff
-
-      - name: statussort
-        continue-on-error: true
-        if: fromJson(inputs.extras).statussort == 'true'
-        run: |
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/statussort.diff
-          git apply statussort.diff
         
       - name: removeNewVersionNotif
         continue-on-error: true

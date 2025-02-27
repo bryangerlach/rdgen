@@ -1,22 +1,41 @@
 diff --git a/flutter/lib/desktop/pages/desktop_home_page.dart b/flutter/lib/desktop/pages/desktop_home_page.dart
-index ba724eed5..cb66cdaed 100644
+index ba724eed5..1604c429f 100644
 --- a/flutter/lib/desktop/pages/desktop_home_page.dart
 +++ b/flutter/lib/desktop/pages/desktop_home_page.dart
-@@ -424,7 +424,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
+@@ -424,21 +424,21 @@ class _DesktopHomePageState extends State<DesktopHomePage>
    }
  
    Widget buildHelpCards(String updateUrl) {
 -    if (!bind.isCustomClient() &&
-+    /*if (!bind.isCustomClient() &&
-         updateUrl.isNotEmpty &&
-         !isCardClosed &&
-         bind.mainUriPrefixSync().contains('rustdesk')) {
-@@ -435,7 +435,7 @@ class _DesktopHomePageState extends State<DesktopHomePage>
-         final Uri url = Uri.parse('https://rustdesk.com/download');
-         await launchUrl(url);
-       }, closeButton: true);
+-        updateUrl.isNotEmpty &&
+-        !isCardClosed &&
+-        bind.mainUriPrefixSync().contains('rustdesk')) {
+-      return buildInstallCard(
+-          "Status",
+-          "${translate("new-version-of-{${bind.mainGetAppNameSync()}}-tip")} (${bind.mainGetNewVersion()}).",
+-          "Click to download", () async {
+-        final Uri url = Uri.parse('https://rustdesk.com/download');
+-        await launchUrl(url);
+-      }, closeButton: true);
 -    }
-+    }*/
-     if (systemError.isNotEmpty) {
-       return buildInstallCard("", systemError, "", () {});
-     }
+-    if (systemError.isNotEmpty) {
+-      return buildInstallCard("", systemError, "", () {});
+-    }
++    // if (!bind.isCustomClient() &&
++    //     updateUrl.isNotEmpty &&
++    //     !isCardClosed &&
++    //     bind.mainUriPrefixSync().contains('rustdesk')) {
++    //   return buildInstallCard(
++    //       "Status",
++    //       "${translate("new-version-of-{${bind.mainGetAppNameSync()}}-tip")} (${bind.mainGetNewVersion()}).",
++    //       "Click to download", () async {
++    //     final Uri url = Uri.parse('https://rustdesk.com/download');
++    //     await launchUrl(url);
++    //   }, closeButton: true);
++    // }
++    // if (systemError.isNotEmpty) {
++    //   return buildInstallCard("", systemError, "", () {});
++    // }
+ 
+     if (isWindows && !bind.isDisableInstallation()) {
+       if (!bind.mainIsInstalled()) {

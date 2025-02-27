@@ -77,7 +77,6 @@ class GenerateForm(forms.Form):
     cycleMonitor = forms.BooleanField(initial=False, required=False)
     xOffline = forms.BooleanField(initial=False, required=False)
     hidecm = forms.BooleanField(initial=False, required=False)
-    statussort = forms.BooleanField(initial=False, required=False)
     removeNewVersionNotif = forms.BooleanField(initial=False, required=False)
 
     def clean_iconfile(self):
