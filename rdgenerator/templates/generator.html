@@ -136,6 +136,20 @@
         .errorlist li {
             margin: 5px; /* Add some spacing between list items */
         }
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .help-text {
+            color: #ffd700;
+            font-style: italic;
+            animation: blink 2s infinite;
+            padding: 5px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-left: 10px;
       </style>
 </head>
 <body>
@@ -174,6 +188,10 @@
                 </select>
                 <label for="{{ form.version.id_for_label }}">Rustdesk Version:</label>
                 {{ form.version }}
+                {% if form.version.help_text %}
+                    <span class="help-text">{{ form.version.help_text }}</span>
+                {% endif %}
+                <div class="help-text">{{ form.version.help_text }}</div>
                 <label for="{{ form.delayFix.id_for_label }}">{{ form.delayFix }} Fix connection delay when using third-party API</label>
             </div>
         </div>
