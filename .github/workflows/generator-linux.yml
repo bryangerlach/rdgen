@@ -521,9 +521,6 @@ jobs:
               wget -O ./flutter/assets/logo.png ${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}"&"uuid=${{ fromJson(inputs.logolink).uuid }}
             fi
             if [[ "${{ inputs.iconlink }}" != "false" ]]; then
-              echo "MAGICK_MEMORY_LIMIT=512MiB" >> $GITHUB_ENV || true
-              echo "MAGICK_MAP_LIMIT=256MiB" >> $GITHUB_ENV || true
-              echo "MAGICK_DISK_LIMIT=1GiB" >> $GITHUB_ENV || true
               mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
               convert ./res/icon.png ./flutter/assets/icon.svg
               convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png || true

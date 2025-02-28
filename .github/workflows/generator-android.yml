@@ -471,14 +471,20 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "45% complete"}'
 
+      - name: icons
+        if: ${{ inputs.iconlink != 'false' }}
+        continue-on-error: true
+        run: |
+          mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
+          convert ./res/icon.png ./flutter/assets/icon.svg
+          convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png || true
+          cp ./flutter/assets/icon.svg ./res/scalable.svg
+
       - name: Build rustdesk
         shell: bash
         env:
           JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         run: |
-          echo "MAGICK_MEMORY_LIMIT=512MiB" >> $GITHUB_ENV || true
-          echo "MAGICK_MAP_LIMIT=256MiB" >> $GITHUB_ENV || true
-          echo "MAGICK_DISK_LIMIT=1GiB" >> $GITHUB_ENV || true
           export PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH
           # temporary use debug sign config
           sed -i "s/signingConfigs.release/signingConfigs.debug/g" ./flutter/android/app/build.gradle
@@ -489,12 +495,6 @@ jobs:
             cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
             echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
             #sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
-            if [[ "${{ inputs.iconlink }}" != "false" ]]; then
-              mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
-              convert ./res/icon.png ./flutter/assets/icon.svg
-              convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png || true
-              cp ./flutter/assets/icon.svg ./res/scalable.svg
-            fi
             # build flutter
             pushd flutter
             flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-arm64 --split-per-abi
@@ -506,12 +506,6 @@ jobs:
               cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/librustdesk.so
               echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
               #sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
-              if [[ "${{ inputs.iconlink }}" != "false" ]]; then
-                mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
-                convert ./res/icon.png ./flutter/assets/icon.svg
-                convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png || true
-                cp ./flutter/assets/icon.svg ./res/scalable.svg
-              fi
               # build flutter
               pushd flutter
               flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-arm --split-per-abi
@@ -523,12 +517,6 @@ jobs:
               cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86_64/librustdesk.so
               echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
               #sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
-              if [[ "${{ inputs.iconlink }}" != "false" ]]; then
-                mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
-                convert ./res/icon.png ./flutter/assets/icon.svg
-                convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png || true
-                cp ./flutter/assets/icon.svg ./res/scalable.svg
-              fi
               # build flutter
               pushd flutter
               flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-x64 --split-per-abi
@@ -540,12 +528,6 @@ jobs:
               cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86/librustdesk.so
               echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
               #sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
-              if [[ "${{ inputs.iconlink }}" != "false" ]]; then
-                mv ./flutter/assets/icon.svg ./flutter/assets/icon.svg.bak
-                convert ./res/icon.png ./flutter/assets/icon.svg
-                convert ./res/128x128.png -resize 200% ./flutter/assets/128x128@2x.png || true
-                cp ./flutter/assets/icon.svg ./res/scalable.svg
-              fi
               # build flutter
               pushd flutter
               flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-x86 --split-per-abi
