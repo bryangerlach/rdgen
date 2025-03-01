@@ -310,6 +310,16 @@ jobs:
           sed -i '/adaptive_icon_background/a \ \ adaptive_icon_foreground: "../res/icon.png"' ./flutter/pubspec.yaml
           sed -i '/adaptive_icon_foreground:/a \ \ adaptive_icon_foreground_inset: 32' ./flutter/pubspec.yaml
           sed -i '/ic_launcher_background/d' ./flutter/android/app/src/main/res/values/colors.xml
+
+      - name: set server, key, and apiserver
+        continue-on-error: true
+        shell: bash
+        run: |
+          sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ inputs.key }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
+          # ./flutter/pubspec.yaml
+          #sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
           
       - name: change appname to custom
         if: inputs.appname != 'rustdesk'
