@@ -371,7 +371,7 @@ def save_png(file, uuid, domain, name):
         for chunk in file.chunks():
             f.write(chunk)
     imageJson = {}
-    imageJson['url'] = domain
+    imageJson['url'] = "%s/api" % domain
     imageJson['uuid'] = uuid
     imageJson['file'] = name
     #return "%s/%s" % (domain, file_save_path)
