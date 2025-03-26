@@ -416,8 +416,7 @@ jobs:
         continue-on-error: true
         if: fromJson(inputs.extras).removeNewVersionNotif == 'true'
         run: | 
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeNewVersionNotif.diff
-          git apply removeNewVersionNotif.diff
+          sed -i -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1

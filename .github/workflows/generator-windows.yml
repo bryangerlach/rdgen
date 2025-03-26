@@ -409,9 +409,9 @@ jobs:
       - name: removeNewVersionNotif
         continue-on-error: true
         if: fromJson(inputs.extras).removeNewVersionNotif == 'true'
+        shell: bash
         run: | 
-          Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeNewVersionNotif.diff -Outfile removeNewVersionNotif.diff
-          git apply removeNewVersionNotif.diff
+          sed -i -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
 
 
       - name: run as admin
