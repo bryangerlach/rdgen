@@ -514,8 +514,8 @@ jobs:
             chmod 777 output -R
             export CARGO_INCREMENTAL=0
             export DEB_ARCH=${{ matrix.job.deb_arch }}
-            mkdir -p flutter/tmpdeb/usr/lib/rustdesk
-            cp ./custom.txt ./flutter/tmpdeb/usr/lib/rustdesk/custom.txt
+            mkdir -p flutter/tmpdeb/usr/share/rustdesk
+            cp ./custom.txt ./flutter/tmpdeb/usr/share/rustdesk/custom.txt
             if [[ "${{ inputs.logolink }}" != "false" ]]; then
               wget -O ./flutter/assets/logo.png ${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}"&"uuid=${{ fromJson(inputs.logolink).uuid }}
             fi
