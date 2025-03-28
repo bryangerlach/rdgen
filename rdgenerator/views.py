@@ -193,7 +193,7 @@ def generator_view(request):
 
             #url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rustdesk/actions/workflows/test.yml/dispatches'  
             data = {
-                "ref":"master",
+                "ref":"xbxiot",
                 "inputs":{
                     "server":server,
                     "key":key,
@@ -327,7 +327,7 @@ def startgh(request):
     ####from here run the github action, we need user, repo, access token.
     url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-'+data_.get('platform')+'.yml/dispatches'  
     data = {
-        "ref":"master",
+        "ref":"xbxiot",
         "inputs":{
             "server":data_.get('server'),
             "key":data_.get('key'),
