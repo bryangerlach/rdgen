@@ -600,7 +600,7 @@ jobs:
         continue-on-error: true
         if:  matrix.job.arch == 'x86_64' && env.UPLOAD_ARTIFACT == 'true' && env.VERSION != 'master'
         run: |
-          cp ./res/rustdesk-${{ env.VERSION }}-0-x86_64.pkg.tar.zst ./output/${{ inputs.filename }}.pkg.tar.zst
+          cp ./res/rustdesk-${{ env.VERSION }}-0-x86_64.pkg.tar.zst ./output/${{ inputs.filename }}-${{ matrix.job.arch }}.pkg.tar.zst
 
       - name: send file to rdgen server
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
