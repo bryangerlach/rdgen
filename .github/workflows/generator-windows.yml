@@ -171,6 +171,11 @@ jobs:
         run: |
           sed -i -e 's|2ded7f146437a761ffe6981e2f742038f85ca68d|08a471bb8ceccdd50483c81cdfa8b81b07b14b87|' ./flutter/pubspec.lock
           sed -i -e 's|2ded7f146437a761ffe6981e2f742038f85ca68d|08a471bb8ceccdd50483c81cdfa8b81b07b14b87|' ./flutter/pubspec.yaml
+
+      - name: update cmake minimum version
+        shell: bash
+        run: |
+          sed -i -e 's|cmake_minimum_required(VERSION 3.14)|cmake_minimum_required(VERSION 3.5)|' ./flutter/windows/CMakeLists.txt
       
       - name: change appname to custom
         if: inputs.appname != 'rustdesk'
