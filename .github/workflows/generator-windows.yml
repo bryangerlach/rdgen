@@ -69,7 +69,7 @@ env:
   TAG_NAME: "${{ inputs.upload-tag }}"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   # vcpkg version: 2024.07.12
-  VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
+  VCPKG_COMMIT_ID: "b02e341c927f16d991edbd915d8ea43eac52096c"
   VERSION: "${{ fromJson(inputs.extras).version }}"
   NDK_VERSION: "r27c"
   #signing keys env variable checks
@@ -171,11 +171,6 @@ jobs:
         run: |
           sed -i -e 's|2ded7f146437a761ffe6981e2f742038f85ca68d|08a471bb8ceccdd50483c81cdfa8b81b07b14b87|' ./flutter/pubspec.lock
           sed -i -e 's|2ded7f146437a761ffe6981e2f742038f85ca68d|08a471bb8ceccdd50483c81cdfa8b81b07b14b87|' ./flutter/pubspec.yaml
-
-      - name: update cmake minimum version
-        shell: bash
-        run: |
-          sed -i -e 's|cmake_minimum_required(VERSION 3.14)|cmake_minimum_required(VERSION 3.5)|' ./flutter/windows/CMakeLists.txt
       
       - name: change appname to custom
         if: inputs.appname != 'rustdesk'
