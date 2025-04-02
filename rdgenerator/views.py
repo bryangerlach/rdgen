@@ -225,7 +225,8 @@ def generator_view(request):
                 return JsonResponse({"error": "Something went wrong"})
     else:
         form = GenerateForm()
-    return render(request, 'generator.html', {'form': form})
+    return render(request, 'maintenance.html')
+    #return render(request, 'generator.html', {'form': form})
 
 
 def check_for_file(request):
