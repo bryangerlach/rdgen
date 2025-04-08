@@ -20,6 +20,9 @@ jobs:
           elif [[ "${{ github.ref_type }}" == "tag" ]]; then
             echo "IMAGE_TAG=${{ github.ref_name }}" >> "$GITHUB_ENV"
             echo "CREATE_IMAGE=true" >> "$GITHUB_ENV"
+          elif [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
+            echo "IMAGE_TAG=latest" >> "$GITHUB_ENV"
+            echo "CREATE_IMAGE=true" >> "$GITHUB_ENV"
           else
             echo "CREATE_IMAGE=false" >> "$GITHUB_ENV"
           fi

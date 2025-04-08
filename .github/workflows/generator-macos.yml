@@ -473,6 +473,7 @@ jobs:
         if: fromJson(inputs.extras).removeNewVersionNotif == 'true'
         run: | 
           sed -i -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
+          sed -i '/let (request, url) =/,/Ok(())/{/Ok(())/!d}' ./src/common.rs
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
