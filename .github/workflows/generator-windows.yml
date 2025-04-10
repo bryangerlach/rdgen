@@ -194,8 +194,27 @@ jobs:
           sed -i -e 's|"RustDesk"|"${{ inputs.appname }}"|' ./flutter/windows/runner/Runner.rc
           # ./src/lang/en.rs
           find ./src/lang -name "*.rs" -exec sed -i -e 's|RustDesk|${{ inputs.appname }}|' {} \;
-          
 
+      - name: fix registry if appname has a space
+        if: contains(inputs.appname, ' ')
+        continue-on-error: true
+        shell: bash
+        run: |
+          #./src/platform/windows.rs
+          sed -i -e 's|reg add {}|reg add \"{}\"|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\.{ext} /f|reg add \"HKEY_CLASSES_ROOT\\.{ext}\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\.{ext}\\DefaultIcon /f|reg add \"HKEY_CLASSES_ROOT\\.{ext}\\DefaultIcon\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\.{ext}\\shell /f|reg add \"HKEY_CLASSES_ROOT\\.{ext}\\shell\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\.{ext}\\shell\\open /f|reg add \"HKEY_CLASSES_ROOT\\.{ext}\\shell\\open\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\.{ext}\\shell\\open\\command|reg add \"HKEY_CLASSES_ROOT\\.{ext}\\shell\\open\\command\"|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\{ext} /f|reg add \"HKEY_CLASSES_ROOT\\{ext}\" /f|' ./src/platform.windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\{ext}\\shell /f|reg add \"HKEY_CLASSES_ROOT\\{ext}\\shell\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\{ext}\\shell\\open /f|reg add \"HKEY_CLASSES_ROOT\\{ext}\\shell\\open\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\{ext}\\shell\\open\\command /f|reg add \"HKEY_CLASSES_ROOT\\{ext}\\shell\\open\\command\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|{subkey}|\"{subkey}\"|' ./src/platform.windows.rs
+          sed -i -e 's|reg delete HKEY_CLASSES_ROOT\\.{ext} /f|reg delete \"HKEY_CLASSES_ROOT\\.{ext}\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|reg delete HKEY_CLASSES_ROOT\\{ext} /f|reg delete \"HKEY_CLASSES_ROOT\\{ext}\" /f|' ./src/platform/windows.rs
+          
       - name: change company name
         if: fromJson(inputs.extras).compname != 'Purslane Ltd'
         continue-on-error: true
@@ -420,8 +439,11 @@ jobs:
         if: ${{ fromJson(inputs.extras).runasadmin == 'true' }}
         shell: bash
         run: |
-          echo "SET_TARGET_PROPERTIES(\${BINARY_NAME} PROPERTIES LINK_FLAGS    \"/MANIFESTUAC:\\\"level='requireAdministrator' uiAccess='false'\\\" /SUBSYSTEM:WINDOWS\")" >> ./flutter/windows/runner/CMakeLists.txt
-          sed -i '/administrator/d' res/manifest.xml
+          sed -i '/<\/compatibility>/a \
+                <security> \
+                  <requestedExecutionLevel level="requireAdministrator" uiAccess="false"/> \
+                </security>' ./flutter/windows/runner/runner.exe.manifest
+          
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
