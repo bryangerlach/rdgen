@@ -121,7 +121,7 @@ def generator_view(request):
                     decodedCustom['default-settings']['theme'] = theme
                 elif themeDorO == "override":
                     decodedCustom['override-settings']['theme'] = theme
-            decodedCustom['approve-mode'] = passApproveMode
+            #decodedCustom['approve-mode'] = passApproveMode
             decodedCustom['enable-lan-discovery'] = 'N' if denyLan else 'Y'
             #decodedCustom['direct-server'] = 'Y' if enableDirectIP else 'N'
             decodedCustom['allow-auto-disconnect'] = 'Y' if autoClose else 'N'
@@ -140,6 +140,7 @@ def generator_view(request):
                 decodedCustom['default-settings']['direct-server'] = 'Y' if enableDirectIP else 'N'
                 decodedCustom['default-settings']['hide-cm'] = 'Y' if hidecm else 'N'
                 decodedCustom['default-settings']['verification-method'] = 'use-permanent-password' if hidecm else 'use-both-passwords'
+                decodedCustom['default-settings']['approve-mode'] = passApproveMode
             else:
                 decodedCustom['override-settings']['access-mode'] = permissionsType
                 decodedCustom['override-settings']['enable-keyboard'] = 'Y' if enableKeyboard else 'N'
