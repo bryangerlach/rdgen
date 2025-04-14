@@ -1,6 +1,6 @@
 services:
   rdgen:
-    # use bryangerlach/rdgen:dev for the latest dev build
+    # use bryangerlach/rdgen:latest for the latest build
     image: bryangerlach/rdgen:v0.3.1
     restart: unless-stopped
     environment:
