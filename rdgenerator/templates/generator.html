@@ -389,8 +389,10 @@
             if (this.checked) {
                 document.getElementById("passwordRequirement").style.display = 'block';
                 document.getElementById("{{ form.permanentPassword.id_for_label }}").focus();
+                document.getElementById("{{ form.passApproveMode.id_for_label }}").value = 'password';
             } else {
                 document.getElementById("passwordRequirement").style.display = 'none';
+                document.getElementById("{{ form.passApproveMode.id_for_label }}").value = 'password-click';
             }
         });
         const enableKeyboard = document.getElementById("{{ form.enableKeyboard.id_for_label }}");
