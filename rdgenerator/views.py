@@ -138,6 +138,8 @@ def generator_view(request):
                 decodedCustom['default-settings']['enable-block-input'] = 'Y' if enableBlockingInput else 'N'
                 decodedCustom['default-settings']['allow-remote-config-modification'] = 'Y' if enableRemoteModi else 'N'
                 decodedCustom['default-settings']['direct-server'] = 'Y' if enableDirectIP else 'N'
+                decodedCustom['default-settings']['hide-cm'] = 'Y' if hidecm else 'N'
+                decodedCustom['default-settings']['verification-method'] = 'use-permanent-password' if hidecm else 'use-both-passwords'
             else:
                 decodedCustom['override-settings']['access-mode'] = permissionsType
                 decodedCustom['override-settings']['enable-keyboard'] = 'Y' if enableKeyboard else 'N'
