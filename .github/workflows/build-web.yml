@@ -9,7 +9,7 @@ env:
 jobs:      
   build-rustdesk-web:
     name: build-rustdesk-web
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
     env:
@@ -67,14 +67,6 @@ jobs:
           mv web "${dir_name}" && tar czf "${dir_name}".tar.gz "${dir_name}"
           sha256sum "${dir_name}".tar.gz
           popd
-
-      - name: Publish web
-        uses: softprops/action-gh-release@v1
-        with:
-          prerelease: true
-          tag_name: ${{ env.TAG_NAME }}
-          files: |
-            flutter/build/rustdesk-${{ env.VERSION }}-${{ env.RELEASE_NAME }}.tar.gz
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
