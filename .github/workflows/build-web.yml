@@ -35,7 +35,7 @@ jobs:
       - name: Build web
         shell: bash
         run: |
-          pushd flutter/web/js/v2
+          pushd flutter/web/v2
           npm install yarn -g
           npm install typescript -g
           npm install protoc -g
@@ -46,7 +46,7 @@ jobs:
           yarn install && yarn build
           popd
 
-          pushd flutter/web
+          pushd flutter/web/v2
           wget https://github.com/rustdesk/doc.rustdesk.com/releases/download/console/web_deps.tar.gz
           tar xzf web_deps.tar.gz
           popd
@@ -54,9 +54,9 @@ jobs:
           pushd flutter
           flutter build web --release
           cd build
-          cp ../web/README.md web
+          #cp ../web/README.md web
           # TODO: Remove the following line when the web is almost complete.
-          echo -e "\n\nThis build is for preview and not full functionality." >> web/README.md
+          #echo -e "\n\nThis build is for preview and not full functionality." >> web/README.md
           dir_name="rustdesk-${{ env.VERSION }}-${{ env.RELEASE_NAME }}"
           mv web "${dir_name}" && tar czf "${dir_name}".tar.gz "${dir_name}"
           sha256sum "${dir_name}".tar.gz
