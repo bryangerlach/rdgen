@@ -35,7 +35,7 @@ jobs:
       - name: Build web
         shell: bash
         run: |
-          pushd flutter/web/js
+          pushd flutter/web/js/v2
           npm install yarn -g
           npm install typescript -g
           npm install protoc -g
