@@ -783,7 +783,7 @@ jobs:
 
 
   deploy:
-    needs: build-rustdesk-linux
+    needs: [build-rustdesk-linux,build-flatpak,build-appimage]
     runs-on: ubuntu-latest
     steps:
       - name: Report Status
