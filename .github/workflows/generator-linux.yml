@@ -658,8 +658,18 @@ jobs:
           - { target: aarch64-unknown-linux-gnu, arch: aarch64 }
     steps:
       - name: Checkout source code
+        if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
+          repository: rustdesk/rustdesk
+          ref: refs/tags/${{ env.VERSION }}
+          submodules: recursive
+
+      - name: Checkout source code
+        if: ${{ env.VERSION == 'master' }}
+        uses: actions/checkout@v4
+        with:
+          repository: rustdesk/rustdesk
           submodules: recursive
 
       - name: Download Binary
@@ -731,8 +741,18 @@ jobs:
             }
     steps:
       - name: Checkout source code
+        if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
+          repository: rustdesk/rustdesk
+          ref: refs/tags/${{ env.VERSION }}
+          submodules: recursive
+
+      - name: Checkout source code
+        if: ${{ env.VERSION == 'master' }}
+        uses: actions/checkout@v4
+        with:
+          repository: rustdesk/rustdesk
           submodules: recursive
 
       - name: Download Binary
