@@ -678,10 +678,6 @@ jobs:
           name: ${{ inputs.filename }}-${{ matrix.job.arch }}.deb
           path: .
 
-      - uses: geekyeggo/delete-artifact@v5
-        with:
-            name: ${{ inputs.filename }}-${{ matrix.job.arch }}.deb
-
       - name: Rename Binary
         run: |
           mv ${{ inputs.filename }}-${{ matrix.job.arch }}.deb appimage/rustdesk.deb
@@ -760,10 +756,6 @@ jobs:
         with:
           name: ${{ inputs.filename }}-${{ matrix.job.arch }}.deb
           path: .
-      
-      - uses: geekyeggo/delete-artifact@v5
-        with:
-            name: ${{ inputs.filename }}-${{ matrix.job.arch }}.deb
 
       - name: Rename Binary
         run: |
@@ -800,13 +792,13 @@ jobs:
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
         shell: bash
         run: |
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./${{ inputs.filename }}-${{ matrix.job.arch }}.flatpak" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./flatpak/${{ inputs.filename }}-${{ matrix.job.arch }}.flatpak" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
           
       - name: send file to api server
         if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
         shell: bash
         run: |
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./${{ inputs.filename }}-${{ matrix.job.arch }}.flatpak" ${{ inputs.apiServer }}/api/save_custom_client
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./flatpak/${{ inputs.filename }}-${{ matrix.job.arch }}.flatpak" ${{ inputs.apiServer }}/api/save_custom_client
 
 
 
@@ -821,3 +813,8 @@ jobs:
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "Success"}'
+
+      - uses: geekyeggo/delete-artifact@v5
+        continue-on-error: true
+        with:
+            name: ${{ inputs.filename }}-*.deb
