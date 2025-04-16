@@ -668,6 +668,10 @@ jobs:
           name: ${{ inputs.filename }}-${{ matrix.job.arch }}.deb
           path: .
 
+      - uses: geekyeggo/delete-artifact@v5
+        with:
+            name: ${{ inputs.filename }}-${{ matrix.job.arch }}.deb
+
       - name: Rename Binary
         run: |
           mv ${{ inputs.filename }}-${{ matrix.job.arch }}.deb appimage/rustdesk.deb
@@ -736,6 +740,10 @@ jobs:
         with:
           name: ${{ inputs.filename }}-${{ matrix.job.arch }}.deb
           path: .
+      
+      - uses: geekyeggo/delete-artifact@v5
+        with:
+            name: ${{ inputs.filename }}-${{ matrix.job.arch }}.deb
 
       - name: Rename Binary
         run: |
