@@ -127,6 +127,9 @@ jobs:
         run: |
           echo "STATUS_URL=${{ inputs.apiServer }}/api/updategh" >> GITHUB_ENV
 
+      - name: Check GITHUB_ENV contents
+        run: cat $GITHUB_ENV
+
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
         with:
