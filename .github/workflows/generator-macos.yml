@@ -77,7 +77,6 @@ env:
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
   UPLOAD_ARTIFACT: 'true'
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
-  #STATUS_URL: "${{ secrets.GENURL }}/updategh"
 
 jobs:
   generate-bridge:
@@ -85,9 +84,9 @@ jobs:
     with:
       version: ${{ fromJson(inputs.extras).version }}
 
-  build-for-macos-flutter:
-    name: Build macOS
-    runs-on: ${{ matrix.job.os }}
+  build-for-macos:
+    name: ${{ matrix.job.target }}
+    runs-on: macos-latest
     needs: [generate-bridge]
     strategy:
       fail-fast: false
@@ -118,9 +117,6 @@ jobs:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-
-      - name: Check GITHUB_ENV contents
-        run: cat $GITHUB_ENV
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
