@@ -86,7 +86,7 @@ jobs:
 
   build-for-macos:
     name: ${{ matrix.job.target }}
-    runs-on: macos-latest
+    runs-on: ${{ matrix.job.os }}
     needs: [generate-bridge]
     strategy:
       fail-fast: false
