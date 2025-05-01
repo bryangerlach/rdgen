@@ -141,12 +141,6 @@ jobs:
             repository: rustdesk/rustdesk
             submodules: recursive
 
-      - name: Restore bridge files
-        uses: actions/download-artifact@master
-        with:
-              name: bridge-artifact
-              path: ./
-
       - name: Install imagemagick and potrace and nasm and and
         shell: bash
         run: |
@@ -249,7 +243,17 @@ jobs:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "10% complete"}'    
+          data: '{"uuid": "${{ inputs.uuid }}", "status": "10% complete"}'   
+          
+      - name: Install build runtime
+        run: |
+          brew install llvm create-dmg
+          # pkg-config is handled in a separate step, because it may be already installed by `macos-latest`(14.7.1) runner
+          if command -v pkg-config &>/dev/null; then
+              echo "pkg-config is already installed"
+          else
+              brew install pkg-config
+          fi
 
       - name: Install flutter
         uses: subosito/flutter-action@v2
@@ -278,7 +282,6 @@ jobs:
             targets: ${{ matrix.job.target }}
             components: "rustfmt"
   
-        
       - uses: Swatinem/rust-cache@v2
         with:
           prefix-key: ${{ matrix.job.os }}
@@ -471,11 +474,6 @@ jobs:
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "15% complete"}'
-  
-        
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: ${{ matrix.job.os }}
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
@@ -484,6 +482,12 @@ jobs:
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "20% complete"}'
+
+      - name: Restore bridge files
+        uses: actions/download-artifact@master
+        with:
+          name: bridge-artifact
+          path: ./
 
       - name: Setup vcpkg with Github Actions binary cache
         uses: lukka/run-vcpkg@v11
@@ -505,6 +509,7 @@ jobs:
             done
             exit 1
           fi
+          head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-${{ matrix.job.vcpkg-triplet }}-rel-out.log" || true
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
