@@ -190,7 +190,7 @@ jobs:
           find ./src/lang -name "*.rs" -exec sed -i '' -e 's|RustDesk|${{ inputs.appname }}|' {} \;
           sed -i '' -e 's|RustDesk|${{ inputs.appname }}|' ./src/lang/nl.rs
            
-          sed -i '' -e 's|Homepage: https://rustdesk.com|Homepage: ${{ fromJson(inputs.extras).urlLink }}|' ./build.py
+          sed -i '' -e 's|https://rustdesk.com|${{ fromJson(inputs.extras).urlLink }}|' ./build.py
           sed -i '' -e "s|launchUrl(Uri.parse('https://rustdesk.com'));|launchUrl(Uri.parse('${{ fromJson(inputs.extras).urlLink }}'));|" ./flutter/lib/common.dart
           sed -i '' -e "s|launchUrlString('https://rustdesk.com');|launchUrlString('${{ fromJson(inputs.extras).urlLink }}');|" ./flutter/lib/desktop/pages/desktop_setting_page.dart
           sed -i '' -e "s|launchUrlString('https://rustdesk.com/privacy.html')|launchUrlString('${{ fromJson(inputs.extras).urlLink }}/privacy.html')|" ./flutter/lib/desktop/pages/desktop_setting_page.dart

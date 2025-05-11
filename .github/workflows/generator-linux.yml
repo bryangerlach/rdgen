@@ -408,6 +408,7 @@ jobs:
                libayatana-appindicator3-dev \
                libasound2-dev \
                libclang-dev \
+               libunwind-dev \
                libgstreamer1.0-dev \
                libgstreamer-plugins-base1.0-dev \
                libgtk-3-dev \
