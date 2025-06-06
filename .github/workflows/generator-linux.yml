@@ -332,7 +332,7 @@ jobs:
         if: ${{ fromJson(inputs.extras).delayFix == 'true' }}
         shell: bash
         run: |
-          sed -i -e '/if !key.is_empty() && !token.is_empty() {/,/}/d' ./src/client.rs
+          sed -i -e '/if !key.is_empty() && !token.is_empty() {/,/^\s*}/d' ./src/client.rs
 
       - name: add cycle monitors to toolbar
         continue-on-error: true
