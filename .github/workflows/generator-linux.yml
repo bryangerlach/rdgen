@@ -768,6 +768,8 @@ jobs:
 
       - uses: rustdesk-org/run-on-arch-action@amd64-support
         name: Build rustdesk flatpak package for ${{ matrix.job.arch }}
+        continue-on-error: true
+        timeout-minutes: 30
         id: flatpak
         with:
           arch: ${{ matrix.job.arch }}
@@ -795,12 +797,14 @@ jobs:
 
       - name: send file to rdgen server
         if: ${{ fromJson(inputs.extras).rdgen == 'true' }}
+        continue-on-error: true
         shell: bash
         run: |
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./flatpak/${{ inputs.filename }}-${{ matrix.job.arch }}.flatpak" -F "uuid=${{ inputs.uuid }}" ${{ secrets.GENURL }}/save_custom_client
           
       - name: send file to api server
         if: ${{ fromJson(inputs.extras).rdgen == 'false' }}
+        continue-on-error: true
         shell: bash
         run: |
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" -F "file=@./flatpak/${{ inputs.filename }}-${{ matrix.job.arch }}.flatpak" ${{ inputs.apiServer }}/api/save_custom_client
