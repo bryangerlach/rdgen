@@ -432,12 +432,12 @@ jobs:
             sed -i '' -e "s~$SEARCH_STR.*\"~$b64\"~" ./src/ui.rs
           fi
 
-      # - name: fix connection delay
-      #   continue-on-error: false
-      #   if: ${{ fromJson(inputs.extras).delayFix == 'true' }}
-      #   shell: bash
-      #   run: |
-      #     sed -i '' -e '/if !key.is_empty() && !token.is_empty() {/,/^\s*}/d' ./src/client.rs
+      - name: fix connection delay
+        continue-on-error: false
+        if: ${{ fromJson(inputs.extras).delayFix == 'true' }}
+        shell: bash
+        run: |
+          sed -i -e 's|!key.is_empty()|false|' ./src/client.rs
 
       - name: add cycle monitors to toolbar
         continue-on-error: true
