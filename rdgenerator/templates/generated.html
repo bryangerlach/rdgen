@@ -129,6 +129,8 @@
             {% if platform == 'windows' %}
                 <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">Download {{filename}}.exe</a>
                 <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">Download {{filename}}.msi</a>
+            {% elif platform == 'windows-x86' %}
+                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">Download {{filename}}.exe</a>
             {% elif platform == 'linux' %}
                 <a href='/download?filename={{filename}}-x86_64.deb&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.deb</a>
                 <a href='/download?filename={{filename}}-x86_64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.rpm</a>
@@ -177,7 +179,7 @@
                 platformLogos.macos.style.display = 'block';
                 platformNote.textContent = 'Note: For macOS, you may need to adjust security settings to run the application.';
                 platformNote.style.display = 'block';
-            } else if (platform === 'windows') {
+            } else if (platform === 'windows' || platform === 'windows-x86') {
                 document.getElementById('pageTitle').textContent = 'Windows Build Generated';
                 platformLogos.windows.style.display = 'block';
                 platformNote.textContent = 'Note: You might need to disable SmartScreen or adjust Windows security settings.';
