@@ -154,6 +154,7 @@
             const platform = '{{platform}}'.toLowerCase();
             const platformLogos = {
                 'windows': document.getElementById('windowsLogo'),
+                'windows-x86': document.getElementById('windowsLogo'),
                 'macos': document.getElementById('macosLogo'),
                 'linux': document.getElementById('linuxLogo'),
                 'android': document.getElementById('androidLogo')
@@ -167,7 +168,7 @@
                 document.getElementById('pageTitle').textContent = 'Generating MacOS Build';
                 platformLogos.macos.style.display = 'block';
                 document.getElementById('macosNote').style.display = 'block';
-            } else if (platform === 'windows') {
+            } else if (platform === 'windows' | platform === 'windows-x86') {
                 document.getElementById('pageTitle').textContent = 'Generating Windows Build';
                 platformLogos.windows.style.display = 'block';
             } else if (platform === 'linux') {
