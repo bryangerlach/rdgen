@@ -233,7 +233,8 @@
                     <i class="fab fa-apple platform-icon" data-platform="macos"></i>
                 </div>
                 <select name="platform" id="id_platform">
-                    <option value="windows" selected>Windows</option>
+                    <option value="windows" selected>Windows 64Bit</option>
+                    <option value="windows-x86">Windows 32Bit</option>
                     <option value="linux">Linux</option>
                     <option value="android">Android</option>
                     <option value="macos">macOS</option>
@@ -294,7 +295,9 @@
                     
                     <label for="{{ form.enableDirectIP.id_for_label }}">{{ form.enableDirectIP }} Enable direct IP access</label><br>
                     
-                    <label for="{{ form.autoClose.id_for_label }}">{{ form.autoClose }} Automatically close incoming sessions on user inactivity</label><br>  
+                    <label for="{{ form.autoClose.id_for_label }}">{{ form.autoClose }} Automatically close incoming sessions on user inactivity</label><br>
+
+                    <label for="{{ form.hidecm.id_for_label }}">{{ form.hidecm }} Allow hiding the connection window from remote screen.</label><br>
             </div>
         
             <div class="section">
@@ -334,7 +337,6 @@
                 <h2><i class="fas fa-code"></i> Code Changes</h2>
                     <label for="{{ form.cycleMonitor.id_for_label }}">{{ form.cycleMonitor }} Add a button to cycle through available monitors to the minimized toolbar.</label><br>
                     <label for="{{ form.xOffline.id_for_label }}">{{ form.xOffline }} Display an X for offline devices in the addressbook.</label><br>
-                    <label for="{{ form.hidecm.id_for_label }}">{{ form.hidecm }} Allow hiding the connection window from remote screen.</label><br>
                     <label for="{{ form.removeNewVersionNotif.id_for_label }}">{{ form.removeNewVersionNotif }} Remove notification for new versions.</label><br>
             </div>
 
