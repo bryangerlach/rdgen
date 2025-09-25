@@ -92,6 +92,25 @@
         .platform-icon:hover, .platform-icon.active {
             color: #2e52f7;
         }
+        .text-64 {
+            font-size: 0.5em; /* Adjust font size to fit */
+            font-weight: bold;
+            top: 18%; /* Fine-tune vertical position */
+            left: 50%;
+            transform: translate(-50%, -50%); /* Center horizontally */
+            position: absolute; /* Position relative to the parent stack */
+            color: black; /* Or any other color */
+        }
+
+        .text-32 {
+            font-size: 0.5em;
+            font-weight: bold;
+            top: 18%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            position: absolute;
+            color: black;
+        }
         .checkbox-group {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -227,7 +246,14 @@
         <div class="platform">
             <h2><i class="fas fa-desktop"></i> Select Platform</h2>
                 <div class="platform-icons">
-                    <i class="fab fa-windows platform-icon active" data-platform="windows"></i>
+                    <span class="fa-stack fa-lg">
+                        <i class="fab fa-windows  fa-stack-2x platform-icon active" data-platform="windows"></i>
+                        <strong class="fa-stack-1x text-64">64</strong>
+                    </span>
+                    <span class="fa-stack fa-lg">
+                        <i class="fab fa-windows  fa-stack-2x platform-icon active" data-platform="windows-x86"></i>
+                        <strong class="fa-stack-1x text-32">32</strong>
+                    </span>
                     <i class="fab fa-linux platform-icon" data-platform="linux"></i>
                     <i class="fab fa-android platform-icon" data-platform="android"></i>
                     <i class="fab fa-apple platform-icon" data-platform="macos"></i>
