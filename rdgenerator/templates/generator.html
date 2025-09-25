@@ -333,6 +333,9 @@
                         <label for="{{ form.enableRecording.id_for_label }}">{{ form.enableRecording }} Enable recording session</label>
                         <label for="{{ form.enableBlockingInput.id_for_label }}">{{ form.enableBlockingInput }} Enable blocking user input</label>
                         <label for="{{ form.enableRemoteModi.id_for_label }}">{{ form.enableRemoteModi }} Enable remote configuration modification</label>
+                        <label for="{{ form.enablePrinter.id_for_label }}">{{ form.enablePrinter }} Enable remote printer</label>
+                        <label for="{{ form.enableCamera.id_for_label }}">{{ form.enableCamera }} Enable remote camera</label>
+                        <label for="{{ form.enableTerminal.id_for_label }}">{{ form.enableTerminal }} Enable remote terminal</label>
                     </div><br>
                 <h2><i class="fas fa-code"></i> Code Changes</h2>
                     <label for="{{ form.cycleMonitor.id_for_label }}">{{ form.cycleMonitor }} Add a button to cycle through available monitors to the minimized toolbar.</label><br>
@@ -406,6 +409,9 @@
         const enableRecording = document.getElementById("{{ form.enableRecording.id_for_label }}");
         const enableBlockingInput = document.getElementById("{{ form.enableBlockingInput.id_for_label }}");
         const enableRemoteModi = document.getElementById("{{ form.enableRemoteModi.id_for_label }}");
+        const enablePrinter = document.getElementById("{{ form.enablePrinter.id_for_label }}");
+        const enableCamera = document.getElementById("{{ form.enableCamera.id_for_label }}");
+        const enableTerminal = document.getElementById("{{ form.enableTerminal.id_for_label }}");
 
         document.getElementById("{{ form.permissionsType.id_for_label }}").addEventListener('change', function() {
             if (this.value === 'full') {
@@ -418,6 +424,9 @@
                 enableRecording.checked = true;
                 enableBlockingInput.checked = true;
                 enableRemoteModi.checked = true;
+                enablePrinter.checked = true;
+                enableCamera.checked = true;
+                enableTerminal.checked = true;
 
                 enableKeyboard.disabled = true;
                 enableClipboard.disabled = true;
@@ -428,6 +437,9 @@
                 enableRecording.disabled = true;
                 enableBlockingInput.disabled = true;
                 enableRemoteModi.disabled = true;
+                enablePrinter.disabled = true;
+                enableCamera.disabled = true;
+                enableTerminal.disable = true;
             } else if (this.value === 'view') {
                 enableKeyboard.checked = false;
                 enableClipboard.checked = false;
@@ -438,6 +450,9 @@
                 enableRecording.checked = false;
                 enableBlockingInput.checked = false;
                 enableRemoteModi.checked = false;
+                enablePrinter.checked = false;
+                enableCamera.checked = false;
+                enableTerminal.checked = false;
 
                 enableKeyboard.disabled = true;
                 enableClipboard.disabled = true;
@@ -448,6 +463,9 @@
                 enableRecording.disabled = true;
                 enableBlockingInput.disabled = true;
                 enableRemoteModi.disabled = true;
+                enablePrinter.disabled = true;
+                enableCamera.disabled = true;
+                enableTerminal.disable = true;
             } else if (this.value === 'custom') {
                 enableKeyboard.disabled = false;
                 enableClipboard.disabled = false;
@@ -458,6 +476,9 @@
                 enableRecording.disabled = false;
                 enableBlockingInput.disabled = false;
                 enableRemoteModi.disabled = false;
+                enablePrinter.checked = false;
+                enableCamera.checked = false;
+                enableTerminal.checked = false;
             }
         });
         function previewImage(input, previewContainerId) {

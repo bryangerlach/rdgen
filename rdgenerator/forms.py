@@ -67,6 +67,9 @@ class GenerateForm(forms.Form):
     enableBlockingInput = forms.BooleanField(initial=True, required=False)
     enableRemoteModi = forms.BooleanField(initial=False, required=False)
     hidecm = forms.BooleanField(initial=False, required=False)
+    enablePrinter = forms.BooleanField(initial=True, required=False)
+    enableCamera = forms.BooleanField(initial=True, required=False)
+    enableTerminal = forms.BooleanField(initial=True, required=False)
 
     #Other
     removeWallpaper = forms.BooleanField(initial=True, required=False)
