@@ -10,6 +10,8 @@ services:
       GENURL: "accessible_url_of_server"
       PROTOCOL: "https"
       REPONAME: "rdgen"
+    volumes:
+      - ./config:/opt/rdgen/config
     ports:
       - "8000:8000"
     dns:
