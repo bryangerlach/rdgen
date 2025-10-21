@@ -27,9 +27,9 @@
   * PROTOCOL="https" *optional - defaults to "https", change to "http" if you need to
   * REPONAME="rdgen" *optional - defaults to "rdgen", change this if you renamed the repo when you forked it
 5. Copy the config/versions.json file from this project to the config directory, located in the same directory as docker-compose.yaml(edit the versions list if you want). The directory structure is as follows:
-  docker-compose.yaml
-  config/
-    |----versions.json
+  * docker-compose.yaml
+  * config/
+  *   |----versions.json
 6. Now just run ```docker compose up -d```
 
 
