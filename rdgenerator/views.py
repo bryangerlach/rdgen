@@ -54,7 +54,7 @@ def generator_view(request):
             permPass = form.cleaned_data['permanentPassword']
             theme = form.cleaned_data['theme']
             themeDorO = form.cleaned_data['themeDorO']
-            runasadmin = form.cleaned_data['runasadmin']
+            #runasadmin = form.cleaned_data['runasadmin']
             passApproveMode = form.cleaned_data['passApproveMode']
             denyLan = form.cleaned_data['denyLan']
             enableDirectIP = form.cleaned_data['enableDirectIP']
@@ -190,7 +190,7 @@ def generator_view(request):
             #github limits inputs to 10, so lump extras into one with json
             extras = {}
             extras['genurl'] = _settings.GENURL
-            extras['runasadmin'] = runasadmin
+            #extras['runasadmin'] = runasadmin
             extras['urlLink'] = urlLink
             extras['downloadLink'] = downloadLink
             extras['delayFix'] = 'true' if delayFix else 'false'

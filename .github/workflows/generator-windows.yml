@@ -430,15 +430,15 @@ jobs:
           sed -i -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
           sed -i '/let (request, url) =/,/Ok(())/{/Ok(())/!d}' ./src/common.rs
 
-      - name: run as admin
-        continue-on-error: true
-        if: ${{ fromJson(inputs.extras).runasadmin == 'true' }}
-        shell: bash
-        run: |
-          sed -i '/<\/compatibility>/a \
-                <security> \
-                  <requestedExecutionLevel level="requireAdministrator" uiAccess="false"/> \
-                </security>' ./flutter/windows/runner/runner.exe.manifest
+      # - name: run as admin
+      #   continue-on-error: true
+      #   if: ${{ fromJson(inputs.extras).runasadmin == 'true' }}
+      #   shell: bash
+      #   run: |
+      #     sed -i '/<\/compatibility>/a \
+      #           <security> \
+      #             <requestedExecutionLevel level="requireAdministrator" uiAccess="false"/> \
+      #           </security>' ./flutter/windows/runner/runner.exe.manifest
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1

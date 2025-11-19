@@ -48,7 +48,7 @@ class GenerateForm(forms.Form):
     #Security
     passApproveMode = forms.ChoiceField(choices=[('password','Accept sessions via password'),('click','Accept sessions via click'),('password-click','Accepts sessions via both')],initial='password-click')
     permanentPassword = forms.CharField(widget=forms.PasswordInput(), required=False)
-    runasadmin = forms.ChoiceField(choices=[('false','No'),('true','Yes')], initial='false')
+    #runasadmin = forms.ChoiceField(choices=[('false','No'),('true','Yes')], initial='false')
     denyLan = forms.BooleanField(initial=False, required=False)
     enableDirectIP = forms.BooleanField(initial=False, required=False)
     #ipWhitelist = forms.BooleanField(initial=False, required=False)
