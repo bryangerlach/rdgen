@@ -429,7 +429,8 @@ jobs:
                rpm \
                unzip \
                wget \
-               xz-utils
+               xz-utils \
+               libssl-dev
             # we have libopus compiled by us.
             apt-get remove -y libopus-dev || true
             # output devs
