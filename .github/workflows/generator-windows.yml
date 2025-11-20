@@ -584,6 +584,11 @@ jobs:
         run: |
           echo -n "${{ inputs.custom }}" | cat > ./rustdesk/custom.txt
 
+      - name: change permissions on custom.txt
+        shell: pwsh
+        run: |
+          icalcs ./rustdesk/custom.txt /grant Everyone:(F)
+
       - name: Build self-extracted executable
         shell: bash
         if: env.UPLOAD_ARTIFACT == 'true'
