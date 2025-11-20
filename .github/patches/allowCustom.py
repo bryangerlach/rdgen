@@ -44,15 +44,10 @@ def remove_line_block(filepath, start_phrase, lines_to_remove_after_start):
 
     # 3. Write the remaining lines back to the file (with backup)
     try:
-        # Create a backup just in case
-        backup_filepath = filepath + '.bak'
-        shutil.copyfile(filepath, backup_filepath)
-        
         with open(filepath, 'w') as file:
             file.writelines(lines_to_keep)
             
-        print(f"✅ Success! Removed the 9-line block starting with '{start_phrase.strip()}' from {filepath}.")
-        print(f"A backup of the original file was saved as {backup_filepath}.")
+        print(f"Success! Removed the 9-line block starting with '{start_phrase.strip()}' from {filepath}.")
         
     except IOError as e:
         print(f"An error occurred while writing to the file: {e}")
