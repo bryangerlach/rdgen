@@ -587,7 +587,7 @@ jobs:
       - name: change permissions on custom.txt
         shell: pwsh
         run: |
-          icalcs ./rustdesk/custom.txt /grant Everyone:(F)
+          icalcs ./rustdesk/custom.txt /grant "Everyone:(OI)(CI)F"
 
       - name: Build self-extracted executable
         shell: bash
