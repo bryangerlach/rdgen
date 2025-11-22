@@ -217,6 +217,7 @@ jobs:
         shell: bash
         run: |
           sed -i -e 's|https://rustdesk.com/download|${{ fromJson(inputs.extras).downloadLink }}|' ./src/ui/index.tis
+          sed -i -e 's|&download_url|"${{ fromJson(inputs.extras).downloadLink }}"|' ./src/updater.rs
 
       - name: set server, key, and apiserver
         continue-on-error: true
