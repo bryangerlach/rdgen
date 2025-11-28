@@ -20,12 +20,12 @@ on:
         type: string
       custom:
         description: "Custom JSON"
-        required: true
+        required: false
         default: ''
         type: string
       uuid:
         description: "uuid of request"
-        required: true
+        required: false
         default: ''
         type: string
       iconlink:
