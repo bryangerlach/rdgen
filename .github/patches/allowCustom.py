@@ -35,14 +35,15 @@ def remove_line_block(filepath, start_phrase, lines_to_remove_after_start):
                     # Note: We subtract 1 because the 'continue' will handle the first line removal immediately
                     continue 
 
-                # If we are not skipping, keep the line
+                # If we are not skipping, keep the line, but change custom.txt to custom_.txt
+                line = line.replace("custom.txt", "custom_.txt")
                 lines_to_keep.append(line)
                 
     except FileNotFoundError:
         print(f"Error: File not found at {filepath}")
         return
 
-    # 3. Write the remaining lines back to the file (with backup)
+    # 3. Write the remaining lines back to the file
     try:
         with open(filepath, 'w') as file:
             file.writelines(lines_to_keep)
