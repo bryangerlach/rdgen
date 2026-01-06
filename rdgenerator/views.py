@@ -50,6 +50,9 @@ def generator_view(request):
             compname = form.cleaned_data['compname']
             if not compname:
                 compname = "Purslane Ltd"
+            androidappid = form.cleaned_data['androidappid']
+            if not androidappid:
+                androidappid = "com.carriez.flutter_hbb"
             compname = compname.replace("&","\\&")
             permPass = form.cleaned_data['permanentPassword']
             theme = form.cleaned_data['theme']
@@ -200,6 +203,7 @@ def generator_view(request):
             extras['xOffline'] = 'true' if xOffline else 'false'
             extras['removeNewVersionNotif'] = 'true' if removeNewVersionNotif else 'false'
             extras['compname'] = compname
+            extras['androidappid'] = androidappid
             extra_input = json.dumps(extras)
 
             ####from here run the github action, we need user, repo, access token.

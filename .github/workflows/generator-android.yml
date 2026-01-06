@@ -363,6 +363,13 @@ jobs:
           sed -i -e "s|child: Text('rustdesk.com',|child: Text('${{ fromJson(inputs.extras).urlLink }}',|" ./flutter/lib/mobile/pages/settings_page.dart
           sed -i -e "s|https://rustdesk.com/privacy.html|${{ fromJson(inputs.extras).urlLink }}/privacy.html|" ./flutter/lib/desktop/pages/install_page.dart
 
+      - name: change app id to custom
+        if: fromJson(inputs.extras).androidappid != 'com.carriez.flutter_hbb'
+        continue-on-error: true
+        shell: bash
+        run: |
+          sed -i -e 's|com.carriez.flutter_hbb|fromJson(inputs.extras).androidappid|' ./flutter/android/app/build.gradle
+
       - name: change download link to custom
         if: fromJson(inputs.extras).downloadLink != 'https://rustdesk.com/download'
         continue-on-error: true
