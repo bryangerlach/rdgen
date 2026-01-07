@@ -368,7 +368,7 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          sed -i -e 's|com.carriez.flutter_hbb|fromJson(inputs.extras).androidappid|' ./flutter/android/app/build.gradle
+          sed -i -e 's|com.carriez.flutter_hbb|${{ fromJson(inputs.extras).androidappid }}|' ./flutter/android/app/build.gradle
 
       - name: change download link to custom
         if: fromJson(inputs.extras).downloadLink != 'https://rustdesk.com/download'

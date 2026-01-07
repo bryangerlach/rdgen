@@ -196,7 +196,9 @@ jobs:
           sed -i -e 's|"RustDesk"|"${{ inputs.appname }}"|' ./flutter/windows/runner/Runner.rc
           # ./src/lang/en.rs
           # change powered by rustdek to powered by compname
-          sed -i -e 's|Powered by RustDesk|Powered by ${{ fromJson(inputs.extras).compname }}|' ./src/lang/en.rs
+          if [ ! -z "${{ fromJson(inputs.extras).compname }}" ]; then
+            find ./src/lang -name "*.rs" -exec sed -i '/powered_by_me/s|RustDesk|${{ fromJson(inputs.extras).compname }}|g' {} \;
+          fi
           find ./src/lang -name "*.rs" -exec sed -i -e 's|RustDesk|${{ inputs.appname }}|' {} \;
 
       - name: fix registry if appname has a space
