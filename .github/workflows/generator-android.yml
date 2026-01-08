@@ -190,6 +190,11 @@ jobs:
                tree \
                wget
 
+      - name: Install dependencies
+        continue-on-error: true
+        run: |
+          sudo apt-get install -y potrace
+
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
