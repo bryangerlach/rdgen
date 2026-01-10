@@ -255,6 +255,9 @@ jobs:
           sed -i -e 's|https://rustdesk.com/download|${{ fromJson(inputs.extras).downloadLink }}|' ./flutter/lib/desktop/pages/desktop_home_page.dart
           sed -i -e 's|https://rustdesk.com/download|${{ fromJson(inputs.extras).downloadLink }}|' ./flutter/lib/mobile/pages/connection_page.dart
           sed -i -e 's|https://rustdesk.com/download|${{ fromJson(inputs.extras).downloadLink }}|' ./src/ui/index.tis
+          sed -i -e 's|&download_url|"${{ fromJson(inputs.extras).downloadLink }}"|' ./src/updater.rs
+          sed -i -e 's|get_download_file_from_url(.*)|get_download_file_from_url("${{ fromJson(inputs.extras).downloadLink }}")|g' ./src/flutter_ffi.rs
+          sed -i -e 's|let download_url = _value.clone()|let download_url = "${{ fromJson(inputs.extras).downloadLink }}".to_string()|' ./src/flutter_ffi.rs
 
       - name: set server, key, and apiserver
         continue-on-error: true
