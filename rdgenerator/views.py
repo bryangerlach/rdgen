@@ -15,6 +15,8 @@ from .forms import GenerateForm
 from .models import GithubRun
 from PIL import Image
 from urllib.parse import quote
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 
 def generator_view(request):
     if request.method == 'POST':
@@ -229,8 +231,6 @@ def generator_view(request):
                     "apiServer":apiServer,
                     "custom":encodedCustom,
                     "uuid":myuuid,
-                    #"iconbase64":iconbase64.decode("utf-8"),
-                    #"logobase64":logobase64.decode("utf-8") if logobase64 else "",
                     "iconlink":iconlink,
                     "logolink":logolink,
                     "appname":appname,
@@ -248,7 +248,7 @@ def generator_view(request):
             create_github_run(myuuid)
             response = requests.post(url, json=data, headers=headers)
             print(response)
-            if response.status_code == 204:
+            if response.status_code == 204 or response.status_code == 200:
                 return render(request, 'waiting.html', {'filename':filename, 'uuid':myuuid, 'status':"Starting generator...please wait", 'platform':platform})
             else:
                 return JsonResponse({"error": "Something went wrong"})

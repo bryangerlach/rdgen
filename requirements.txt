@@ -2,3 +2,4 @@ django
 requests
 pillow
 gunicorn
+cryptography>=42.0.0
