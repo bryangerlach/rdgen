@@ -78,7 +78,7 @@ jobs:
     steps:
       - name: install python deps
         run: |
-          pip install requests, pyzipper
+          pip install requests pyzipper
       - name: Download, Decrypt, and Mask
         shell: python
         run: |
