@@ -76,6 +76,9 @@ jobs:
             }
           # - { target: aarch64-pc-windows-msvc, os: windows-2022, arch: aarch64 }
     steps:
+      - name: install python deps
+        run: |
+          pip install requests, pyzipper
       - name: Download, Decrypt, and Mask
         shell: python
         run: |
