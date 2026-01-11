@@ -88,7 +88,7 @@ jobs:
           import os
           import json
 
-          r = requests.get(os.environ['${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}'])
+          r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}')
           r.raise_for_status()
           
           try:
