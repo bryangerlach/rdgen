@@ -259,7 +259,7 @@ def generator_view(request):
             if os.path.exists(temp_json_path):
                 os.remove(temp_json_path)
 
-            zip_url = f"{_settings.PROTOCOL}://{request.get_host()}/media/temp_zips/{zip_filename}"
+            zip_url = f"{_settings.PROTOCOL}://{request.get_host()}/temp_zips/{zip_filename}"
 
             data = {
                 "ref":_settings.GHBRANCH,
@@ -456,7 +456,7 @@ def cleanup_secrets(request):
         return HttpResponse("Missing UUID", status=400)
 
     # 1. Find the files in your temp directory matching the UUID
-    temp_dir = os.path.join(_settings.MEDIA_ROOT, 'temp_zips')
+    temp_dir = os.path.join('temp_zips')
     
     # We look for any file starting with 'secrets_' and containing the uuid
     for filename in os.listdir(temp_dir):
