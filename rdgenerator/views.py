@@ -246,7 +246,7 @@ def generator_view(request):
             temp_json_path = f"data_{uuid.uuid4()}.json"
             zip_filename = f"secrets_{uuid.uuid4()}.zip"
             zip_path = "temp_zips/%s" % (zip_filename)
-            Path("temp_zips").mkdir(parents=True, exists_ok=True)
+            Path("temp_zips").mkdir(parents=True, exist_ok=True)
 
             with open(temp_json_path, "w") as f:
                 json.dump(inputs_raw, f)
