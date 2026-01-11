@@ -1,6 +1,7 @@
 services:
   rdgen:
     # use bryangerlach/rdgen:latest for the latest build
+    #build: .
     image: bryangerlach/rdgen:latest
     restart: unless-stopped
     environment:
@@ -8,6 +9,8 @@ services:
       GHUSER: "github_username"
       GHBEARER: "github_access_token"
       GENURL: "accessible_url_of_server"
+      ZIP_PASSWORD: ""
+      GHBRANCH: "master"
       PROTOCOL: "https"
       REPONAME: "rdgen"
     ports:

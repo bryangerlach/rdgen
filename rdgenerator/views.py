@@ -9,14 +9,13 @@ import requests
 import base64
 import json
 import uuid
+import pyminizip
 from django.conf import settings as _settings
 from django.db.models import Q
 from .forms import GenerateForm
 from .models import GithubRun
 from PIL import Image
 from urllib.parse import quote
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
 
 def generator_view(request):
     if request.method == 'POST':
@@ -192,21 +191,20 @@ def generator_view(request):
             base64_bytes = base64.b64encode(string_bytes)
             encodedCustom = base64_bytes.decode("ascii")
 
-            #github limits inputs to 10, so lump extras into one with json
-            extras = {}
-            extras['genurl'] = _settings.GENURL
-            #extras['runasadmin'] = runasadmin
-            extras['urlLink'] = urlLink
-            extras['downloadLink'] = downloadLink
-            extras['delayFix'] = 'true' if delayFix else 'false'
-            extras['version'] = version
-            extras['rdgen'] = 'true'
-            extras['cycleMonitor'] = 'true' if cycleMonitor else 'false'
-            extras['xOffline'] = 'true' if xOffline else 'false'
-            extras['removeNewVersionNotif'] = 'true' if removeNewVersionNotif else 'false'
-            extras['compname'] = compname
-            extras['androidappid'] = androidappid
-            extra_input = json.dumps(extras)
+            # #github limits inputs to 10, so lump extras into one with json
+            # extras = {}
+            # extras['genurl'] = _settings.GENURL
+            # #extras['runasadmin'] = runasadmin
+            # extras['urlLink'] = urlLink
+            # extras['downloadLink'] = downloadLink
+            # extras['delayFix'] = 'true' if delayFix else 'false'
+            # extras['rdgen'] = 'true'
+            # extras['cycleMonitor'] = 'true' if cycleMonitor else 'false'
+            # extras['xOffline'] = 'true' if xOffline else 'false'
+            # extras['removeNewVersionNotif'] = 'true' if removeNewVersionNotif else 'false'
+            # extras['compname'] = compname
+            # extras['androidappid'] = androidappid
+            # extra_input = json.dumps(extras)
 
             ####from here run the github action, we need user, repo, access token.
             if platform == 'windows':
@@ -223,19 +221,46 @@ def generator_view(request):
                 url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-windows.yml/dispatches'
 
             #url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rustdesk/actions/workflows/test.yml/dispatches'  
+            inputs_raw = {
+                "server":server,
+                "key":key,
+                "apiServer":apiServer,
+                "custom":encodedCustom,
+                "uuid":myuuid,
+                "iconlink":iconlink,
+                "logolink":logolink,
+                "appname":appname,
+                "genurl":_settings.GENURL,
+                "urlLink":urlLink,
+                "downloadLink":downloadLink,
+                "delayFix": 'true' if delayFix else 'false',
+                "rdgen":'true',
+                "cycleMonitor": 'true' if cycleMonitor else 'false',
+                "xOffline": 'true' if xOffline else 'false',
+                "removeNewVersionNotif": 'true' if removeNewVersionNotif else 'false',
+                "compname": compname,
+                "androidappid":androidappid,
+                "filename":filename
+            }
+            temp_json = f"data_{uuid.uuid4()}.json"
+            with open(temp_json, "w") as f:
+                json.dump(inputs_raw, f)
+
+            zip_filename = f"secrets_{uuid.uuid4()}.zip"
+            zip_path = os.path.join(settings.MEDIA_ROOT, 'temp_zips', zip_filename)
+            os.makedirs(os.path.dirname(zip_path), exist_ok=True)
+
+            pyminizip.compress(temp_json, None, zip_path, settings.ZIP_PASSWORD, 5)
+
+            os.remove(temp_json)
+
+            zip_url = f"{settings.PROTOCOL}://{request.get_host()}/media/temp_zips/{zip_filename}"
+
             data = {
-                "ref":"master",
+                "ref":_settings.GHBRANCH,
                 "inputs":{
-                    "server":server,
-                    "key":key,
-                    "apiServer":apiServer,
-                    "custom":encodedCustom,
-                    "uuid":myuuid,
-                    "iconlink":iconlink,
-                    "logolink":logolink,
-                    "appname":appname,
-                    "extras":extra_input,
-                    "filename":filename
+                    "version":version,
+                    "zip_url":zip_url
                 }
             } 
             #print(data)
@@ -417,3 +442,25 @@ def save_custom_client(request):
             f.write(chunk)
 
     return HttpResponse("File saved successfully!")
+
+def cleanup_secrets(request):
+    # Pass the UUID as a query param or in JSON body
+    my_uuid = request.GET.get('uuid')
+    
+    if not my_uuid:
+        return HttpResponse("Missing UUID", status=400)
+
+    # 1. Find the files in your temp directory matching the UUID
+    temp_dir = os.path.join(_settings.MEDIA_ROOT, 'temp_zips')
+    
+    # We look for any file starting with 'secrets_' and containing the uuid
+    for filename in os.listdir(temp_dir):
+        if my_uuid in filename and filename.endswith('.zip'):
+            file_path = os.path.join(temp_dir, filename)
+            try:
+                os.remove(file_path)
+                print(f"Successfully deleted {file_path}")
+            except OSError as e:
+                print(f"Error deleting file: {e}")
+
+    return HttpResponse("Cleanup successful", status=200)
