@@ -76,24 +76,33 @@ jobs:
             }
           # - { target: aarch64-pc-windows-msvc, os: windows-2022, arch: aarch64 }
     steps:
-      - name: Download ZIP
-        run: |
-          Invoke-WebRequest -Uri ${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }} -OutFile ./secrets.zip 
-          unzip -P "${{ secrets.ZIP_PASSWORD }}" secrets.zip
-
-      - name: Decrypt json
+      - name: Download, Decrypt, and Mask
         shell: python
         run: |
-          import json, os
-          # Find the json file extracted from the zip
-          json_file = [f for f in os.listdir('.') if f.endswith('.json')][0]
-          with open(json_file) as f:
-              data = json.load(f)
+          import requests
+          import pyzipper
+          import io
+          import os
+          import json
+
+          r = requests.get(os.environ['${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}'])
+          r.raise_for_status()
           
+          try:
+              with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
+                  zf.setpassword(os.environ['${{ secrets.ZIP_PASSWORD }}'].encode())
+                  with zf.open('secrets.json') as f:
+                      secrets = json.load(f)
+          except Exception as e:
+              print(f"Error: Could not decrypt ZIP. Check if password matches. {e}")
+              exit(1)
+
           with open(os.environ['GITHUB_ENV'], 'a') as env_file:
-              for key, value in data.items():
+              for key, value in secrets.items():
                   print(f"::add-mask::{value}")
                   env_file.write(f"{key}={value}\n")
+          
+          print("Secrets loaded into environment.")
 
       - name: Finalize and Cleanup zip/json
         if: always() # Run even if previous steps fail
