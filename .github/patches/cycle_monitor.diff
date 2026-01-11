@@ -1,8 +1,8 @@
 diff --git a/flutter/lib/desktop/widgets/remote_toolbar.dart b/flutter/lib/desktop/widgets/remote_toolbar.dart
-index 839ea1a81..9cee52263 100644
+index bc3757f1e..ba6509802 100644
 --- a/flutter/lib/desktop/widgets/remote_toolbar.dart
 +++ b/flutter/lib/desktop/widgets/remote_toolbar.dart
-@@ -437,6 +437,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
+@@ -317,6 +317,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
              borderRadius: borderRadius,
              child: _DraggableShowHide(
                id: widget.id,
@@ -10,7 +10,7 @@ index 839ea1a81..9cee52263 100644
                sessionId: widget.ffi.sessionId,
                dragging: _dragging,
                fractionX: _fractionX,
-@@ -2234,6 +2235,7 @@ class RdoMenuButton<T> extends StatelessWidget {
+@@ -2460,6 +2461,7 @@ class RdoMenuButton<T> extends StatelessWidget {
  
  class _DraggableShowHide extends StatefulWidget {
    final String id;
@@ -18,7 +18,7 @@ index 839ea1a81..9cee52263 100644
    final SessionID sessionId;
    final RxDouble fractionX;
    final RxBool dragging;
-@@ -2246,6 +2248,7 @@ class _DraggableShowHide extends StatefulWidget {
+@@ -2472,6 +2474,7 @@ class _DraggableShowHide extends StatefulWidget {
    const _DraggableShowHide({
      Key? key,
      required this.id,
@@ -26,7 +26,7 @@ index 839ea1a81..9cee52263 100644
      required this.sessionId,
      required this.fractionX,
      required this.dragging,
-@@ -2357,6 +2360,7 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
+@@ -2583,6 +2586,7 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
        mainAxisSize: MainAxisSize.min,
        children: [
          _buildDraggable(context),
@@ -34,9 +34,9 @@ index 839ea1a81..9cee52263 100644
          Obx(() => buttonWrapper(
                () {
                  widget.setFullscreen(!isFullscreen.value);
-@@ -2463,3 +2467,50 @@ Widget _buildPointerTrackWidget(Widget child, FFI? ffi) {
-     ),
-   );
+@@ -2742,3 +2746,50 @@ class EdgeThicknessControl extends StatelessWidget {
+     return slider;
+   }
  }
 +
 +class _CycleMonitorMenu extends StatelessWidget {

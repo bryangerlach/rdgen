@@ -90,7 +90,26 @@
             transition: color 0.3s ease;
         }
         .platform-icon:hover, .platform-icon.active {
-            color: #fff;
+            color: #2e52f7;
+        }
+        .text-64 {
+            font-size: 0.5em; 
+            font-weight: bold;
+            bottom: -0.2em; 
+            right: -0.2em;
+            position: absolute; 
+            color: white;
+            transform: translate(-50%, -50%);
+        }
+
+        .text-32 {
+            font-size: 0.5em;
+            font-weight: bold;
+            bottom: -0.2em;
+            right: -0.2em;
+            position: absolute;
+            color: white;
+            transform: translate(-50%, -50%);
         }
         .checkbox-group {
             display: grid;
@@ -150,6 +169,58 @@
             border-radius: 4px;
             display: inline-block;
             margin-left: 10px;
+        }
+
+        .password-requirement {
+            display: none; /* Hidden by default */
+            color: orange;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .sponsor-button {
+            display: inline-flex;
+            align-items: center;
+            background: linear-gradient(135deg, #00457C 0%, #0079C1 100%);
+            color: white;
+            padding: 12px 28px;
+            border-radius: 50px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 69, 124, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            text-transform: uppercase;
+        }
+
+        .sponsor-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 69, 124, 0.3);
+            background: linear-gradient(135deg, #005AA7 0%, #0095EA 100%);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .sponsor-button i {
+            margin-right: 12px;
+            font-size: 20px;
+            background: white;
+            color: #00457C;
+            padding: 8px;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s ease;
+        }
+
+        .sponsor-button:hover i {
+            transform: rotate(360deg);
+            color: #0095EA;
+        }
       </style>
 </head>
 <body>
@@ -175,13 +246,21 @@
         <div class="platform">
             <h2><i class="fas fa-desktop"></i> Select Platform</h2>
                 <div class="platform-icons">
-                    <i class="fab fa-windows platform-icon active" data-platform="windows"></i>
+                    <span class="fa-stack fa-lg">
+                        <i class="fab fa-windows  fa-stack-2x platform-icon active" data-platform="windows"></i>
+                        <strong class="fa-stack-1x text-64">64</strong>
+                    </span>
+                    <span class="fa-stack fa-lg">
+                        <i class="fab fa-windows  fa-stack-2x platform-icon" data-platform="windows-x86"></i>
+                        <strong class="fa-stack-1x text-32">32</strong>
+                    </span>
                     <i class="fab fa-linux platform-icon" data-platform="linux"></i>
                     <i class="fab fa-android platform-icon" data-platform="android"></i>
                     <i class="fab fa-apple platform-icon" data-platform="macos"></i>
                 </div>
                 <select name="platform" id="id_platform">
-                    <option value="windows" selected>Windows</option>
+                    <option value="windows" selected>Windows 64Bit</option>
+                    <option value="windows-x86">Windows 32Bit</option>
                     <option value="linux">Linux</option>
                     <option value="android">Android</option>
                     <option value="macos">macOS</option>
@@ -208,6 +287,8 @@
                     {{ form.installation }}<br><br>
                     <label for="{{ form.settings.id_for_label }}">Disable Settings:</label>
                     {{ form.settings }}<br><br>
+                    <label for="{{ form.androidappid.id_for_label }}">Custom Android App ID (replaces 'com.carriez.flutter_hbb', leave blank to use default):</label>
+                    {{ form.androidappid }}<br><br>
             </div>
 
             <div class="section">
@@ -229,10 +310,9 @@
         <div class="container">
             <div class="section">
                 <h2><i class="fas fa-shield-alt"></i> Security</h2>
-                    <label for="{{ form.runasadmin.id_for_label }}">Always run as Administrator?</label>
-                    {{ form.runasadmin }}<br><br>
                     <label for="{{ form.passApproveMode.id_for_label }}">Password Approve mode:</label>
                     {{ form.passApproveMode }}<br><br>
+                    <div id="passwordRequirement" class="password-requirement">To use the hide connection window feature, please set a permanent password.</div>
                     <label for="{{ form.permanentPassword.id_for_label }}">Set Permanent Password:</label>
                     {{ form.permanentPassword }} *The password is used as default, but can be changed by the client<br><br>
                     
@@ -241,7 +321,9 @@
                     
                     <label for="{{ form.enableDirectIP.id_for_label }}">{{ form.enableDirectIP }} Enable direct IP access</label><br>
                     
-                    <label for="{{ form.autoClose.id_for_label }}">{{ form.autoClose }} Automatically close incoming sessions on user inactivity</label><br>  
+                    <label for="{{ form.autoClose.id_for_label }}">{{ form.autoClose }} Automatically close incoming sessions on user inactivity</label><br>
+
+                    <label for="{{ form.hidecm.id_for_label }}">{{ form.hidecm }} Allow hiding the connection window from remote screen.</label><br>
             </div>
         
             <div class="section">
@@ -263,7 +345,7 @@
         <div class="container">
             <div class="section">
                 <h2><i class="fas fa-lock"></i> Permissions</h2>
-                    The following Permissions can be set as default (the user can change the settins) or override (the settings cannot be changed).<br>
+                    The following Permissions can be set as default (the user can change the settings) or override (the settings cannot be changed).<br>
                     {{ form.permissionsDorO }}
                     <label for="{{ form.permissionsType.id_for_label }}">Permission type:</label>
                     {{ form.permissionsType }}<br><br>
@@ -277,17 +359,20 @@
                         <label for="{{ form.enableRecording.id_for_label }}">{{ form.enableRecording }} Enable recording session</label>
                         <label for="{{ form.enableBlockingInput.id_for_label }}">{{ form.enableBlockingInput }} Enable blocking user input</label>
                         <label for="{{ form.enableRemoteModi.id_for_label }}">{{ form.enableRemoteModi }} Enable remote configuration modification</label>
+                        <label for="{{ form.enablePrinter.id_for_label }}">{{ form.enablePrinter }} Enable remote printer</label>
+                        <label for="{{ form.enableCamera.id_for_label }}">{{ form.enableCamera }} Enable remote camera</label>
+                        <label for="{{ form.enableTerminal.id_for_label }}">{{ form.enableTerminal }} Enable remote terminal</label>
                     </div><br>
                 <h2><i class="fas fa-code"></i> Code Changes</h2>
                     <label for="{{ form.cycleMonitor.id_for_label }}">{{ form.cycleMonitor }} Add a button to cycle through available monitors to the minimized toolbar.</label><br>
                     <label for="{{ form.xOffline.id_for_label }}">{{ form.xOffline }} Display an X for offline devices in the addressbook.</label><br>
-                    <label for="{{ form.hidecm.id_for_label }}">{{ form.hidecm }} Allow hiding the connection window from remote screen.</label><br>
                     <label for="{{ form.removeNewVersionNotif.id_for_label }}">{{ form.removeNewVersionNotif }} Remove notification for new versions.</label><br>
             </div>
 
             <div class="section">
                 <h2><i class="fas fa-cog"></i> Other</h2>
                     <label for="{{ form.removeWallpaper.id_for_label }}">{{ form.removeWallpaper }} Remove wallpaper during incoming sessions</label><br>
+                    <a href="https://rustdesk.com/docs/en/self-host/client-configuration/advanced-settings/">Click here for a list of Default/Override settings</a>
                     <label for="{{ form.defaultManual.id_for_label }}">Default settings</label><br>
                     {{ form.defaultManual }}<br><br>
                     <label for="{{ form.overrideManual.id_for_label }}">Override settings</label><br>
@@ -297,9 +382,23 @@
         <div class="platform">
             <div class="section">
                 <button type="submit"><i class="fas fa-rocket"></i> Generate Custom Client</button>
-                <a href="https://github.com/bryangerlach/rdgen">Source Code on github</a>
-                <iframe src="https://github.com/sponsors/bryangerlach/button" title="Sponsor bryangerlach" height="32" width="114" style="border: 0; border-radius: 6px;"></iframe>
             </div>
+        </div>
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="https://github.com/bryangerlach/rdgen" 
+            target="_blank" 
+            class="sponsor-button">
+                <i class="fab fa-github"></i>
+                Source Code on Github
+            </a>
+        </div>
+        <div style="text-align: center; margin: 30px 0;">
+            <a href="https://github.com/sponsors/bryangerlach?o=esb"
+            target="_blank" 
+            class="sponsor-button">
+                <i class="fab fa-github"></i>
+                Donate
+            </a>
         </div>
     </form>
     <script>
@@ -315,6 +414,98 @@
         });
         document.getElementById("{{ form.logofile.id_for_label }}").addEventListener('change', function(event) {
             previewImage(event.target, 'logo-preview');
+        });
+
+        document.getElementById("{{ form.hidecm.id_for_label }}").addEventListener('change',function() {
+            if (this.checked) {
+                document.getElementById("passwordRequirement").style.display = 'block';
+                document.getElementById("{{ form.permanentPassword.id_for_label }}").focus();
+                document.getElementById("{{ form.passApproveMode.id_for_label }}").value = 'password';
+            } else {
+                document.getElementById("passwordRequirement").style.display = 'none';
+                document.getElementById("{{ form.passApproveMode.id_for_label }}").value = 'password-click';
+            }
+        });
+        const enableKeyboard = document.getElementById("{{ form.enableKeyboard.id_for_label }}");
+        const enableClipboard = document.getElementById("{{ form.enableClipboard.id_for_label }}");
+        const enableFileTransfer = document.getElementById("{{ form.enableFileTransfer.id_for_label }}");
+        const enableAudio = document.getElementById("{{ form.enableAudio.id_for_label }}");
+        const enableTCP = document.getElementById("{{ form.enableTCP.id_for_label }}");
+        const enableRemoteRestart = document.getElementById("{{ form.enableRemoteRestart.id_for_label }}");
+        const enableRecording = document.getElementById("{{ form.enableRecording.id_for_label }}");
+        const enableBlockingInput = document.getElementById("{{ form.enableBlockingInput.id_for_label }}");
+        const enableRemoteModi = document.getElementById("{{ form.enableRemoteModi.id_for_label }}");
+        const enablePrinter = document.getElementById("{{ form.enablePrinter.id_for_label }}");
+        const enableCamera = document.getElementById("{{ form.enableCamera.id_for_label }}");
+        const enableTerminal = document.getElementById("{{ form.enableTerminal.id_for_label }}");
+
+        document.getElementById("{{ form.permissionsType.id_for_label }}").addEventListener('change', function() {
+            if (this.value === 'full') {
+                enableKeyboard.checked = true;
+                enableClipboard.checked = true;
+                enableFileTransfer.checked = true;
+                enableAudio.checked = true;
+                enableTCP.checked = true;
+                enableRemoteRestart.checked = true;
+                enableRecording.checked = true;
+                enableBlockingInput.checked = true;
+                enableRemoteModi.checked = true;
+                enablePrinter.checked = true;
+                enableCamera.checked = true;
+                enableTerminal.checked = true;
+
+                enableKeyboard.disabled = true;
+                enableClipboard.disabled = true;
+                enableFileTransfer.disabled = true;
+                enableAudio.disabled = true;
+                enableTCP.disabled = true;
+                enableRemoteRestart.disabled = true;
+                enableRecording.disabled = true;
+                enableBlockingInput.disabled = true;
+                enableRemoteModi.disabled = true;
+                enablePrinter.disabled = true;
+                enableCamera.disabled = true;
+                enableTerminal.disable = true;
+            } else if (this.value === 'view') {
+                enableKeyboard.checked = false;
+                enableClipboard.checked = false;
+                enableFileTransfer.checked = false;
+                enableAudio.checked = false;
+                enableTCP.checked = false;
+                enableRemoteRestart.checked = false;
+                enableRecording.checked = false;
+                enableBlockingInput.checked = false;
+                enableRemoteModi.checked = false;
+                enablePrinter.checked = false;
+                enableCamera.checked = false;
+                enableTerminal.checked = false;
+
+                enableKeyboard.disabled = true;
+                enableClipboard.disabled = true;
+                enableFileTransfer.disabled = true;
+                enableAudio.disabled = true;
+                enableTCP.disabled = true;
+                enableRemoteRestart.disabled = true;
+                enableRecording.disabled = true;
+                enableBlockingInput.disabled = true;
+                enableRemoteModi.disabled = true;
+                enablePrinter.disabled = true;
+                enableCamera.disabled = true;
+                enableTerminal.disable = true;
+            } else if (this.value === 'custom') {
+                enableKeyboard.disabled = false;
+                enableClipboard.disabled = false;
+                enableFileTransfer.disabled = false;
+                enableAudio.disabled = false;
+                enableTCP.disabled = false;
+                enableRemoteRestart.disabled = false;
+                enableRecording.disabled = false;
+                enableBlockingInput.disabled = false;
+                enableRemoteModi.disabled = false;
+                enablePrinter.checked = false;
+                enableCamera.checked = false;
+                enableTerminal.checked = false;
+            }
         });
         function previewImage(input, previewContainerId) {
             if (input.files && input.files[0]) {

@@ -15,6 +15,8 @@ from .forms import GenerateForm
 from .models import GithubRun
 from PIL import Image
 from urllib.parse import quote
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
 
 def generator_view(request):
     if request.method == 'POST':
@@ -50,10 +52,14 @@ def generator_view(request):
             compname = form.cleaned_data['compname']
             if not compname:
                 compname = "Purslane Ltd"
+            androidappid = form.cleaned_data['androidappid']
+            if not androidappid:
+                androidappid = "com.carriez.flutter_hbb"
+            compname = compname.replace("&","\\&")
             permPass = form.cleaned_data['permanentPassword']
             theme = form.cleaned_data['theme']
             themeDorO = form.cleaned_data['themeDorO']
-            runasadmin = form.cleaned_data['runasadmin']
+            #runasadmin = form.cleaned_data['runasadmin']
             passApproveMode = form.cleaned_data['passApproveMode']
             denyLan = form.cleaned_data['denyLan']
             enableDirectIP = form.cleaned_data['enableDirectIP']
@@ -73,6 +79,9 @@ def generator_view(request):
             removeWallpaper = form.cleaned_data['removeWallpaper']
             defaultManual = form.cleaned_data['defaultManual']
             overrideManual = form.cleaned_data['overrideManual']
+            enablePrinter = form.cleaned_data['enablePrinter']
+            enableCamera = form.cleaned_data['enableCamera']
+            enableTerminal = form.cleaned_data['enableTerminal']
 
             if all(char.isascii() for char in filename):
                 filename = re.sub(r'[^\w\s-]', '_', filename).strip()
@@ -118,14 +127,18 @@ def generator_view(request):
                 decodedCustom['password'] = permPass
             if theme != "system":
                 if themeDorO == "default":
-                    decodedCustom['default-settings']['theme'] = theme
+                    if platform == "windows-x86":
+                        decodedCustom['default-settings']['allow-darktheme'] = 'Y' if theme == "dark" else 'N'
+                    else:
+                        decodedCustom['default-settings']['theme'] = theme
                 elif themeDorO == "override":
-                    decodedCustom['override-settings']['theme'] = theme
-            decodedCustom['approve-mode'] = passApproveMode
+                    if platform == "windows-x86":
+                        decodedCustom['override-settings']['allow-darktheme'] = 'Y' if theme == "dark" else 'N'
+                    else:
+                        decodedCustom['override-settings']['theme'] = theme
             decodedCustom['enable-lan-discovery'] = 'N' if denyLan else 'Y'
-            decodedCustom['direct-server'] = 'Y' if enableDirectIP else 'N'
+            #decodedCustom['direct-server'] = 'Y' if enableDirectIP else 'N'
             decodedCustom['allow-auto-disconnect'] = 'Y' if autoClose else 'N'
-            decodedCustom['allow-remove-wallpaper'] = 'Y' if removeWallpaper else 'N'
             if permissionsDorO == "default":
                 decodedCustom['default-settings']['access-mode'] = permissionsType
                 decodedCustom['default-settings']['enable-keyboard'] = 'Y' if enableKeyboard else 'N'
@@ -137,6 +150,14 @@ def generator_view(request):
                 decodedCustom['default-settings']['enable-record-session'] = 'Y' if enableRecording else 'N'
                 decodedCustom['default-settings']['enable-block-input'] = 'Y' if enableBlockingInput else 'N'
                 decodedCustom['default-settings']['allow-remote-config-modification'] = 'Y' if enableRemoteModi else 'N'
+                decodedCustom['default-settings']['direct-server'] = 'Y' if enableDirectIP else 'N'
+                decodedCustom['default-settings']['verification-method'] = 'use-permanent-password' if hidecm else 'use-both-passwords'
+                decodedCustom['default-settings']['approve-mode'] = passApproveMode
+                decodedCustom['default-settings']['allow-hide-cm'] = 'Y' if hidecm else 'N'
+                decodedCustom['default-settings']['allow-remove-wallpaper'] = 'Y' if removeWallpaper else 'N'
+                decodedCustom['default-settings']['enable-remote-printer'] = 'Y' if enablePrinter else 'N'
+                decodedCustom['default-settings']['enable-camera'] = 'Y' if enableCamera else 'N'
+                decodedCustom['default-settings']['enable-terminal'] = 'Y' if enableTerminal else 'N'
             else:
                 decodedCustom['override-settings']['access-mode'] = permissionsType
                 decodedCustom['override-settings']['enable-keyboard'] = 'Y' if enableKeyboard else 'N'
@@ -148,6 +169,14 @@ def generator_view(request):
                 decodedCustom['override-settings']['enable-record-session'] = 'Y' if enableRecording else 'N'
                 decodedCustom['override-settings']['enable-block-input'] = 'Y' if enableBlockingInput else 'N'
                 decodedCustom['override-settings']['allow-remote-config-modification'] = 'Y' if enableRemoteModi else 'N'
+                decodedCustom['override-settings']['direct-server'] = 'Y' if enableDirectIP else 'N'
+                decodedCustom['override-settings']['verification-method'] = 'use-permanent-password' if hidecm else 'use-both-passwords'
+                decodedCustom['override-settings']['approve-mode'] = passApproveMode
+                decodedCustom['override-settings']['allow-hide-cm'] = 'Y' if hidecm else 'N'
+                decodedCustom['override-settings']['allow-remove-wallpaper'] = 'Y' if removeWallpaper else 'N'
+                decodedCustom['override-settings']['enable-remote-printer'] = 'Y' if enablePrinter else 'N'
+                decodedCustom['override-settings']['enable-camera'] = 'Y' if enableCamera else 'N'
+                decodedCustom['override-settings']['enable-terminal'] = 'Y' if enableTerminal else 'N'
 
             for line in defaultManual.splitlines():
                 k, value = line.split('=')
@@ -166,7 +195,7 @@ def generator_view(request):
             #github limits inputs to 10, so lump extras into one with json
             extras = {}
             extras['genurl'] = _settings.GENURL
-            extras['runasadmin'] = runasadmin
+            #extras['runasadmin'] = runasadmin
             extras['urlLink'] = urlLink
             extras['downloadLink'] = downloadLink
             extras['delayFix'] = 'true' if delayFix else 'false'
@@ -174,16 +203,18 @@ def generator_view(request):
             extras['rdgen'] = 'true'
             extras['cycleMonitor'] = 'true' if cycleMonitor else 'false'
             extras['xOffline'] = 'true' if xOffline else 'false'
-            extras['hidecm'] = 'true' if hidecm else 'false'
             extras['removeNewVersionNotif'] = 'true' if removeNewVersionNotif else 'false'
             extras['compname'] = compname
+            extras['androidappid'] = androidappid
             extra_input = json.dumps(extras)
 
             ####from here run the github action, we need user, repo, access token.
             if platform == 'windows':
-                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-windows.yml/dispatches' 
+                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-windows.yml/dispatches'
+            if platform == 'windows-x86':
+                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-windows-x86.yml/dispatches'
             elif platform == 'linux':
-                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-linux.yml/dispatches'  
+                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-linux.yml/dispatches'
             elif platform == 'android':
                 url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-android.yml/dispatches'
             elif platform == 'macos':
@@ -200,8 +231,6 @@ def generator_view(request):
                     "apiServer":apiServer,
                     "custom":encodedCustom,
                     "uuid":myuuid,
-                    #"iconbase64":iconbase64.decode("utf-8"),
-                    #"logobase64":logobase64.decode("utf-8") if logobase64 else "",
                     "iconlink":iconlink,
                     "logolink":logolink,
                     "appname":appname,
@@ -219,12 +248,13 @@ def generator_view(request):
             create_github_run(myuuid)
             response = requests.post(url, json=data, headers=headers)
             print(response)
-            if response.status_code == 204:
+            if response.status_code == 204 or response.status_code == 200:
                 return render(request, 'waiting.html', {'filename':filename, 'uuid':myuuid, 'status':"Starting generator...please wait", 'platform':platform})
             else:
                 return JsonResponse({"error": "Something went wrong"})
     else:
         form = GenerateForm()
+    #return render(request, 'maintenance.html')
     return render(request, 'generator.html', {'form': form})
 
 

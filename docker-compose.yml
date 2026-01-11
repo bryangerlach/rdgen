@@ -1,7 +1,7 @@
 services:
   rdgen:
-    # use bryangerlach/rdgen:dev for the latest dev build
-    image: bryangerlach/rdgen:v0.3.1
+    # use bryangerlach/rdgen:latest for the latest build
+    image: bryangerlach/rdgen:latest
     restart: unless-stopped
     environment:
       SECRET_KEY: "django-insecure-!(t-!f#6g#sr%yfded9(xha)g+=!6craeez^cp+*&bz_7vdk61"

@@ -69,7 +69,8 @@ env:
   TAG_NAME: "${{ inputs.upload-tag }}"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   # vcpkg version: 2024.07.12
-  VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
+  VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
+  ARMV7_VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
   VERSION: "${{ fromJson(inputs.extras).version }}"
   NDK_VERSION: "r27c"
   #signing keys env variable checks
@@ -96,21 +97,21 @@ jobs:
           - {
               arch: aarch64,
               target: aarch64-linux-android,
-              os: ubuntu-20.04,
+              os: ubuntu-24.04,
               reltype: release,
               suffix: "",
             }
           - {
               arch: armv7,
               target: armv7-linux-androideabi,
-              os: ubuntu-20.04,
+              os: ubuntu-24.04,
               reltype: release,
               suffix: "",
             }
           - {
               arch: x86_64,
               target: x86_64-linux-android,
-              os: ubuntu-20.04,
+              os: ubuntu-24.04,
               reltype: release,
               suffix: "",
             }
@@ -145,6 +146,7 @@ jobs:
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
@@ -166,7 +168,8 @@ jobs:
                libayatana-appindicator3-dev \
                libasound2-dev \
                libc6-dev \
-               libclang-10-dev \
+               libclang-dev \
+               libunwind-dev \
                libgstreamer1.0-dev \
                libgstreamer-plugins-base1.0-dev \
                libgtk-3-dev \
@@ -179,13 +182,18 @@ jobs:
                libxcb-xfixes0-dev \
                libxdo-dev \
                libxfixes-dev \
-               llvm-10-dev \
+               llvm-dev \
                nasm \
                ninja-build \
                openjdk-17-jdk-headless \
                pkg-config \
                tree \
                wget
+
+      - name: Install dependencies
+        continue-on-error: true
+        run: |
+          sudo apt-get install -y potrace
 
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
@@ -228,19 +236,11 @@ jobs:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
           doNotCache: false
 
-      - name: Report Status
-        uses: fjogeleit/http-request-action@v1
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "15% complete"}'
-
       - name: Install vcpkg dependencies
         run: |
           case ${{ matrix.job.target }} in
             aarch64-linux-android)
-            ANDROID_TARGET=arm64-v8a
+              ANDROID_TARGET=arm64-v8a
             ;;
             armv7-linux-androideabi)
               ANDROID_TARGET=armeabi-v7a
@@ -365,7 +365,15 @@ jobs:
           sed -i -e "s|launchUrlString('https://rustdesk.com/privacy.html')|launchUrlString('${{ fromJson(inputs.extras).urlLink }}/privacy.html')|" ./flutter/lib/desktop/pages/desktop_setting_page.dart
           sed -i -e "s|const url = 'https://rustdesk.com/';|const url = '${{ fromJson(inputs.extras).urlLink }}';|" ./flutter/lib/mobile/pages/settings_page.dart
           sed -i -e "s|launchUrlString('https://rustdesk.com/privacy.html')|launchUrlString('${{ fromJson(inputs.extras).urlLink }}/privacy.html')|" ./flutter/lib/mobile/pages/settings_page.dart
+          sed -i -e "s|child: Text('rustdesk.com',|child: Text('${{ fromJson(inputs.extras).urlLink }}',|" ./flutter/lib/mobile/pages/settings_page.dart
           sed -i -e "s|https://rustdesk.com/privacy.html|${{ fromJson(inputs.extras).urlLink }}/privacy.html|" ./flutter/lib/desktop/pages/install_page.dart
+
+      - name: change app id to custom
+        if: fromJson(inputs.extras).androidappid != 'com.carriez.flutter_hbb'
+        continue-on-error: true
+        shell: bash
+        run: |
+          sed -i -e 's|com.carriez.flutter_hbb|${{ fromJson(inputs.extras).androidappid }}|' ./flutter/android/app/build.gradle
 
       - name: change download link to custom
         if: fromJson(inputs.extras).downloadLink != 'https://rustdesk.com/download'
@@ -389,7 +397,7 @@ jobs:
         if: ${{ fromJson(inputs.extras).delayFix == 'true' }}
         shell: bash
         run: |
-          sed -i -e '/if !key.is_empty() && !token.is_empty() {/,/}/d' ./src/client.rs
+          sed -i -e 's|!key.is_empty()|false|' ./src/client.rs
 
       - name: add cycle monitors to toolbar
         continue-on-error: true
@@ -417,9 +425,11 @@ jobs:
         if: fromJson(inputs.extras).removeNewVersionNotif == 'true'
         run: | 
           sed -i -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
+          sed -i '/let (request, url) =/,/Ok(())/{/Ok(())/!d}' ./src/common.rs
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
@@ -474,6 +484,7 @@ jobs:
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
@@ -495,6 +506,8 @@ jobs:
           JAVA_HOME: /usr/lib/jvm/java-17-openjdk-amd64
         run: |
           export PATH=/usr/lib/jvm/java-17-openjdk-amd64/bin:$PATH
+          # Increase Gradle JVM memory for CI builds
+          sed -i "s/org.gradle.jvmargs=-Xmx1024M/org.gradle.jvmargs=-Xmx2g/g" ./flutter/android/gradle.properties
           # temporary use debug sign config
           sed -i "s/signingConfigs.release/signingConfigs.debug/g" ./flutter/android/app/build.gradle
           case ${{ matrix.job.target }} in
@@ -502,8 +515,8 @@ jobs:
             mkdir -p ./flutter/android/app/src/main/jniLibs/arm64-v8a
             cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/aarch64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/
             cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/arm64-v8a/librustdesk.so
-            echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
-            #sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
+            echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom_.txt
+            #sed -i '/^    - assets\//a\    - assets/custom_.txt' ./flutter/pubspec.yaml
             # build flutter
             pushd flutter
             flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-arm64 --split-per-abi
@@ -513,8 +526,8 @@ jobs:
               mkdir -p ./flutter/android/app/src/main/jniLibs/armeabi-v7a
               cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/arm-linux-androideabi/libc++_shared.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/
               cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/armeabi-v7a/librustdesk.so
-              echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
-              #sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
+              echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom_.txt
+              #sed -i '/^    - assets\//a\    - assets/custom_.txt' ./flutter/pubspec.yaml
               # build flutter
               pushd flutter
               flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-arm --split-per-abi
@@ -524,8 +537,8 @@ jobs:
               mkdir -p ./flutter/android/app/src/main/jniLibs/x86_64
               cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/x86_64-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/x86_64/
               cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86_64/librustdesk.so
-              echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
-              #sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
+              echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom_.txt
+              #sed -i '/^    - assets\//a\    - assets/custom_.txt' ./flutter/pubspec.yaml
               # build flutter
               pushd flutter
               flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-x64 --split-per-abi
@@ -535,8 +548,8 @@ jobs:
               mkdir -p ./flutter/android/app/src/main/jniLibs/x86
               cp ${ANDROID_NDK_HOME}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/i686-linux-android/libc++_shared.so ./flutter/android/app/src/main/jniLibs/x86/
               cp ./target/${{ matrix.job.target }}/release/liblibrustdesk.so ./flutter/android/app/src/main/jniLibs/x86/librustdesk.so
-              echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom.txt
-              #sed -i '/^    - assets\//a\    - assets/custom.txt' ./flutter/pubspec.yaml
+              echo -n "${{ inputs.custom }}" | cat > ./flutter/assets/custom_.txt
+              #sed -i '/^    - assets\//a\    - assets/custom_.txt' ./flutter/pubspec.yaml
               # build flutter
               pushd flutter
               flutter build apk "--${{ matrix.job.reltype }}" --target-platform android-x86 --split-per-abi
@@ -550,6 +563,7 @@ jobs:
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
@@ -585,6 +599,7 @@ jobs:
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'

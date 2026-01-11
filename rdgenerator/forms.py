@@ -3,8 +3,8 @@ from PIL import Image
 
 class GenerateForm(forms.Form):
     #Platform
-    platform = forms.ChoiceField(choices=[('windows','Windows'),('linux','Linux (currently unavailable)'),('android','Android'),('macos','macOS')], initial='windows')
-    version = forms.ChoiceField(choices=[('master','nightly'),('1.3.8','1.3.8'),('1.3.7','1.3.7'),('1.3.6','1.3.6'),('1.3.5','1.3.5'),('1.3.4','1.3.4'),('1.3.3','1.3.3')], initial='1.3.8')
+    platform = forms.ChoiceField(choices=[('windows','Windows 64Bit'),('windows-x86','Windows 32Bit'),('linux','Linux'),('android','Android'),('macos','macOS')], initial='windows')
+    version = forms.ChoiceField(choices=[('master','nightly'),('1.4.5','1.4.5'),('1.4.4','1.4.4'),('1.4.3','1.4.3'),('1.4.2','1.4.2'),('1.4.1','1.4.1'),('1.4.0','1.4.0'),('1.3.9','1.3.9'),('1.3.8','1.3.8'),('1.3.7','1.3.7'),('1.3.6','1.3.6'),('1.3.5','1.3.5'),('1.3.4','1.3.4'),('1.3.3','1.3.3')], initial='1.4.5')
     help_text="'master' is the development version (nightly build) with the latest features but may be less stable"
     delayFix = forms.BooleanField(initial=True, required=False)
 
@@ -24,6 +24,7 @@ class GenerateForm(forms.Form):
         ('settingsY', 'No, enable settings'),
         ('settingsN', 'Yes, DISABLE settings')
     ], initial='settingsY')
+    androidappid = forms.CharField(label="Custom Android App ID (replaces 'com.carriez.flutter_hbb')", required=False)
 
     #Custom Server
     serverIP = forms.CharField(label="Host", required=False)
@@ -48,7 +49,7 @@ class GenerateForm(forms.Form):
     #Security
     passApproveMode = forms.ChoiceField(choices=[('password','Accept sessions via password'),('click','Accept sessions via click'),('password-click','Accepts sessions via both')],initial='password-click')
     permanentPassword = forms.CharField(widget=forms.PasswordInput(), required=False)
-    runasadmin = forms.ChoiceField(choices=[('false','No'),('true','Yes')], initial='false')
+    #runasadmin = forms.ChoiceField(choices=[('false','No'),('true','Yes')], initial='false')
     denyLan = forms.BooleanField(initial=False, required=False)
     enableDirectIP = forms.BooleanField(initial=False, required=False)
     #ipWhitelist = forms.BooleanField(initial=False, required=False)
@@ -66,6 +67,10 @@ class GenerateForm(forms.Form):
     enableRecording = forms.BooleanField(initial=True, required=False)
     enableBlockingInput = forms.BooleanField(initial=True, required=False)
     enableRemoteModi = forms.BooleanField(initial=False, required=False)
+    hidecm = forms.BooleanField(initial=False, required=False)
+    enablePrinter = forms.BooleanField(initial=True, required=False)
+    enableCamera = forms.BooleanField(initial=True, required=False)
+    enableTerminal = forms.BooleanField(initial=True, required=False)
 
     #Other
     removeWallpaper = forms.BooleanField(initial=True, required=False)
@@ -76,7 +81,6 @@ class GenerateForm(forms.Form):
     #custom added features
     cycleMonitor = forms.BooleanField(initial=False, required=False)
     xOffline = forms.BooleanField(initial=False, required=False)
-    hidecm = forms.BooleanField(initial=False, required=False)
     removeNewVersionNotif = forms.BooleanField(initial=False, required=False)
 
     def clean_iconfile(self):

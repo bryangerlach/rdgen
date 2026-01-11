@@ -129,17 +129,28 @@
             {% if platform == 'windows' %}
                 <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">Download {{filename}}.exe</a>
                 <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">Download {{filename}}.msi</a>
+            {% elif platform == 'windows-x86' %}
+                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">Download {{filename}}.exe</a>
             {% elif platform == 'linux' %}
-                <a href='/download?filename={{filename}}.deb&uuid={{uuid}}' class="download-link">Download {{filename}}.deb</a>
-                <a href='/download?filename={{filename}}.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}.rpm</a>
-                <a href='/download?filename={{filename}}-suse.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-suse.rpm</a>
-                <a href='/download?filename={{filename}}.pkg.tar.zst&uuid={{uuid}}' class="download-link">Download {{filename}}.pkg.tar.zst</a>
+                <a href='/download?filename={{filename}}-x86_64.deb&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.deb</a>
+                <a href='/download?filename={{filename}}-x86_64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.rpm</a>
+                <a href='/download?filename={{filename}}-suse-x86_64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-suse-x86_64.rpm</a>
+                <a href='/download?filename={{filename}}-x86_64.pkg.tar.zst&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.pkg.tar.zst</a>
+                <a href='/download?filename={{filename}}-aarch64.deb&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.deb</a>
+                <a href='/download?filename={{filename}}-aarch64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.rpm</a>
+                <a href='/download?filename={{filename}}-suse-aarch64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-suse-aarch64.rpm</a>
+                <a href='/download?filename={{filename}}-aarch64.pkg.tar.zst&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.pkg.tar.zst</a>
+                <a href='/download?filename={{filename}}-x86_64.AppImage&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.AppImage</a>
+                <a href='/download?filename={{filename}}-aarch64.AppImage&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.AppImage</a>
+                <a href='/download?filename={{filename}}-x86_64.flatpak&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.flatpak</a>
+                <a href='/download?filename={{filename}}-aarch64.flatpak&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.flatpak</a>
             {% elif platform == 'android' %}
                 <a href='/download?filename={{filename}}-aarch64.apk&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.apk</a>
                 <a href='/download?filename={{filename}}-x86_64.apk&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.apk</a>
                 <a href='/download?filename={{filename}}-armv7.apk&uuid={{uuid}}' class="download-link">Download {{filename}}-armv7.apk</a>
             {% elif platform == 'macos' %}
-                <a href='/download?filename={{filename}}.dmg&uuid={{uuid}}' class="download-link">Download {{filename}}.dmg</a>
+                <a href='/download?filename={{filename}}-x86_64.dmg&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.dmg</a>
+                <a href='/download?filename={{filename}}-aarch64.dmg&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.dmg</a>
             {% else %}
                 <p>Error: No file generated</p>
             {% endif %}
@@ -168,7 +179,7 @@
                 platformLogos.macos.style.display = 'block';
                 platformNote.textContent = 'Note: For macOS, you may need to adjust security settings to run the application.';
                 platformNote.style.display = 'block';
-            } else if (platform === 'windows') {
+            } else if (platform === 'windows' || platform === 'windows-x86') {
                 document.getElementById('pageTitle').textContent = 'Windows Build Generated';
                 platformLogos.windows.style.display = 'block';
                 platformNote.textContent = 'Note: You might need to disable SmartScreen or adjust Windows security settings.';
