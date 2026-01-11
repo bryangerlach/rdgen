@@ -9,7 +9,7 @@ import requests
 import base64
 import json
 import uuid
-import pyminizip
+import pyzipper
 from django.conf import settings as _settings
 from django.db.models import Q
 from .forms import GenerateForm
@@ -242,19 +242,24 @@ def generator_view(request):
                 "androidappid":androidappid,
                 "filename":filename
             }
-            temp_json = f"data_{uuid.uuid4()}.json"
-            with open(temp_json, "w") as f:
-                json.dump(inputs_raw, f)
 
+            temp_json_path = f"data_{uuid.uuid4()}.json"
             zip_filename = f"secrets_{uuid.uuid4()}.zip"
-            zip_path = os.path.join(settings.MEDIA_ROOT, 'temp_zips', zip_filename)
+            zip_path = os.path.join(_settings.MEDIA_ROOT, 'temp_zips', zip_filename)
             os.makedirs(os.path.dirname(zip_path), exist_ok=True)
 
-            pyminizip.compress(temp_json, None, zip_path, settings.ZIP_PASSWORD, 5)
+            with open(temp_json_path, "w") as f:
+                json.dump(inputs_raw, f)
 
-            os.remove(temp_json)
+            with pyzipper.AESZipFile(zip_path, 'w', compression=pyzipper.ZIP_LZMA, encryption=pyzipper.WZ_AES) as zf:
+                zf.setpassword(_settings.ZIP_PASSWORD.encode())
+                zf.write(temp_json_path, arcname="secrets.json")
 
-            zip_url = f"{settings.PROTOCOL}://{request.get_host()}/media/temp_zips/{zip_filename}"
+            # 4. Cleanup the plain JSON file immediately
+            if os.path.exists(temp_json_path):
+                os.remove(temp_json_path)
+
+            zip_url = f"{_settings.PROTOCOL}://{request.get_host()}/media/temp_zips/{zip_filename}"
 
             data = {
                 "ref":_settings.GHBRANCH,
