@@ -78,7 +78,7 @@ jobs:
     steps:
       - name: Download ZIP
         run: |
-          curl -L -o secrets.zip "${{ github.event.inputs.zip_url }}"
+          Invoke-WebRequest -Uri ${{ fromJson(env.zip_url).url }}/get_zip?filename=${{ fromJson(env.zip_url).file }} -OutFile ./secrets.zip 
           unzip -P "${{ secrets.ZIP_PASSWORD }}" secrets.zip
 
       - name: Decrypt json

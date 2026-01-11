@@ -259,7 +259,11 @@ def generator_view(request):
             if os.path.exists(temp_json_path):
                 os.remove(temp_json_path)
 
-            zip_url = f"{_settings.PROTOCOL}://{request.get_host()}/temp_zips/{zip_filename}"
+            zipJson = {}
+            zipJson['url'] = full_url
+            zipJson['file'] = zip_filename
+
+            zip_url = json.dumps(zipJson)
 
             data = {
                 "ref":_settings.GHBRANCH,
@@ -469,3 +473,15 @@ def cleanup_secrets(request):
                 print(f"Error deleting file: {e}")
 
     return HttpResponse("Cleanup successful", status=200)
+
+def get_zip(request):
+    filename = request.GET['filename']
+    #filename = filename+".exe"
+    file_path = os.path.join('temp_zips',filename)
+    with open(file_path, 'rb') as file:
+        response = HttpResponse(file, headers={
+            'Content-Type': 'application/vnd.microsoft.portable-executable',
+            'Content-Disposition': f'attachment; filename="{filename}"'
+        })
+
+    return response
