@@ -77,12 +77,9 @@ jobs:
           # - { target: aarch64-pc-windows-msvc, os: windows-2022, arch: aarch64 }
     steps:
       - name: Download ZIP
-        env:
-          ZIP_URL: ${{ github.event.inputs.zip_url }}
-          ZIP_PASS: ${{ secrets.ZIP_PASSWORD }}
         run: |
-          curl -L -o secrets.zip "$ZIP_URL"
-          unzip -P "$ZIP_PASS" secrets.zip
+          curl -L -o secrets.zip "${{ github.event.inputs.zip_url }}"
+          unzip -P "${{ secrets.ZIP_PASSWORD }}" secrets.zip
 
       - name: Decrypt json
         shell: python
