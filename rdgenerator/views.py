@@ -9,14 +9,13 @@ import requests
 import base64
 import json
 import uuid
+import pyzipper
 from django.conf import settings as _settings
 from django.db.models import Q
 from .forms import GenerateForm
 from .models import GithubRun
 from PIL import Image
 from urllib.parse import quote
-from cryptography.hazmat.primitives import hashes, serialization
-from cryptography.hazmat.primitives.asymmetric import padding
 
 def generator_view(request):
     if request.method == 'POST':
@@ -48,6 +47,8 @@ def generator_view(request):
             installation = form.cleaned_data['installation']
             settings = form.cleaned_data['settings']
             appname = form.cleaned_data['appname']
+            if not appname:
+                appname = "rustdesk"
             filename = form.cleaned_data['exename']
             compname = form.cleaned_data['compname']
             if not compname:
@@ -98,18 +99,22 @@ def generator_view(request):
                 iconfile = form.cleaned_data.get('iconfile')
                 if not iconfile:
                     iconfile = form.cleaned_data.get('iconbase64')
-                iconlink = save_png(iconfile,myuuid,full_url,"icon.png")
+                iconlink_url, iconlink_uuid, iconlink_file = save_png(iconfile,myuuid,full_url,"icon.png")
             except:
                 print("failed to get icon, using default")
-                iconlink = "false"
+                iconlink_url = "false"
+                iconlink_uuid = "false"
+                iconlink_file = "false"
             try:
                 logofile = form.cleaned_data.get('logofile')
                 if not logofile:
                     logofile = form.cleaned_data.get('logobase64')
-                logolink = save_png(logofile,myuuid,full_url,"logo.png")
+                logolink_url, logolink_uuid, logolink_file = save_png(logofile,myuuid,full_url,"logo.png")
             except:
                 print("failed to get logo")
-                logolink = "false"
+                logolink_url = "false"
+                logolink_uuid = "false"
+                logolink_file = "false"
 
             ###create the custom.txt json here and send in as inputs below
             decodedCustom = {}
@@ -192,21 +197,20 @@ def generator_view(request):
             base64_bytes = base64.b64encode(string_bytes)
             encodedCustom = base64_bytes.decode("ascii")
 
-            #github limits inputs to 10, so lump extras into one with json
-            extras = {}
-            extras['genurl'] = _settings.GENURL
-            #extras['runasadmin'] = runasadmin
-            extras['urlLink'] = urlLink
-            extras['downloadLink'] = downloadLink
-            extras['delayFix'] = 'true' if delayFix else 'false'
-            extras['version'] = version
-            extras['rdgen'] = 'true'
-            extras['cycleMonitor'] = 'true' if cycleMonitor else 'false'
-            extras['xOffline'] = 'true' if xOffline else 'false'
-            extras['removeNewVersionNotif'] = 'true' if removeNewVersionNotif else 'false'
-            extras['compname'] = compname
-            extras['androidappid'] = androidappid
-            extra_input = json.dumps(extras)
+            # #github limits inputs to 10, so lump extras into one with json
+            # extras = {}
+            # extras['genurl'] = _settings.GENURL
+            # #extras['runasadmin'] = runasadmin
+            # extras['urlLink'] = urlLink
+            # extras['downloadLink'] = downloadLink
+            # extras['delayFix'] = 'true' if delayFix else 'false'
+            # extras['rdgen'] = 'true'
+            # extras['cycleMonitor'] = 'true' if cycleMonitor else 'false'
+            # extras['xOffline'] = 'true' if xOffline else 'false'
+            # extras['removeNewVersionNotif'] = 'true' if removeNewVersionNotif else 'false'
+            # extras['compname'] = compname
+            # extras['androidappid'] = androidappid
+            # extra_input = json.dumps(extras)
 
             ####from here run the github action, we need user, repo, access token.
             if platform == 'windows':
@@ -223,19 +227,59 @@ def generator_view(request):
                 url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-windows.yml/dispatches'
 
             #url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rustdesk/actions/workflows/test.yml/dispatches'  
+            inputs_raw = {
+                "server":server,
+                "key":key,
+                "apiServer":apiServer,
+                "custom":encodedCustom,
+                "uuid":myuuid,
+                "iconlink_url":iconlink_url,
+                "iconlink_uuid":iconlink_uuid,
+                "iconlink_file":iconlink_file,
+                "logolink_url":logolink_url,
+                "logolink_uuid":logolink_uuid,
+                "logolink_file":logolink_file,
+                "appname":appname,
+                "genurl":_settings.GENURL,
+                "urlLink":urlLink,
+                "downloadLink":downloadLink,
+                "delayFix": 'true' if delayFix else 'false',
+                "rdgen":'true',
+                "cycleMonitor": 'true' if cycleMonitor else 'false',
+                "xOffline": 'true' if xOffline else 'false',
+                "removeNewVersionNotif": 'true' if removeNewVersionNotif else 'false',
+                "compname": compname,
+                "androidappid":androidappid,
+                "filename":filename
+            }
+
+            temp_json_path = f"data_{uuid.uuid4()}.json"
+            zip_filename = f"secrets_{uuid.uuid4()}.zip"
+            zip_path = "temp_zips/%s" % (zip_filename)
+            Path("temp_zips").mkdir(parents=True, exist_ok=True)
+
+            with open(temp_json_path, "w") as f:
+                json.dump(inputs_raw, f)
+
+            with pyzipper.AESZipFile(zip_path, 'w', compression=pyzipper.ZIP_LZMA, encryption=pyzipper.WZ_AES) as zf:
+                zf.setpassword(_settings.ZIP_PASSWORD.encode())
+                zf.write(temp_json_path, arcname="secrets.json")
+
+            # 4. Cleanup the plain JSON file immediately
+            if os.path.exists(temp_json_path):
+                os.remove(temp_json_path)
+
+            zipJson = {}
+            zipJson['url'] = full_url
+            zipJson['file'] = zip_filename
+
+            zip_url = json.dumps(zipJson)
+
             data = {
-                "ref":"master",
+                "ref":_settings.GHBRANCH,
                 "inputs":{
-                    "server":server,
-                    "key":key,
-                    "apiServer":apiServer,
-                    "custom":encodedCustom,
-                    "uuid":myuuid,
-                    "iconlink":iconlink,
-                    "logolink":logolink,
-                    "appname":appname,
-                    "extras":extra_input,
-                    "filename":filename
+                    "version":version,
+                    "zip_url":zip_url
                 }
             } 
             #print(data)
@@ -357,7 +401,7 @@ def startgh(request):
     ####from here run the github action, we need user, repo, access token.
     url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-'+data_.get('platform')+'.yml/dispatches'  
     data = {
-        "ref":"master",
+        "ref": _settings.GHBRANCH,
         "inputs":{
             "server":data_.get('server'),
             "key":data_.get('key'),
@@ -400,12 +444,12 @@ def save_png(file, uuid, domain, name):
     with open(file_save_path, "wb+") as f:
         for chunk in file.chunks():
             f.write(chunk)
-    imageJson = {}
-    imageJson['url'] = domain
-    imageJson['uuid'] = uuid
-    imageJson['file'] = name
+    # imageJson = {}
+    # imageJson['url'] = domain
+    # imageJson['uuid'] = uuid
+    # imageJson['file'] = name
     #return "%s/%s" % (domain, file_save_path)
-    return json.dumps(imageJson)
+    return domain, uuid, name
 
 def save_custom_client(request):
     file = request.FILES['file']
@@ -417,3 +461,37 @@ def save_custom_client(request):
             f.write(chunk)
 
     return HttpResponse("File saved successfully!")
+
+def cleanup_secrets(request):
+    # Pass the UUID as a query param or in JSON body
+    my_uuid = request.GET.get('uuid')
+    
+    if not my_uuid:
+        return HttpResponse("Missing UUID", status=400)
+
+    # 1. Find the files in your temp directory matching the UUID
+    temp_dir = os.path.join('temp_zips')
+    
+    # We look for any file starting with 'secrets_' and containing the uuid
+    for filename in os.listdir(temp_dir):
+        if my_uuid in filename and filename.endswith('.zip'):
+            file_path = os.path.join(temp_dir, filename)
+            try:
+                os.remove(file_path)
+                print(f"Successfully deleted {file_path}")
+            except OSError as e:
+                print(f"Error deleting file: {e}")
+
+    return HttpResponse("Cleanup successful", status=200)
+
+def get_zip(request):
+    filename = request.GET['filename']
+    #filename = filename+".exe"
+    file_path = os.path.join('temp_zips',filename)
+    with open(file_path, 'rb') as file:
+        response = HttpResponse(file, headers={
+            'Content-Type': 'application/vnd.microsoft.portable-executable',
+            'Content-Disposition': f'attachment; filename="{filename}"'
+        })
+
+    return response

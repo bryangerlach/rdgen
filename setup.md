@@ -20,10 +20,14 @@
    * Now click New repository secret
    * Set the Name to GENURL
    * Set the Secret to https://rdgen.hostname.com (or whatever your server will be accessed from)
+   * Now click New repository secret again
+   * Set the Name to ZIP_PASSWORD
+   * Set the Secret to any password you want (use this in the next step as well) - generate a password by running: ```python3 -c 'import secrets; print(secrets.token_hex(100))'```
 4. Now download the docker-compose.yml file and fill in the environment variables:
   * SECRET_KEY="your secret key" - generate a secret key by running: ```python3 -c 'import secrets; print(secrets.token_hex(100))'```
   * GHUSER="your github username"  
   * GHBEARER="your fine-grained access token"  
+  * ZIP_PASSWORD="the same password that you entered as a github secret"
   * PROTOCOL="https" *optional - defaults to "https", change to "http" if you need to
   * REPONAME="rdgen" *optional - defaults to "rdgen", change this if you renamed the repo when you forked it
 5. Now just run ```docker compose up -d```

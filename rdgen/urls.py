@@ -32,4 +32,5 @@ urlpatterns = [
     url(r'^startgh',views.startgh),
     url(r'^get_png',views.get_png),
     url(r'^save_custom_client',views.save_custom_client),
+    url(r'^get_zip',views.get_zip),
 ]
