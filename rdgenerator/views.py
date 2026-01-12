@@ -47,6 +47,8 @@ def generator_view(request):
             installation = form.cleaned_data['installation']
             settings = form.cleaned_data['settings']
             appname = form.cleaned_data['appname']
+            if not appname:
+                appname = "rustdesk"
             filename = form.cleaned_data['exename']
             compname = form.cleaned_data['compname']
             if not compname:
