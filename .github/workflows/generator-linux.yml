@@ -84,8 +84,19 @@ jobs:
           import os
           import json
 
-          r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}')
-          r.raise_for_status()
+          for attempt in range(5):
+            try:
+              print(f"Downloading secrets (Attempt {attempt + 1})...")
+              r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}', timeout=60)
+              r.raise_for_status()
+              break
+            except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
+              if attempt < 4:
+                print(f"Timeout/Error occurred: {e}. Retrying in 5 seconds...")
+                time.sleep(5)
+              else:
+                print("Max retries reached. Failing.")
+                raise e
           
           try:
               with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
@@ -665,8 +676,19 @@ jobs:
           import os
           import json
 
-          r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}')
-          r.raise_for_status()
+          for attempt in range(5):
+            try:
+              print(f"Downloading secrets (Attempt {attempt + 1})...")
+              r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}', timeout=60)
+              r.raise_for_status()
+              break
+            except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
+              if attempt < 4:
+                print(f"Timeout/Error occurred: {e}. Retrying in 5 seconds...")
+                time.sleep(5)
+              else:
+                print("Max retries reached. Failing.")
+                raise e
           
           try:
               with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
@@ -771,8 +793,19 @@ jobs:
           import os
           import json
 
-          r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}')
-          r.raise_for_status()
+          for attempt in range(5):
+            try:
+              print(f"Downloading secrets (Attempt {attempt + 1})...")
+              r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}', timeout=60)
+              r.raise_for_status()
+              break
+            except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
+              if attempt < 4:
+                print(f"Timeout/Error occurred: {e}. Retrying in 5 seconds...")
+                time.sleep(5)
+              else:
+                print("Max retries reached. Failing.")
+                raise e
           
           try:
               with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
@@ -876,8 +909,19 @@ jobs:
           import os
           import json
 
-          r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}')
-          r.raise_for_status()
+          for attempt in range(5):
+            try:
+              print(f"Downloading secrets (Attempt {attempt + 1})...")
+              r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}', timeout=60)
+              r.raise_for_status()
+              break
+            except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
+              if attempt < 4:
+                print(f"Timeout/Error occurred: {e}. Retrying in 5 seconds...")
+                time.sleep(5)
+              else:
+                print("Max retries reached. Failing.")
+                raise e
           
           try:
               with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
