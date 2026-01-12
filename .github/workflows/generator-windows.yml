@@ -389,7 +389,7 @@ jobs:
 
 
       - name: ui.rs icon
-        if: ${{ env.iconlink != 'false' }}
+        if: ${{ env.iconlink_url != 'false' }}
         continue-on-error: true
         shell: bash
         run: |
@@ -447,7 +447,7 @@ jobs:
           data: '{"uuid": "${{ env.uuid }}", "status": "25% complete"}'
 
       - name: replace flutter icons
-        if: ${{ env.iconlink != 'false' }}
+        if: ${{ env.iconlink_url != 'false' }}
         continue-on-error: true
         run: |
           cd ./flutter
@@ -506,7 +506,7 @@ jobs:
           }
 
       - name: icon stuff
-        if: ${{ env.iconlink != 'false' }}
+        if: ${{ env.iconlink_url != 'false' }}
         continue-on-error: true
         run: |
           mv ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
