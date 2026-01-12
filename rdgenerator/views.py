@@ -97,18 +97,22 @@ def generator_view(request):
                 iconfile = form.cleaned_data.get('iconfile')
                 if not iconfile:
                     iconfile = form.cleaned_data.get('iconbase64')
-                iconlink = save_png(iconfile,myuuid,full_url,"icon.png")
+                iconlink_url, iconlink_uuid, iconlink_file = save_png(iconfile,myuuid,full_url,"icon.png")
             except:
                 print("failed to get icon, using default")
-                iconlink = "false"
+                iconlink_url = "false"
+                iconlink_uuid = "false"
+                iconlink_file = "false"
             try:
                 logofile = form.cleaned_data.get('logofile')
                 if not logofile:
                     logofile = form.cleaned_data.get('logobase64')
-                logolink = save_png(logofile,myuuid,full_url,"logo.png")
+                logolink_url, logolink_uuid, logolink_file = save_png(logofile,myuuid,full_url,"logo.png")
             except:
                 print("failed to get logo")
-                logolink = "false"
+                logolink_url = "false"
+                logolink_uuid = "false"
+                logolink_file = "false"
 
             ###create the custom.txt json here and send in as inputs below
             decodedCustom = {}
@@ -227,8 +231,12 @@ def generator_view(request):
                 "apiServer":apiServer,
                 "custom":encodedCustom,
                 "uuid":myuuid,
-                "iconlink":iconlink,
-                "logolink":logolink,
+                "iconlink_url":iconlink_url,
+                "iconlink_uuid":iconlink_uuid,
+                "iconlink_file":iconlink_file,
+                "logolink_url":logolink_url,
+                "logolink_uuid":logolink_uuid,
+                "logolink_file":logolink_file,
                 "appname":appname,
                 "genurl":_settings.GENURL,
                 "urlLink":urlLink,
@@ -434,12 +442,12 @@ def save_png(file, uuid, domain, name):
     with open(file_save_path, "wb+") as f:
         for chunk in file.chunks():
             f.write(chunk)
-    imageJson = {}
-    imageJson['url'] = domain
-    imageJson['uuid'] = uuid
-    imageJson['file'] = name
+    # imageJson = {}
+    # imageJson['url'] = domain
+    # imageJson['uuid'] = uuid
+    # imageJson['file'] = name
     #return "%s/%s" % (domain, file_save_path)
-    return json.dumps(imageJson)
+    return domain, uuid, name
 
 def save_custom_client(request):
     file = request.FILES['file']

@@ -368,10 +368,10 @@ jobs:
         shell: bash
           
       - name: magick stuff
-        if: ${{ env.iconlink != 'false' }}
+        if: ${{ env.iconlink_url != 'false' }}
         continue-on-error: true
         run: |
-          Invoke-WebRequest -Uri ${{ fromJson(env.iconlink).url }}/get_png?filename=${{ fromJson(env.iconlink).file }}"&"uuid=${{ fromJson(env.iconlink).uuid }} -OutFile ./res/iconx.png 
+          Invoke-WebRequest -Uri ${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}"&"uuid=${{ env.iconlink_uuid }} -OutFile ./res/iconx.png 
           mv ./res/icon.ico ./res/icon.ico.bak
           mv ./res/icon.png ./res/icon.png.bak
           mv ./res/tray-icon.ico ./res/tray-icon.ico.bak
@@ -513,10 +513,10 @@ jobs:
           magick ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
 
       - name: logo stuff
-        if: ${{ env.logolink != 'false' }}
+        if: ${{ env.logolink_url != 'false' }}
         continue-on-error: true
         run: |
-          Invoke-WebRequest -Uri ${{ fromJson(env.logolink).url }}/get_png?filename=${{ fromJson(env.logolink).file }}"&"uuid=${{ fromJson(env.logolink).uuid }} -OutFile ./rustdesk/data/flutter_assets/assets/logo.png
+          Invoke-WebRequest -Uri ${{ env.logolink_url }}/get_png?filename=${{ env.logolink_file }}"&"uuid=${{ env.logolink_uuid }} -OutFile ./rustdesk/data/flutter_assets/assets/logo.png
 
       - name: find Runner.res
         # Windows: find Runner.res (compiled from ./flutter/windows/runner/Runner.rc), copy to ./Runner.res
