@@ -93,7 +93,7 @@ jobs:
           
           try:
               with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
-                  zf.setpassword(os.environ['${{ secrets.ZIP_PASSWORD }}'].encode())
+                  zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
                   with zf.open('secrets.json') as f:
                       secrets = json.load(f)
           except Exception as e:
