@@ -88,27 +88,27 @@ jobs:
           r.raise_for_status()
           
           try:
-              with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
-                  zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
-                  with zf.open('secrets.json') as f:
-                      secrets = json.load(f)
+            with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
+              zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
+              with zf.open('secrets.json') as f:
+                secrets = json.load(f)
           except Exception as e:
-              print(f"Error: Could not decrypt ZIP. Check if password matches. {e}")
-              exit(1)
+            print(f"Error: Could not decrypt ZIP. Check if password matches. {e}")
+            exit(1)
 
           with open(os.environ['GITHUB_ENV'], 'a') as env_file:
-              for key, value in secrets.items():
-                  print(f"::add-mask::{value}")
-                  env_file.write(f"{key}={value}\n")
+            for key, value in secrets.items():
+              print(f"::add-mask::{value}")
+              env_file.write(f"{key}={value}\n")
           
             api_server = secrets.get('apiServer', '').strip()
             api_server = api_server.rstrip('/')
 
             rdgen_value = str(secrets.get('rdgen', 'false')).lower()    
             if rdgen_value == "true":
-                status_url = "${{ secrets.GENURL }}/updategh"
+              status_url = "${{ secrets.GENURL }}/updategh"
             else:
-                status_url = f"{api_server}/api/updategh"
+              status_url = f"{api_server}/api/updategh"
             env_file.write(f"STATUS_URL={status_url}\n")
 
           print("Secrets loaded into environment.")

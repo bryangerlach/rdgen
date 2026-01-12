@@ -99,18 +99,18 @@ jobs:
                 raise e
           
           try:
-              with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
-                  zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
-                  with zf.open('secrets.json') as f:
-                      secrets = json.load(f)
+            with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
+              zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
+              with zf.open('secrets.json') as f:
+                secrets = json.load(f)
           except Exception as e:
-              print(f"Error: Could not decrypt ZIP. Check if password matches. {e}")
-              exit(1)
+            print(f"Error: Could not decrypt ZIP. Check if password matches. {e}")
+            exit(1)
 
           with open(os.environ['GITHUB_ENV'], 'a') as env_file:
-              for key, value in secrets.items():
-                  print(f"::add-mask::{value}")
-                  env_file.write(f"{key}={value}\n")
+            for key, value in secrets.items():
+              print(f"::add-mask::{value}")
+              env_file.write(f"{key}={value}\n")
           
           print("Secrets loaded into environment.")
 
@@ -691,18 +691,18 @@ jobs:
                 raise e
           
           try:
-              with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
-                  zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
-                  with zf.open('secrets.json') as f:
-                      secrets = json.load(f)
+            with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
+              zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
+              with zf.open('secrets.json') as f:
+                secrets = json.load(f)
           except Exception as e:
-              print(f"Error: Could not decrypt ZIP. Check if password matches. {e}")
-              exit(1)
+            print(f"Error: Could not decrypt ZIP. Check if password matches. {e}")
+            exit(1)
 
           with open(os.environ['GITHUB_ENV'], 'a') as env_file:
-              for key, value in secrets.items():
-                  print(f"::add-mask::{value}")
-                  env_file.write(f"{key}={value}\n")
+            for key, value in secrets.items():
+              print(f"::add-mask::{value}")
+              env_file.write(f"{key}={value}\n")
           
           print("Secrets loaded into environment.")
 
@@ -808,18 +808,18 @@ jobs:
                 raise e
           
           try:
-              with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
-                  zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
-                  with zf.open('secrets.json') as f:
-                      secrets = json.load(f)
+            with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
+              zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
+              with zf.open('secrets.json') as f:
+                secrets = json.load(f)
           except Exception as e:
-              print(f"Error: Could not decrypt ZIP. Check if password matches. {e}")
-              exit(1)
+            print(f"Error: Could not decrypt ZIP. Check if password matches. {e}")
+            exit(1)
 
           with open(os.environ['GITHUB_ENV'], 'a') as env_file:
-              for key, value in secrets.items():
-                  print(f"::add-mask::{value}")
-                  env_file.write(f"{key}={value}\n")
+            for key, value in secrets.items():
+              print(f"::add-mask::{value}")
+              env_file.write(f"{key}={value}\n")
           
           print("Secrets loaded into environment.")
 
@@ -924,18 +924,18 @@ jobs:
                 raise e
           
           try:
-              with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
-                  zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
-                  with zf.open('secrets.json') as f:
-                      secrets = json.load(f)
+            with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
+              zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
+              with zf.open('secrets.json') as f:
+                secrets = json.load(f)
           except Exception as e:
-              print(f"Error: Could not decrypt ZIP. Check if password matches. {e}")
-              exit(1)
+            print(f"Error: Could not decrypt ZIP. Check if password matches. {e}")
+            exit(1)
 
           with open(os.environ['GITHUB_ENV'], 'a') as env_file:
-              for key, value in secrets.items():
-                  print(f"::add-mask::{value}")
-                  env_file.write(f"{key}={value}\n")
+            for key, value in secrets.items():
+              print(f"::add-mask::{value}")
+              env_file.write(f"{key}={value}\n")
           
           print("Secrets loaded into environment.")
 
