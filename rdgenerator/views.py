@@ -464,7 +464,8 @@ def save_custom_client(request):
 
 def cleanup_secrets(request):
     # Pass the UUID as a query param or in JSON body
-    my_uuid = request.POST.get('uuid')
+    data = json.loads(request.body)
+    my_uuid = data.get('uuid')
     
     if not my_uuid:
         return HttpResponse("Missing UUID", status=400)
