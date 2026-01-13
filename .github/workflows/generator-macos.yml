@@ -115,9 +115,10 @@ jobs:
 
       - name: Finalize and Cleanup zip/json
         if: always() # Run even if previous steps fail
+        continue-on-error: true
         uses: fjogeleit/http-request-action@v1
         with:
-          url: ${{ env.STATUS_URL }}
+          url: "${{ secrets.GENURL }}/cleanzip"
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ env.uuid }}"}'
