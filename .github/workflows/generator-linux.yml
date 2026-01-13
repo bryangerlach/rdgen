@@ -83,6 +83,7 @@ jobs:
           import io
           import os
           import json
+          import time
 
           for attempt in range(5):
             try:
@@ -675,6 +676,7 @@ jobs:
           import io
           import os
           import json
+          import time
 
           for attempt in range(5):
             try:
@@ -792,6 +794,7 @@ jobs:
           import io
           import os
           import json
+          import time
 
           for attempt in range(5):
             try:
@@ -908,6 +911,7 @@ jobs:
           import io
           import os
           import json
+          import time
 
           for attempt in range(5):
             try:
