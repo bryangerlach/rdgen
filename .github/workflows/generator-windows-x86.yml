@@ -48,7 +48,7 @@ env:
 jobs:
   build-for-windows-sciter:
     name: ${{ matrix.job.target }} (${{ matrix.job.os }})
-    runs-on: ${{ matrix.job.os }}
+    runs-on: self-hosted
     # Temporarily disable this action due to additional test is needed.
     # if: false
     strategy:
