@@ -87,23 +87,35 @@ jobs:
           import io
           import os
           import json
+          import time
 
-          r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}')
-          r.raise_for_status()
+          for attempt in range(5):
+            try:
+              print(f"Downloading secrets (Attempt {attempt + 1})...")
+              r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}', timeout=60)
+              r.raise_for_status()
+              break
+            except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
+              if attempt < 4:
+                print(f"Timeout/Error occurred: {e}. Retrying in 5 seconds...")
+                time.sleep(5)
+              else:
+                print("Max retries reached. Failing.")
+                raise e
           
           try:
-              with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
-                  zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
-                  with zf.open('secrets.json') as f:
-                      secrets = json.load(f)
+            with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
+              zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
+              with zf.open('secrets.json') as f:
+                secrets = json.load(f)
           except Exception as e:
-              print(f"Error: Could not decrypt ZIP. Check if password matches. {e}")
-              exit(1)
+            print(f"Error: Could not decrypt ZIP. Check if password matches. {e}")
+            exit(1)
 
           with open(os.environ['GITHUB_ENV'], 'a') as env_file:
-              for key, value in secrets.items():
-                  print(f"::add-mask::{value}")
-                  env_file.write(f"{key}={value}\n")
+            for key, value in secrets.items():
+              print(f"::add-mask::{value}")
+              env_file.write(f"{key}={value}\n")
           
           print("Secrets loaded into environment.")
 
