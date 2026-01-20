@@ -213,6 +213,7 @@ jobs:
             find ./src/lang -name "*.rs" -exec sed -i '/powered_by_me/s|RustDesk|${{ env.compname }}|g' {} \;
           fi
           find ./src/lang -name "*.rs" -exec sed -i -e 's|RustDesk|${{ env.appname }}|' {} \;
+          sed -i -e 's|RustDesk|${{ env.appname }}|' ./res/msi/Package/License.rtf
 
       - name: fix registry if appname has a space
         if: contains(env.appname, ' ')
@@ -246,6 +247,7 @@ jobs:
           sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./flutter/windows/runner/Runner.rc
           sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./Cargo.toml
           sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./libs/portable/Cargo.toml
+          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./res/msi/Package/License.rtf
              
       - name: change url to custom
         if: env.urlLink != 'https://rustdesk.com'
@@ -259,6 +261,7 @@ jobs:
           sed -i -e "s|const url = 'https://rustdesk.com/';|const url = '${{ env.urlLink }}';|" ./flutter/lib/mobile/pages/settings_page.dart
           sed -i -e "s|launchUrlString('https://rustdesk.com/privacy.html')|launchUrlString('${{ env.urlLink }}/privacy.html')|" ./flutter/lib/mobile/pages/settings_page.dart
           sed -i -e "s|https://rustdesk.com/privacy.html|${{ env.urlLink }}/privacy.html|" ./flutter/lib/desktop/pages/install_page.dart
+          sed -i -e "s|rustdesk.com|${{ env.urlLink }}|" ./res/msi/Package/License.rtf
 
       - name: change download link to custom
         if: env.downloadLink != 'https://rustdesk.com/download'
