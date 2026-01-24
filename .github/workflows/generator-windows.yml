@@ -374,6 +374,13 @@ jobs:
           mv ./res/icon.png ./res/icon.png.bak
           mv ./res/tray-icon.ico ./res/tray-icon.ico.bak
 
+      - name: create default tray icon
+        if: ${{ inputs.iconlink == 'false' }}
+        continue-on-error: true
+        shell: bash
+        run: |
+          cp ./res/icon.ico ./res/tray-icon.ico
+
       - name: magick stuff
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
@@ -407,6 +414,33 @@ jobs:
         shell: bash
         run: |
           sed -i -e 's|!key.is_empty()|false|' ./src/client.rs
+
+      - name: remove unused import Sub
+        continue-on-error: true
+        shell: bash
+        run: |
+          sed -i -e 's|ops::{Deref, DerefMut, Sub},|ops::{Deref, DerefMut},|' ./src/server/input_service.rs
+
+      - name: remove other unused imports
+        continue-on-error: true
+        shell: bash
+        run: |
+          sed -i '/input::{MOUSE_BUTTON_LEFT, MOUSE_TYPE_DOWN, MOUSE_TYPE_UP, MOUSE_TYPE_WHEEL}/d' ./src/ui_session_interface.rs
+
+      - name: fix deprecated whoami::hostname
+        continue-on-error: true
+        shell: bash
+        run: |
+          sed -i 's/whoami::hostname()/whoami::fallible::hostname().unwrap_or_default()/g' ./src/server/connection.rs
+          sed -i 's/whoami::hostname()/whoami::fallible::hostname().unwrap_or_default()/g' ./src/lan.rs
+          sed -i 's/whoami::hostname()/whoami::fallible::hostname().unwrap_or_default()/g' ./src/common.rs
+
+      - name: fix deprecated hbb_common::base64::encode
+        continue-on-error: true
+        shell: bash
+        run: |
+          sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
+          sed -i '/use hbb_common::bytes::Bytes;/a use hbb_common::base64::{engine::general_purpose, Engine as _};' ./src/hbbs_http/sync.rs
 
       - name: add cycle monitors to toolbar
         continue-on-error: true
