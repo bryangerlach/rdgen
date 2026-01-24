@@ -115,6 +115,16 @@ def generator_view(request):
                 logolink_url = "false"
                 logolink_uuid = "false"
                 logolink_file = "false"
+            try:
+                privacyfile = form.cleaned_data.get('privacyfile')
+                if not privacyfile:
+                    privacyfile = form.cleaned_data.get('privacybase64')
+                privacylink_url, privacylink_uuid, privacylink_file = save_png(privacyfile,myuuid,full_url,"privacy.png")
+            except:
+                print("failed to get logo")
+                privacylink_url = "false"
+                privacylink_uuid = "false"
+                privacylink_file = "false"
 
             ###create the custom.txt json here and send in as inputs below
             decodedCustom = {}
@@ -239,6 +249,9 @@ def generator_view(request):
                 "logolink_url":logolink_url,
                 "logolink_uuid":logolink_uuid,
                 "logolink_file":logolink_file,
+                "privacylink_url":privacylink_url,
+                "privacylink_uuid":privacylink_uuid,
+                "privacylink_file":privacylink_file,
                 "appname":appname,
                 "genurl":_settings.GENURL,
                 "urlLink":urlLink,

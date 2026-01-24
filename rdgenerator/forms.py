@@ -37,8 +37,10 @@ class GenerateForm(forms.Form):
     #Visual
     iconfile = forms.FileField(label="Custom App Icon (in .png format)", required=False, widget=forms.FileInput(attrs={'accept': 'image/png'}))
     logofile = forms.FileField(label="Custom App Logo (in .png format)", required=False, widget=forms.FileInput(attrs={'accept': 'image/png'}))
+    privacyfile = forms.FileField(label="Custom privacy screen (in .png format)", required=False, widget=forms.FileInput(attrs={'accept': 'image/png'}))
     iconbase64 = forms.CharField(required=False)
     logobase64 = forms.CharField(required=False)
+    privacybase64 = forms.CharField(required=False)
     theme = forms.ChoiceField(choices=[
         ('light', 'Light'),
         ('dark', 'Dark'),

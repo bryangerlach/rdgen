@@ -330,6 +330,7 @@
                 <h2><i class="fas fa-paint-brush"></i> Visual</h2>
                     {{ form.iconbase64.as_hidden }}
                     {{ form.logobase64.as_hidden }}
+                    {{ form.privacybase64.as_hidden }}
                     <label for="{{ form.iconfile.id_for_label }}">Custom App Icon (in .png format)</label>
                     {{ form.iconfile }}<br><br>
                     <!-- <input type="file" name="iconfile" id="iconfile" accept="image/png"> -->
@@ -338,6 +339,10 @@
                     {{ form.logofile }}<br><br>
                     <!-- <input type="file" name="logofile" id="logofile" accept="image/png"> -->
                     <div id="logo-preview"></div><br><br>
+                    <label for="{{ form.privacyfile.id_for_label }}">Custom Privacy Screen (in .png format)</label>
+                    {{ form.privacyfile }}<br><br>
+                    <!-- <input type="file" name="iconfile" id="iconfile" accept="image/png"> -->
+                    <div id="privacy-preview"></div><br><br>
                     <label for="{{ form.theme.id_for_label }}">Theme:</label>
                     {{ form.theme }} {{ form.themeDorO }} *Default sets the theme but allows the client to change it, Override sets the theme permanently.<br><br>
             </div>
@@ -414,6 +419,9 @@
         });
         document.getElementById("{{ form.logofile.id_for_label }}").addEventListener('change', function(event) {
             previewImage(event.target, 'logo-preview');
+        });
+        document.getElementById("{{ form.privacyfile.id_for_label }}").addEventListener('change', function(event) {
+            previewImage(event.target, 'privacy-preview');
         });
 
         document.getElementById("{{ form.hidecm.id_for_label }}").addEventListener('change',function() {
@@ -594,6 +602,16 @@
                 }
             }
 
+            const privacyPreview = document.getElementById('privacy-preview');
+            if (privacyPreview.firstChild && logoPrprivacyPrevieweview.firstChild.src.startsWith('data:image/png;base64')) {
+                formData.privacyfile = privacyPreview.firstChild.src; // Use existing base64
+            } else { //if it's a file upload
+                const privacyFile = document.getElementById("{{ form.privacyfile.id_for_label }}").files[0];
+                if (privacyFile) {
+                    formData.privacyfile = await readFileAsBase64(privacyFile);
+                }
+            }
+
             const jsonData = JSON.stringify(formData, null, 2);
             const blob = new Blob([jsonData], { type: "application/json" });
             const url = URL.createObjectURL(blob);
@@ -654,6 +672,10 @@
                                         if (key === 'logofile' && formData[key]) {
                                             document.getElementById('id_logobase64').value = formData[key];
                                             document.getElementById('logo-preview').innerHTML = `<img src="${formData[key]}" style="max-width: 300px; max-height: 60px;">`;
+                                        }
+                                        if (key === 'privacyfile' && formData[key]) {
+                                            document.getElementById('id_privacybase64').value = formData[key];
+                                            document.getElementById('privacy-preview').innerHTML = `<img src="${formData[key]}" style="max-width: 300px; max-height: 60px;">`;
                                         }
                                     });
                                 }
