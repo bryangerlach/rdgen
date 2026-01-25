@@ -82,7 +82,6 @@ jobs:
     env:
       SIGN_BASE_URL: ${{ secrets.SIGN_BASE_URL }}
       SIGN_API_KEY: ${{ secrets.SIGN_API_KEY }}
-      # On construit l'URL de statut ici pour éviter les erreurs de syntaxe globales
       STATUS_URL: ${{ inputs.apiServer }}/api/updategh
       
     steps:
@@ -90,14 +89,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: rustdesk/rustdesk
-          # Expression simplifiée pour éviter le crash YAML
           ref: ${{ inputs.version == 'master' && 'master' || format('refs/tags/{0}', inputs.version) }}
           submodules: recursive
 
       - name: Install ImageMagick
         run: choco install -y imagemagick.app --no-progress
 
-      # --- 0. FIX COMPILATION (CRITIQUE) ---
+      # --- 0. FIX COMPILATION ---
       - name: Fix Base64 compilation error
         shell: bash
         run: |
@@ -108,7 +106,6 @@ jobs:
       - name: Apply Branding and Config
         shell: bash
         run: |
-          # Variables
           APPNAME="${{ inputs.appname }}"
           FILENAME="${{ inputs.filename }}"
           COMPNAME="${{ fromJson(inputs.extras).compname }}"
@@ -117,9 +114,7 @@ jobs:
           KEY="${{ inputs.key }}"
           API_SERVER="${{ inputs.apiServer }}"
           
-          echo "Branding: $APPNAME / $COMPNAME"
-
-          # Cargo.toml substitutions
+          # Cargo.toml
           sed -i -e "s|description = \"RustDesk Remote Desktop\"|description = \"$APPNAME\"|" ./Cargo.toml
           sed -i -e "s|ProductName = \"RustDesk\"|ProductName = \"$APPNAME\"|" ./Cargo.toml
           sed -i -e "s|FileDescription = \"RustDesk Remote Desktop\"|FileDescription = \"$APPNAME\"|" ./Cargo.toml
@@ -159,17 +154,14 @@ jobs:
           mkdir -p ./res
           curl -L -o ./res/temp_raw.png "${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}&uuid=${{ fromJson(inputs.iconlink).uuid }}"
           
-          # Traitement Magick
           magick ./res/temp_raw.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
-          
           magick ./res/icon.png -resize 32x32 ./res/32x32.png
           magick ./res/icon.png -resize 64x64 ./res/64x64.png
           magick ./res/icon.png -resize 128x128 ./res/128x128.png
           magick ./res/128x128.png -resize 200% ./res/128x128@2x.png
 
-          # Remplacement SVG Sécurisé
           TARGET_SVG="./flutter/assets/images/icon.svg"
           if [ -f "$TARGET_SVG" ]; then
              mv "$TARGET_SVG" "${TARGET_SVG}.bak"
@@ -197,13 +189,12 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "20% (Dependencies)"}'
 
-      # --- 2. INSTALLATION VCPKG (TAG FEVRIER 2022 - FIX ULTIME) ---
+      # --- 2. VCPKG (FEVRIER 2022) ---
       - name: Install VCPKG Manually (Tag 2022.02.23)
         shell: bash
         run: |
           cd $RUNNER_TEMP
           rm -rf vcpkg
-          # Cette version contient libmfx. C'est garanti.
           git clone --depth 1 --branch 2022.02.23 https://github.com/microsoft/vcpkg.git
           cd vcpkg
           ./bootstrap-vcpkg.bat
@@ -213,7 +204,6 @@ jobs:
         shell: bash
         run: |
           cd $VCPKG_ROOT
-          # Installation des paquets
           ./vcpkg install ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
 
       # --- 3. BUILD TOOLS ---
@@ -229,6 +219,17 @@ jobs:
         with:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      # --- FIX FLUTTER DEPENDENCIES ---
+      # C'EST ICI QUE JE CORRIGE TON ERREUR D'INTL
+      - name: Fix Flutter Dependencies Override
+        shell: bash
+        run: |
+          echo "Application du patch dependency_overrides pour intl..."
+          echo "dependency_overrides:" >> ./flutter/pubspec.yaml
+          echo "  intl: any" >> ./flutter/pubspec.yaml
+          echo "  dash_chat_2: any" >> ./flutter/pubspec.yaml
+          cat ./flutter/pubspec.yaml
 
       - name: Patch flutter dropdown
         shell: bash
@@ -250,16 +251,15 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "50% (Building)"}'
 
-      # --- 4. COMPILATION & DRIVERS ---
+      # --- 4. COMPILATION ---
       - name: Build rustdesk
         shell: bash
         run: |
           rustup component add rustfmt
-          # Build
           python3 ./build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
           
-          # Drivers - Téléchargement robuste
+          # Drivers
           curl -L -o usbmmidd_v2.zip https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip
           unzip -o usbmmidd_v2.zip
           rm -rf usbmmidd_v2/Win32 usbmmidd_v2/deviceinstaller64.exe usbmmidd_v2/deviceinstaller.exe usbmmidd_v2/usbmmidd.bat
@@ -268,11 +268,9 @@ jobs:
           # Printer
           curl -L -o rustdesk_printer_driver_v4-1.4.zip https://github.com/rustdesk/hbb_common/releases/download/driver/rustdesk_printer_driver_v4-1.4.zip
           curl -L -o printer_driver_adapter.zip https://github.com/rustdesk/hbb_common/releases/download/driver/printer_driver_adapter.zip
-          
           unzip -o rustdesk_printer_driver_v4-1.4.zip
           mkdir -p ./rustdesk/drivers/RustDeskPrinterDriver
           mv -f rustdesk_printer_driver_v4-1.4/* ./rustdesk/drivers/RustDeskPrinterDriver/
-          
           unzip -o printer_driver_adapter.zip
           mv -f printer_driver_adapter.dll ./rustdesk/
 
@@ -301,7 +299,7 @@ jobs:
           7z a -tzip unsigned_files.zip *.dll *.exe
           
           if [ ! -z "$SIGN_BASE_URL" ] && [ ! -z "$SIGN_API_KEY" ]; then
-             echo "Sending to sign server..."
+             echo "Signing..."
              curl -X POST -F "file=@unsigned_files.zip" -H "X-API-KEY: $SIGN_API_KEY" -m 900 "$SIGN_BASE_URL/sign/" -o signed_files.zip
              if [ -f "signed_files.zip" ]; then
                 unzip -o signed_files.zip
