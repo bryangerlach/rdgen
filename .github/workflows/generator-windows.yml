@@ -3,21 +3,55 @@ run-name: Custom Windows Client Generator
 on: 
   workflow_dispatch:
     inputs:
-      version:
-        description: 'version to build'
+      server:
+        description: 'Rendezvous Server'
         required: true
         default: ''
         type: string
-      zip_url:
-        description: 'url to zip of json'
+      key:
+        description: 'Public Key'
         required: true
         default: ''
         type: string
-      # Cet input doit exister car il est appelé dans env
-      upload-tag:
-        description: 'tag name'
+      apiServer:
+        description: 'API Server'
+        required: true
+        default: ''
+        type: string
+      custom:
+        description: "Custom JSON"
+        required: true
+        default: ''
+        type: string
+      uuid:
+        description: "uuid of request"
+        required: true
+        default: ''
+        type: string
+      iconlink:
+        description: "icon link"
         required: false
-        default: 'latest'
+        default: 'false'
+        type: string
+      logolink:
+        description: "logo link"
+        required: false
+        default: 'false'
+        type: string
+      appname:
+        description: "app name"
+        required: true
+        default: 'rustdesk'
+        type: string
+      filename:
+        description: "Filename"
+        required: true
+        default: 'rustdesk'
+        type: string
+      extras:
+        description: "extra inputs in json"
+        required: true
+        default: '{}'
         type: string
 
 env:
@@ -25,103 +59,79 @@ env:
   RUST_VERSION: "1.75"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  TAG_NAME: "${{ inputs.upload-tag }}"
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  VERSION: "${{ inputs.version }}"
-  UPLOAD_ARTIFACT: 'true'
-  STATUS_URL: "${{ secrets.GENURL }}/updategh"
+  VCPKG_COMMIT_ID: "460551b0ec06be1ba6b918448bf3b0f44add813d"
+  VERSION: "${{ fromJson(inputs.extras).version }}"
 
 jobs:
   generate-bridge:
     uses: ./.github/workflows/bridge.yml
     with:
-      version: ${{ inputs.version }}
-
-  build-RustDeskTempTopMostWindow:
-    uses: ./.github/workflows/third-party-RustDeskTempTopMostWindow.yml
-    with:
-      upload-artifact: true
-      target: windows-2022
-      configuration: Release
-      platform: x64
-      target_version: Windows10
-    secrets: inherit
+      version: ${{ fromJson(inputs.extras).version }}
 
   build-for-windows-flutter:
     name: Build Windows
-    needs: [build-RustDeskTempTopMostWindow, generate-bridge]
+    needs: [generate-bridge]
     runs-on: windows-2022
     steps:
-      - name: install python deps
-        run: pip install requests pyzipper
-
-      - name: Download Secrets
-        shell: python
-        run: |
-          import requests, pyzipper, io, os, json
-          # Récupération du ZIP via l'URL fournie en input
-          r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}', timeout=60)
-          with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
-              zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
-              with zf.open('secrets.json') as f:
-                  secrets = json.load(f)
-          # On écrit les secrets dans le GITHUB_ENV pour les étapes suivantes
-          with open(os.environ['GITHUB_ENV'], 'a') as env_file:
-              for key, value in secrets.items():
-                  env_file.write(f"{key}={value}\n")
-
-      - name: Checkout Source
+      - name: Checkout source code
         uses: actions/checkout@v4
         with:
           repository: rustdesk/rustdesk
           ref: ${{ env.VERSION == 'master' && 'master' || format('refs/tags/{0}', env.VERSION) }}
           submodules: recursive
 
-      - name: Restore bridge
-        uses: actions/download-artifact@master
-        with:
-          name: bridge-artifact
-          path: ./
-
-      - name: Apply Branding and Config
-        shell: bash
+      - name: Set API Status URL
         run: |
-          # Fix Base64 compilation
-          sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
-          sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
-          
-          # Configuration des serveurs (Variables issues du ZIP secrets)
-          sed -i -e "s|rs-ny.rustdesk.com|${server}|" ./libs/hbb_common/src/config.rs
-          sed -i -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${key}|" ./libs/hbb_common/src/config.rs
-          sed -i -e "s|https://admin.rustdesk.com|${apiServer}|" ./src/common.rs
-          
-          # Noms
-          sed -i -e "s|description = \"RustDesk Remote Desktop\"|description = \"${appname}\"|" ./Cargo.toml
+          if ("${{ fromJson(inputs.extras).rdgen }}" -eq "false") {
+            echo "STATUS_URL=${{ inputs.apiServer }}/api/updategh" >> $env:GITHUB_ENV
+          } else {
+            echo "STATUS_URL=${{ secrets.GENURL }}/updategh" >> $env:GITHUB_ENV
+          }
 
       - name: Install ImageMagick
         run: choco install -y imagemagick.app --no-progress
 
-      - name: Process Icons
-        shell: pwsh
-        run: |
-          if ("${env:iconlink_url}" -ne "false") {
-            Invoke-WebRequest -Uri "${env:iconlink_url}/get_png?filename=${env:iconlink_file}&uuid=${env:iconlink_uuid}" -OutFile ./res/icon.png
-            magick ./res/icon.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
-            magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
-            cp ./res/icon.ico ./res/tray-icon.ico
-          }
-
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-
-      - name: Fix Flutter Dependencies (intl)
+      # --- PERSONNALISATION & CORRECTIFS CODE ---
+      - name: Apply patches and custom branding
         shell: bash
         run: |
-          echo "dependency_overrides:" >> ./flutter/pubspec.yaml
-          echo "  intl: any" >> ./flutter/pubspec.yaml
+          # Fix Base64 (Import de l'Engine)
+          sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
+          sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
+          
+          # Branding (App Name & Company)
+          sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ inputs.appname }}"|' ./Cargo.toml
+          sed -i -e 's|Purslane Ltd|${{ fromJson(inputs.extras).compname }}|g' ./Cargo.toml
+          
+          # Serveurs & Liens
+          sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ inputs.key }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
+          sed -i -e 's|https://rustdesk.com|${{ fromJson(inputs.extras).urlLink }}|g' ./build.py
+
+      # --- TRAITEMENT DU LOGO CLOUD GASCON ---
+      - name: Process logo and icons
+        if: ${{ inputs.iconlink != 'false' }}
+        continue-on-error: true
+        run: |
+          mkdir -p ./res
+          Invoke-WebRequest -Uri ${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}"&"uuid=${{ fromJson(inputs.iconlink).uuid }} -OutFile ./res/temp_raw.png
+          # Nettoyage -strip pour éviter l'erreur NoDecoder de Flutter
+          magick ./res/temp_raw.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
+          magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
+          cp ./res/icon.ico ./res/tray-icon.ico
+
+      # --- INSTALLATION DÉPENDANCES (FFMPEG / HWCODEC) ---
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+
+      - name: Install FFmpeg (Classic Mode)
+        shell: bash
+        run: |
+          # On force le classic mode pour installer ffmpeg sans erreur de manifest
+          $VCPKG_ROOT/vcpkg install --classic ffmpeg:x64-windows-static
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@v1
@@ -130,37 +140,26 @@ jobs:
           targets: x86_64-pc-windows-msvc
           components: rustfmt
 
-      - name: Install VCPKG (Tag 2022.02.23)
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: "stable"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      # --- COMPILATION FINALE ---
+      - name: Build rustdesk
         shell: bash
         run: |
-          cd $RUNNER_TEMP
-          git clone --depth 1 --branch 2022.02.23 https://github.com/microsoft/vcpkg.git
-          ./vcpkg/bootstrap-vcpkg.bat
-          echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
-
-      - name: Install Media Stack
-        shell: bash
-        run: |
-          cd $VCPKG_ROOT
-          ./vcpkg install ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
-
-      - name: Build RustDesk
-        run: |
+          # Utilisation de / pour éviter les erreurs d'échappement de chemin en Bash
           python3 ./build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
-      - name: Finalize Packer
+      # --- TRANSMISSION DU FICHIER ---
+      - name: send file to api server
         shell: bash
         run: |
-          mv "./rustdesk/rustdesk.exe" "./rustdesk/${appname}.exe"
-          pushd ./libs/portable
-          pip3 install -r requirements.txt
-          python3 ./generate.py -f ../../rustdesk/ -o . -e "../../rustdesk/${appname}.exe"
-          popd
-          mkdir -p ./SignOutput
-          mv ./target/release/rustdesk-portable-packer.exe "./SignOutput/${filename}.exe"
-
-      - name: Upload to Server
-        shell: bash
-        run: |
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${token}" -F "file=@./SignOutput/${filename}.exe" -F "uuid=${uuid}" ${apiServer}/api/save_custom_client
+          curl -i -X POST -H "Content-Type: multipart/form-data" \
+            -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" \
+            -F "file=@./rustdesk/${{ inputs.appname }}.exe" \
+            -F "uuid=${{ inputs.uuid }}" \
+            ${{ inputs.apiServer }}/api/save_custom_client
