@@ -127,7 +127,6 @@ jobs:
           rm -rf vcpkg
           
           # On clone spécifiquement le tag officiel d'Octobre 2023
-          # C'est la version qui contient encore 'libmfx'
           git clone --depth 1 --branch 2023.10.19 https://github.com/microsoft/vcpkg.git
           
           cd vcpkg
@@ -139,9 +138,13 @@ jobs:
       - name: Install Full Media Stack
         shell: bash
         run: |
-          # Installation des paquets SANS le flag --classic (inutile sur cette version 2023)
-          # Cela installe ffmpeg, les codecs vidéo, l'audio opus et l'accélération Intel
-          $VCPKG_ROOT/vcpkg install ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
+          # IMPORTANT : On se déplace DANS le dossier VCPKG.
+          # Cela empêche VCPKG de voir le fichier 'vcpkg.json' qui est à la racine du projet RustDesk.
+          # Ainsi, il accepte la commande manuelle (mode classique).
+          cd $VCPKG_ROOT
+          
+          # Installation des paquets
+          ./vcpkg install ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
 
       # --- 4. ENVIRONNEMENT DE BUILD ---
       - name: Install Rust
@@ -149,7 +152,7 @@ jobs:
         with:
           toolchain: ${{ env.SCITER_RUST_VERSION }}
           targets: x86_64-pc-windows-msvc
-          components: rustfmt # Requis pour la compilation de hwcodec
+          components: rustfmt
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
