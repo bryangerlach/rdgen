@@ -119,34 +119,34 @@ jobs:
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
 
-      # --- DEPENDENCIES (ZIP METHOD) ---
-      # On contourne Git : téléchargement direct du ZIP pour éviter les erreurs d'historique
-      - name: Install VCPKG Manually (Zip Method)
+      # --- DEPENDENCIES (GIT FULL CLONE METHOD) ---
+      # On ne prend plus de risque : Clone complet + Reset Hard
+      - name: Install VCPKG Manually (Git Reset Hard)
         shell: bash
         run: |
-          # On va dans le dossier temporaire
+          # On va dans le dossier temporaire du runner pour éviter tout conflit
           cd $RUNNER_TEMP
           
-          # Téléchargement du ZIP du commit spécifique (Octobre 2023)
-          curl -L -o vcpkg.zip https://github.com/microsoft/vcpkg/archive/${{ env.VCPKG_COMMIT_ID }}.zip
+          # Nettoyage préventif
+          rm -rf vcpkg
           
-          # Extraction
-          unzip -q vcpkg.zip
-          
-          # Renommage du dossier extrait
-          mv vcpkg-${{ env.VCPKG_COMMIT_ID }} vcpkg
+          # Clone COMPLET du dépôt (sans --depth pour avoir tout l'historique)
+          git clone https://github.com/microsoft/vcpkg.git
           cd vcpkg
           
-          # Initialisation de VCPKG
+          # On force le retour à Octobre 2023 (libmfx présent)
+          git reset --hard ${{ env.VCPKG_COMMIT_ID }}
+          
+          # Initialisation
           ./bootstrap-vcpkg.bat
           
-          # Enregistrement du chemin pour la suite
+          # On sauvegarde le chemin absolu
           echo "VCPKG_ROOT=$(pwd)" >> $GITHUB_ENV
 
       - name: Install Full Media Stack (Classic Mode)
         shell: bash
         run: |
-          # Installation du pack complet multimédia + libmfx (qui existe bien dans cette version ZIP)
+          # Installation du pack complet multimédia + libmfx
           $VCPKG_ROOT/vcpkg install --classic ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
 
       - name: Install Rust
