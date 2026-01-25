@@ -139,14 +139,14 @@ jobs:
         shell: bash
         run: |
           mkdir -p ./res
+          # Téléchargement via CURL (Standard Bash)
           curl -L -o ./res/temp_raw.png "${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}&uuid=${{ fromJson(inputs.iconlink).uuid }}"
           
-          # Création des icônes de base
+          # Magick
           magick ./res/temp_raw.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
           
-          # Redimensionnements
           magick ./res/icon.png -resize 32x32 ./res/32x32.png
           magick ./res/icon.png -resize 64x64 ./res/64x64.png
           magick ./res/icon.png -resize 128x128 ./res/128x128.png
@@ -187,14 +187,14 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ inputs.uuid }}", "status": "20% (Dependencies)"}'
 
-      # --- 2. INSTALLATION VCPKG (DATE CORRIGÉE: AVRIL 2023) ---
-      - name: Install VCPKG Manually (Tag 2023.04.15)
+      # --- 2. INSTALLATION VCPKG (TAG 2022.11.14 - GARANTI LIBMFX) ---
+      - name: Install VCPKG Manually (Tag 2022.11.14)
         shell: bash
         run: |
           cd $RUNNER_TEMP
           rm -rf vcpkg
-          # Tag d'AVRIL 2023 : libmfx est GARANTI d'être présent
-          git clone --depth 1 --branch 2023.04.15 https://github.com/microsoft/vcpkg.git
+          # Tag de Fin 2022 : libmfx était le standard à cette époque.
+          git clone --depth 1 --branch 2022.11.14 https://github.com/microsoft/vcpkg.git
           cd vcpkg
           ./bootstrap-vcpkg.bat
           echo "VCPKG_ROOT=$(pwd)" >> $GITHUB_ENV
@@ -203,7 +203,7 @@ jobs:
         shell: bash
         run: |
           cd $VCPKG_ROOT
-          # Pas de --classic (n'existe pas sur cette version), installation directe
+          # Installation classique (libmfx est présent dans 2022.11.14)
           ./vcpkg install ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
 
       # --- 3. BUILD TOOLS ---
