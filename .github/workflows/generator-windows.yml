@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'version to build'
+        description: 'version to buld'
         required: true
         default: ''
         type: string
@@ -13,6 +13,7 @@ on:
         required: true
         default: ''
         type: string
+      # Cet input manquait et faisait planter le declenchement
       upload-tag:
         description: 'tag name'
         required: false
@@ -28,6 +29,7 @@ env:
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   VERSION: "${{ inputs.version }}"
   UPLOAD_ARTIFACT: 'true'
+  STATUS_URL: "${{ secrets.GENURL }}/updategh"
 
 jobs:
   generate-bridge:
@@ -53,7 +55,7 @@ jobs:
       - name: install python deps
         run: pip install requests pyzipper
 
-      - name: Download and Decrypt Secrets
+      - name: Download Secrets
         shell: python
         run: |
           import requests, pyzipper, io, os, json
@@ -66,32 +68,26 @@ jobs:
               for key, value in secrets.items():
                   env_file.write(f"{key}={value}\n")
 
-      - name: Checkout RustDesk Source
+      - name: Checkout Source
         uses: actions/checkout@v4
         with:
           repository: rustdesk/rustdesk
           ref: ${{ env.VERSION == 'master' && 'master' || format('refs/tags/{0}', env.VERSION) }}
           submodules: recursive
 
-      - name: Restore bridge files
+      - name: Restore bridge
         uses: actions/download-artifact@master
         with:
           name: bridge-artifact
           path: ./
 
-      # --- INJECTION DES VARIABLES DANS LE CODE ---
-      - name: Apply Branding and Config
+      - name: Apply Config
         shell: bash
         run: |
-          # Correction Base64
+          # Correction Rust Base64
           sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
           sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
-          
-          # Noms et Compagnies
-          sed -i -e "s|description = \"RustDesk Remote Desktop\"|description = \"${{ env.appname }}\"|" ./Cargo.toml
-          sed -i -e "s|ProductName = \"RustDesk\"|ProductName = \"${{ env.appname }}\"|" ./Cargo.toml
-          
-          # Serveurs et Clé
+          # Config Serveurs
           sed -i -e "s|rs-ny.rustdesk.com|${{ env.server }}|" ./libs/hbb_common/src/config.rs
           sed -i -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.key }}|" ./libs/hbb_common/src/config.rs
           sed -i -e "s|https://admin.rustdesk.com|${{ env.apiServer }}|" ./src/common.rs
@@ -104,7 +100,6 @@ jobs:
         run: |
           Invoke-WebRequest -Uri ${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}"&"uuid=${{ env.iconlink_uuid }} -OutFile ./res/icon.png
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
-          cp ./res/icon.ico ./res/tray-icon.ico
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -112,7 +107,7 @@ jobs:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      - name: Fix Flutter Dependencies (intl)
+      - name: Fix Dependencies
         shell: bash
         run: |
           echo "dependency_overrides:" >> ./flutter/pubspec.yaml
@@ -139,12 +134,12 @@ jobs:
           cd $VCPKG_ROOT
           ./vcpkg install ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
 
-      - name: Build RustDesk
+      - name: Build
         run: |
           python3 ./build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
-      - name: Build self-extracted Packer
+      - name: Finalize Packer
         shell: bash
         run: |
           mv "./rustdesk/rustdesk.exe" "./rustdesk/${{ env.appname }}.exe"
@@ -155,7 +150,7 @@ jobs:
           mkdir -p ./SignOutput
           mv ./target/release/rustdesk-portable-packer.exe "./SignOutput/${{ env.filename }}.exe"
 
-      - name: Final Upload
+      - name: Upload
         shell: bash
         run: |
           curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.exe" -F "uuid=${{ env.uuid }}" ${{ env.apiServer }}/api/save_custom_client
