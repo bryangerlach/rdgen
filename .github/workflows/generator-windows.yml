@@ -3,9 +3,8 @@ run-name: Custom Windows Client Generator
 on: 
   workflow_dispatch:
     inputs:
-      # --- INPUTS ESSENTIELS ---
       version:
-        description: 'Version (ex: 1.2.3 ou master)'
+        description: 'Version (ex: 1.2.3)'
         required: true
         default: '1.2.3'
         type: string
@@ -15,11 +14,10 @@ on:
         default: 'rustdesk'
         type: string
       filename:
-        description: 'Filename (sans .exe)'
+        description: 'Filename'
         required: true
         default: 'rustdesk'
         type: string
-      # --- CONFIGURATION SERVEUR ---
       server:
         required: true
         type: string
@@ -30,14 +28,11 @@ on:
         required: true
         type: string
       custom:
-        description: 'Custom JSON Config'
         required: true
-        default: ''
         type: string
       uuid:
         required: true
         type: string
-      # --- ASSETS ---
       iconlink:
         required: false
         default: 'false'
@@ -46,9 +41,8 @@ on:
         required: false
         default: 'false'
         type: string
-      # --- EXTRAS (Compname, URLs, Token) ---
       extras:
-        description: 'JSON Extras (compname, urlLink, token)'
+        description: 'JSON Extras'
         required: true
         default: '{}'
         type: string
@@ -95,15 +89,15 @@ jobs:
       - name: Install ImageMagick
         run: choco install -y imagemagick.app --no-progress
 
-      # --- 0. FIX COMPILATION ---
+      # --- PATCH 1 : COMPILATION RUST ---
       - name: Fix Base64 compilation error
         shell: bash
         run: |
           sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
           sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
 
-      # --- 1. BRANDING ---
-      - name: Apply Branding and Config
+      # --- BRANDING (Ton code d'origine) ---
+      - name: Apply Branding
         shell: bash
         run: |
           APPNAME="${{ inputs.appname }}"
@@ -130,245 +124,12 @@ jobs:
           sed -i -e "s|\"rustdesk.exe\"|\"$FILENAME\"|" ./flutter/windows/runner/Runner.rc
           sed -i -e "s|\"RustDesk\"|\"$APPNAME\"|" ./flutter/windows/runner/Runner.rc
           
-          # Company & Copyright
+          # Company
           sed -i -e "s|Purslane Ltd|$COMPNAME|" ./flutter/lib/desktop/pages/desktop_setting_page.dart
           sed -i -e "s|Purslane Ltd|$COMPNAME|" ./Cargo.toml
           sed -i -e "s|Purslane Ltd|$COMPNAME|" ./libs/portable/Cargo.toml
           sed -i -e "s|Purslane Ltd|$COMPNAME|" ./flutter/windows/runner/Runner.rc
           sed -i -e "s|\"Copyright © 2025 Purslane Ltd. All rights reserved.\"|\"Copyright © 2025 $COMPNAME. All rights reserved.\"|" ./flutter/windows/runner/Runner.rc
 
-          # URLs
-          sed -i -e "s|Homepage: https://rustdesk.com|Homepage: $URL_LINK|" ./build.py
-          sed -i -e "s|launchUrl(Uri.parse('https://rustdesk.com'));|launchUrl(Uri.parse('$URL_LINK'));|" ./flutter/lib/common.dart
-          sed -i -e "s|rustdesk.com|$URL_LINK|" ./res/msi/Package/License.rtf
-          
-          # Server Config
-          sed -i -e "s|rs-ny.rustdesk.com|$SERVER|" ./libs/hbb_common/src/config.rs
-          sed -i -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|$KEY|" ./libs/hbb_common/src/config.rs
-          sed -i -e "s|https://admin.rustdesk.com|$API_SERVER|" ./src/common.rs
-
-      - name: Process Icons (Safe Mode)
-        if: inputs.iconlink != 'false'
-        shell: bash
-        run: |
-          mkdir -p ./res
-          curl -L -o ./res/temp_raw.png "${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}&uuid=${{ fromJson(inputs.iconlink).uuid }}"
-          
-          magick ./res/temp_raw.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
-          magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
-          cp ./res/icon.ico ./res/tray-icon.ico
-          magick ./res/icon.png -resize 32x32 ./res/32x32.png
-          magick ./res/icon.png -resize 64x64 ./res/64x64.png
-          magick ./res/icon.png -resize 128x128 ./res/128x128.png
-          magick ./res/128x128.png -resize 200% ./res/128x128@2x.png
-
-          TARGET_SVG="./flutter/assets/images/icon.svg"
-          if [ -f "$TARGET_SVG" ]; then
-             mv "$TARGET_SVG" "${TARGET_SVG}.bak"
-             magick ./res/icon.png "$TARGET_SVG"
-          elif [ -f "./rustdesk/data/flutter_assets/assets/icon.svg" ]; then
-             mv "./rustdesk/data/flutter_assets/assets/icon.svg" "./rustdesk/data/flutter_assets/assets/icon.svg.bak"
-             magick ./res/icon.png "./rustdesk/data/flutter_assets/assets/icon.svg"
-          fi
-
-      - name: Process Logo (Safe Mode)
-        if: inputs.logolink != 'false'
-        shell: bash
-        run: |
-          LOGO_PATH="./flutter/assets/images/logo.png"
-          if [ -d "./flutter/assets/images" ]; then
-             curl -L -o "$LOGO_PATH" "${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}&uuid=${{ fromJson(inputs.logolink).uuid }}"
-          fi
-
-      - name: Report Status 20%
-        uses: fjogeleit/http-request-action@v1
-        continue-on-error: true
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "20% (Dependencies)"}'
-
-      # --- 2. VCPKG (FEVRIER 2022) ---
-      - name: Install VCPKG Manually (Tag 2022.02.23)
-        shell: bash
-        run: |
-          cd $RUNNER_TEMP
-          rm -rf vcpkg
-          git clone --depth 1 --branch 2022.02.23 https://github.com/microsoft/vcpkg.git
-          cd vcpkg
-          ./bootstrap-vcpkg.bat
-          echo "VCPKG_ROOT=$(pwd)" >> $GITHUB_ENV
-
-      - name: Install Full Media Stack
-        shell: bash
-        run: |
-          cd $VCPKG_ROOT
-          ./vcpkg install ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
-
-      # --- 3. BUILD TOOLS ---
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: ${{ env.SCITER_RUST_VERSION }}
-          targets: x86_64-pc-windows-msvc
-          components: rustfmt
-
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-
-      # --- FIX FLUTTER DEPENDENCIES ---
-      # C'EST ICI QUE JE CORRIGE TON ERREUR D'INTL
-      - name: Fix Flutter Dependencies Override
-        shell: bash
-        run: |
-          echo "Application du patch dependency_overrides pour intl..."
-          echo "dependency_overrides:" >> ./flutter/pubspec.yaml
-          echo "  intl: any" >> ./flutter/pubspec.yaml
-          echo "  dash_chat_2: any" >> ./flutter/pubspec.yaml
-          cat ./flutter/pubspec.yaml
-
-      - name: Patch flutter dropdown
-        shell: bash
-        run: |
-          PATCH_FILE=".github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff"
-          FLUTTER_DIR=$(dirname $(dirname $(which flutter)))
-          if [ -f "$PATCH_FILE" ]; then
-             cp "$PATCH_FILE" "$FLUTTER_DIR"
-             cd "$FLUTTER_DIR"
-             git apply flutter_3.24.4_dropdown_menu_enableFilter.diff || true
-          fi
-
-      - name: Report Status 50%
-        uses: fjogeleit/http-request-action@v1
-        continue-on-error: true
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "50% (Building)"}'
-
-      # --- 4. COMPILATION ---
-      - name: Build rustdesk
-        shell: bash
-        run: |
-          rustup component add rustfmt
-          python3 ./build.py --portable --hwcodec --flutter --vram --skip-portable-pack
-          mv ./flutter/build/windows/x64/runner/Release ./rustdesk
-          
-          # Drivers
-          curl -L -o usbmmidd_v2.zip https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip
-          unzip -o usbmmidd_v2.zip
-          rm -rf usbmmidd_v2/Win32 usbmmidd_v2/deviceinstaller64.exe usbmmidd_v2/deviceinstaller.exe usbmmidd_v2/usbmmidd.bat
-          mv -f usbmmidd_v2 ./rustdesk/
-          
-          # Printer
-          curl -L -o rustdesk_printer_driver_v4-1.4.zip https://github.com/rustdesk/hbb_common/releases/download/driver/rustdesk_printer_driver_v4-1.4.zip
-          curl -L -o printer_driver_adapter.zip https://github.com/rustdesk/hbb_common/releases/download/driver/printer_driver_adapter.zip
-          unzip -o rustdesk_printer_driver_v4-1.4.zip
-          mkdir -p ./rustdesk/drivers/RustDeskPrinterDriver
-          mv -f rustdesk_printer_driver_v4-1.4/* ./rustdesk/drivers/RustDeskPrinterDriver/
-          unzip -o printer_driver_adapter.zip
-          mv -f printer_driver_adapter.dll ./rustdesk/
-
-      - name: Download RustDeskTempTopMostWindow artifacts
-        uses: actions/download-artifact@master
-        if: env.UPLOAD_ARTIFACT == 'true'
-        with:
-          name: topmostwindow-artifacts
-          path: "./rustdesk"
-
-      - name: Report Status 70%
-        uses: fjogeleit/http-request-action@v1
-        continue-on-error: true
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "70% (Signing)"}'
-
-      # --- 5. SIGNATURE DISTANTE ---
-      - name: Sign DLLs and EXE
-        shell: bash
-        run: |
-          echo -n "${{ inputs.custom }}" | cat > ./rustdesk/custom_.txt
-          cd rustdesk
-          7z a -tzip unsigned_files.zip *.dll *.exe
-          
-          if [ ! -z "$SIGN_BASE_URL" ] && [ ! -z "$SIGN_API_KEY" ]; then
-             echo "Signing..."
-             curl -X POST -F "file=@unsigned_files.zip" -H "X-API-KEY: $SIGN_API_KEY" -m 900 "$SIGN_BASE_URL/sign/" -o signed_files.zip
-             if [ -f "signed_files.zip" ]; then
-                unzip -o signed_files.zip
-                rm unsigned_files.zip signed_files.zip
-             fi
-          fi
-          cd ..
-
-      - name: Build self-extracted executable
-        shell: bash
-        run: |
-          mv "./rustdesk/rustdesk.exe" "./rustdesk/${{ inputs.appname }}.exe"
-          pushd ./libs/portable
-          pip3 install -r requirements.txt
-          python3 ./generate.py -f ../../rustdesk/ -o . -e "../../rustdesk/${{ inputs.appname }}.exe"
-          popd
-          mkdir -p ./SignOutput
-          mv ./target/release/rustdesk-portable-packer.exe "./SignOutput/${{ inputs.filename }}.exe"
-
-      - name: Add MSBuild to PATH
-        uses: microsoft/setup-msbuild@v2
-
-      - name: Build MSI via MSBuild
-        run: |
-           $myappname = "${{ inputs.appname }}" -replace '\s','_'
-           cp "rustdesk/${{ inputs.appname }}.exe" "rustdesk/${myappname}.exe"
-           pushd ./res/msi
-           python preprocess.py --app-name "$myappname" --arp -d ../../rustdesk
-           nuget restore msi.sln
-           msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
-           mv ./Package/bin/x64/Release/en-us/Package.msi ../../SignOutput/${{ inputs.filename }}.msi
-
-      - name: Final Signing
-        shell: bash
-        run: |
-           cd SignOutput
-           7z a -tzip unsigned_final.zip *.exe *.msi
-           if [ ! -z "$SIGN_BASE_URL" ] && [ ! -z "$SIGN_API_KEY" ]; then
-             curl -X POST -F "file=@unsigned_final.zip" -H "X-API-KEY: $SIGN_API_KEY" -m 900 "$SIGN_BASE_URL/sign/" -o signed_final.zip
-             if [ -f "signed_final.zip" ]; then
-                unzip -o signed_final.zip
-                rm unsigned_final.zip signed_final.zip
-             fi
-           fi
-
-      # --- 6. UPLOAD FINAL ---
-      - name: Send files to API
-        shell: bash
-        run: |
-          TOKEN="${{ fromJson(inputs.extras).token }}"
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer $TOKEN" -F "file=@./SignOutput/${{ inputs.filename }}.exe" -F "uuid=${{ inputs.uuid }}" ${{ inputs.apiServer }}/api/save_custom_client
-          
-          if [ -f "./SignOutput/${{ inputs.filename }}.msi" ]; then
-             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer $TOKEN" -F "file=@./SignOutput/${{ inputs.filename }}.msi" -F "uuid=${{ inputs.uuid }}" ${{ inputs.apiServer }}/api/save_custom_client
-          fi
-
-      - name: Report Success
-        uses: fjogeleit/http-request-action@v1
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "Success"}'
-
-      - name: Report Failure
-        if: failure()
-        uses: fjogeleit/http-request-action@v1
-        with:
-          url: ${{ env.STATUS_URL }}
-          method: 'POST'
-          customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation failed"}'
+          # URLs & Config
+          sed -
