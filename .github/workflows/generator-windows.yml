@@ -59,7 +59,7 @@ env:
   RUST_VERSION: "1.75"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  # Commit VCPKG d'Octobre 2023 (Compatible libmfx)
+  # Commit ID d'Octobre 2023 (Pour avoir libmfx)
   VCPKG_COMMIT_ID: "5e5d0e1cd7785623065e77eff011a4ee44316868"
   VERSION: "${{ fromJson(inputs.extras).version }}"
 
@@ -119,31 +119,34 @@ jobs:
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
 
-      # --- DEPENDENCIES (MANUAL VCPKG) ---
-      # Cette étape remplace le plugin pour éviter les conflits Git
-      - name: Install VCPKG Manually (Clean Environment)
+      # --- DEPENDENCIES (ZIP METHOD) ---
+      # On contourne Git : téléchargement direct du ZIP pour éviter les erreurs d'historique
+      - name: Install VCPKG Manually (Zip Method)
         shell: bash
         run: |
-          # On se place dans le dossier temporaire du runner (hors du projet)
+          # On va dans le dossier temporaire
           cd $RUNNER_TEMP
           
-          # On clone VCPKG proprement
-          git clone https://github.com/microsoft/vcpkg.git
+          # Téléchargement du ZIP du commit spécifique (Octobre 2023)
+          curl -L -o vcpkg.zip https://github.com/microsoft/vcpkg/archive/${{ env.VCPKG_COMMIT_ID }}.zip
+          
+          # Extraction
+          unzip -q vcpkg.zip
+          
+          # Renommage du dossier extrait
+          mv vcpkg-${{ env.VCPKG_COMMIT_ID }} vcpkg
           cd vcpkg
           
-          # On remonte le temps (Octobre 2023) pour retrouver libmfx
-          git checkout ${{ env.VCPKG_COMMIT_ID }}
-          
-          # On prépare l'exécutable
+          # Initialisation de VCPKG
           ./bootstrap-vcpkg.bat
           
-          # On sauvegarde le chemin pour les étapes suivantes
+          # Enregistrement du chemin pour la suite
           echo "VCPKG_ROOT=$(pwd)" >> $GITHUB_ENV
 
       - name: Install Full Media Stack (Classic Mode)
         shell: bash
         run: |
-          # Installation du pack complet multimédia + libmfx
+          # Installation du pack complet multimédia + libmfx (qui existe bien dans cette version ZIP)
           $VCPKG_ROOT/vcpkg install --classic ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
 
       - name: Install Rust
@@ -164,6 +167,7 @@ jobs:
         shell: bash
         run: |
           rustup component add rustfmt
+          # Utilisation de ./build.py pour éviter les erreurs de chemin
           python3 ./build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
