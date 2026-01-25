@@ -91,54 +91,56 @@ jobs:
       - name: Install ImageMagick
         run: choco install -y imagemagick.app --no-progress
 
-      # --- PERSONNALISATION & CORRECTIFS CODE ---
-      - name: Apply patches and custom branding
+      # --- CUSTOMIZATION ---
+      - name: Apply patches and branding
         shell: bash
         run: |
-          # Fix Base64 (Import de l'Engine)
+          # 1. Fix Base64 compilation error
           sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
           sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
           
-          # Branding (App Name & Company)
+          # 2. Apply Custom Names & URLs
           sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ inputs.appname }}"|' ./Cargo.toml
           sed -i -e 's|Purslane Ltd|${{ fromJson(inputs.extras).compname }}|g' ./Cargo.toml
-          
-          # Serveurs & Liens
           sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
           sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ inputs.key }}|' ./libs/hbb_common/src/config.rs
           sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
           sed -i -e 's|https://rustdesk.com|${{ fromJson(inputs.extras).urlLink }}|g' ./build.py
 
-      # --- TRAITEMENT DU LOGO CLOUD GASCON ---
-      - name: Process logo and icons
+      # --- LOGO PROCESSING ---
+      - name: Process icons
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
           mkdir -p ./res
           Invoke-WebRequest -Uri ${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}"&"uuid=${{ fromJson(inputs.iconlink).uuid }} -OutFile ./res/temp_raw.png
-          # Nettoyage -strip pour éviter l'erreur NoDecoder de Flutter
           magick ./res/temp_raw.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
 
-      # --- INSTALLATION DÉPENDANCES (FFMPEG / HWCODEC) ---
+      # --- DEPENDENCIES (COMPLETE CODEC PACK) ---
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
 
-      - name: Install FFmpeg (Classic Mode)
+      - name: Install Full Media Stack (Classic Mode)
         shell: bash
         run: |
-          # On force le classic mode pour installer ffmpeg sans erreur de manifest
-          $VCPKG_ROOT/vcpkg install --classic ffmpeg:x64-windows-static
+          # Installation complète de TOUTES les librairies multimédia requises
+          # ffmpeg : Base vidéo
+          # libvpx : Support VP8/VP9
+          # libyuv : Conversion de couleurs
+          # opus : Support Audio (Fix de l'erreur précédente)
+          # aom : Support AV1 (Prévention)
+          $VCPKG_ROOT/vcpkg install --classic ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ env.SCITER_RUST_VERSION }}
           targets: x86_64-pc-windows-msvc
-          components: rustfmt
+          components: rustfmt # Requis pour hwcodec
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -146,15 +148,15 @@ jobs:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      # --- COMPILATION FINALE ---
+      # --- BUILD ---
       - name: Build rustdesk
         shell: bash
         run: |
-          # Utilisation de / pour éviter les erreurs d'échappement de chemin en Bash
+          rustup component add rustfmt
+          # Utilisation de / pour éviter le bug de chemin Python
           python3 ./build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
-      # --- TRANSMISSION DU FICHIER ---
       - name: send file to api server
         shell: bash
         run: |
