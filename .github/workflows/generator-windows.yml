@@ -128,7 +128,7 @@ jobs:
         shell: bash
         run: |
           # On force le classic mode pour installer ffmpeg sans erreur de manifest
-          $VCPKG_ROOT/vcpkg install --classic ffmpeg:x64-windows-static
+          $VCPKG_ROOT/vcpkg install --classic ffmpeg:x64-windows-static opus:x64-windows-static
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@v1
