@@ -59,8 +59,7 @@ env:
   RUST_VERSION: "1.75"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  # CHANGEMENT CRUCIAL ICI : On utilise une version de VCPKG d'Octobre 2023
-  # Cette version contient encore 'libmfx' qui est indispensable pour RustDesk
+  # Commit d'Octobre 2023 (Compatible libmfx)
   VCPKG_COMMIT_ID: "5e5d0e1cd7785623065e77eff011a4ee44316868"
   VERSION: "${{ fromJson(inputs.extras).version }}"
 
@@ -120,16 +119,18 @@ jobs:
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
 
-      # --- DEPENDENCIES (VCPKG 2023) ---
+      # --- DEPENDENCIES (VCPKG CUSTOM) ---
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          # CRUCIAL : On installe dans un dossier À PART pour éviter le conflit Git (Erreur 128)
+          vcpkgDirectory: ${{ github.workspace }}/vcpkg_custom
 
       - name: Install Full Media Stack (Classic Mode)
         shell: bash
         run: |
-          # Installation avec le commit ID de 2023 : libmfx existe et va fonctionner !
+          # VCPKG est maintenant dans un dossier propre, et libmfx existe dans cette version !
           $VCPKG_ROOT/vcpkg install --classic ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
 
       - name: Install Rust
