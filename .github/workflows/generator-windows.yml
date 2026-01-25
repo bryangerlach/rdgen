@@ -59,7 +59,9 @@ env:
   RUST_VERSION: "1.75"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  VCPKG_COMMIT_ID: "460551b0ec06be1ba6b918448bf3b0f44add813d"
+  # CHANGEMENT CRUCIAL ICI : On utilise une version de VCPKG d'Octobre 2023
+  # Cette version contient encore 'libmfx' qui est indispensable pour RustDesk
+  VCPKG_COMMIT_ID: "5e5d0e1cd7785623065e77eff011a4ee44316868"
   VERSION: "${{ fromJson(inputs.extras).version }}"
 
 jobs:
@@ -91,15 +93,15 @@ jobs:
       - name: Install ImageMagick
         run: choco install -y imagemagick.app --no-progress
 
-      # --- 1. APPLICATION DES PATCHS (Code & Branding) ---
+      # --- CUSTOMIZATION ---
       - name: Apply patches and branding
         shell: bash
         run: |
-          # Correction de l'erreur Base64 (Ajout de l'import Engine)
+          # 1. Fix Base64 compilation error
           sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
           sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
           
-          # Personnalisation (Cargo.toml, Config.rs, Build.py)
+          # 2. Apply Custom Names & URLs
           sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ inputs.appname }}"|' ./Cargo.toml
           sed -i -e 's|Purslane Ltd|${{ fromJson(inputs.extras).compname }}|g' ./Cargo.toml
           sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
@@ -107,19 +109,18 @@ jobs:
           sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
           sed -i -e 's|https://rustdesk.com|${{ fromJson(inputs.extras).urlLink }}|g' ./build.py
 
-      # --- 2. TRAITEMENT DES ICÔNES (Cloud Gascon) ---
+      # --- LOGO PROCESSING ---
       - name: Process icons
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
           mkdir -p ./res
           Invoke-WebRequest -Uri ${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}"&"uuid=${{ fromJson(inputs.iconlink).uuid }} -OutFile ./res/temp_raw.png
-          # Option -strip pour nettoyer les métadonnées qui font planter Flutter
           magick ./res/temp_raw.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
 
-      # --- 3. INSTALLATION DES DÉPENDANCES LOURDES (VCPKG) ---
+      # --- DEPENDENCIES (VCPKG 2023) ---
       - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
@@ -128,22 +129,15 @@ jobs:
       - name: Install Full Media Stack (Classic Mode)
         shell: bash
         run: |
-          # Installation COMPLETE pour hwcodec et audio
-          # ffmpeg : Vidéo de base
-          # libvpx : Codecs VP8/VP9
-          # libyuv : Traitement image
-          # opus : Codec Audio
-          # aom : Codec AV1
-          # libmfx : Accélération Intel QuickSync (Correction de l'erreur statique)
+          # Installation avec le commit ID de 2023 : libmfx existe et va fonctionner !
           $VCPKG_ROOT/vcpkg install --classic ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
 
-      # --- 4. INSTALLATION ENVIRONNEMENT DE BUILD ---
       - name: Install Rust
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ env.SCITER_RUST_VERSION }}
           targets: x86_64-pc-windows-msvc
-          components: rustfmt # INDISPENSABLE pour hwcodec
+          components: rustfmt
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -151,17 +145,14 @@ jobs:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      # --- 5. COMPILATION FINALE ---
+      # --- BUILD ---
       - name: Build rustdesk
         shell: bash
         run: |
-          # Sécurité supplémentaire pour rustfmt
           rustup component add rustfmt
-          # Utilisation de ./build.py (slash avant) pour compatibilité Bash
           python3 ./build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
-      # --- 6. ENVOI DU RÉSULTAT ---
       - name: send file to api server
         shell: bash
         run: |
