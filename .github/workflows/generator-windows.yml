@@ -57,7 +57,6 @@ on:
 env:
   SCITER_RUST_VERSION: "1.75"
   RUST_VERSION: "1.75"
-  CARGO_NDK_VERSION: "3.1.2"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "460551b0ec06be1ba6b918448bf3b0f44add813d"
@@ -69,18 +68,9 @@ jobs:
     with:
       version: ${{ fromJson(inputs.extras).version }}
 
-  build-RustDeskTempTopMostWindow:
-    uses: ./.github/workflows/third-party-RustDeskTempTopMostWindow.yml
-    with:
-      upload-artifact: true
-      target: windows-2022
-      configuration: Release
-      platform: x64
-      target_version: Windows10
-
   build-for-windows-flutter:
     name: Build Windows
-    needs: [build-RustDeskTempTopMostWindow, generate-bridge]
+    needs: [generate-bridge]
     runs-on: windows-2022
     steps:
       - name: Checkout source code
@@ -101,19 +91,20 @@ jobs:
       - name: Install ImageMagick
         run: choco install -y imagemagick.app --no-progress
 
-      # --- PERSONNALISATION DU NOM ET DES LIENS (TES SED) ---
-      - name: change appname and company
+      # --- PERSONNALISATION ---
+      - name: Code patches
         shell: bash
         run: |
-          sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ inputs.appname }}"|' ./Cargo.toml
-          sed -i -e 's|Purslane Ltd|${{ fromJson(inputs.extras).compname }}|g' ./Cargo.toml
-          sed -i -e 's|https://rustdesk.com|${{ fromJson(inputs.extras).urlLink }}|g' ./build.py
-          # Correction Base64
+          # Fix Base64
           sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
           sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
+          # Fix Configs
+          sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ inputs.key }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
 
-      # --- GESTION DE L'ICÔNE (CLOUD GASCON) ---
-      - name: icon processing
+      # --- GESTION LOGO CLOUD GASCON ---
+      - name: Logo processing
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
@@ -122,22 +113,18 @@ jobs:
           magick ./res/temp_raw.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
-          magick ./res/icon.png -resize 32x32 ./res/32x32.png
-          magick ./res/icon.png -resize 64x64 ./res/64x64.png
-          magick ./res/icon.png -resize 128x128 ./res/128x128.png
 
-      - name: Ensure tray-icon exists
-        run: |
-          if (!(Test-Path "./res/tray-icon.ico")) { cp ./res/icon.ico ./res/tray-icon.ico -ErrorAction SilentlyContinue }
+      # --- INSTALLATION DES DÉPENDANCES LOURDES ---
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
 
-      - name: set server, key, and patches
+      - name: Install VCPKG dependencies (FFmpeg for hwcodec)
         shell: bash
         run: |
-          sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
-          sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ inputs.key }}|' ./libs/hbb_common/src/config.rs
-          sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
+          $VCPKG_ROOT/vcpkg install ffmpeg:x64-windows-static
 
-      # --- INSTALLATION DES OUTILS ---
       - name: Install Rust
         uses: dtolnay/rust-toolchain@v1
         with:
@@ -145,23 +132,16 @@ jobs:
           targets: x86_64-pc-windows-msvc
           components: rustfmt
 
-      - name: Install LLVM
-        uses: KyleMayes/install-llvm-action@v1
-        with:
-          version: ${{ env.LLVM_VERSION }}
-
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      # --- BUILD FINAL (FIX DES CHEMINS BASH) ---
+      # --- BUILD FINAL ---
       - name: Build rustdesk
         shell: bash
         run: |
-          rustup component add rustfmt
-          # Utilisation de / pour éviter l'erreur d'échappement .build.py
           python3 ./build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
