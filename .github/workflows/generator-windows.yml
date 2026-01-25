@@ -44,7 +44,6 @@ env:
   RUST_VERSION: "1.75"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  # On garde les variables simples ici. Les JSON complexes seront traités dans les étapes.
   STATUS_URL: "${{ inputs.apiServer }}/api/updategh"
   UPLOAD_ARTIFACT: 'true'
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
@@ -135,32 +134,49 @@ jobs:
           sed -i -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|$KEY|" ./libs/hbb_common/src/config.rs
           sed -i -e "s|https://admin.rustdesk.com|$API_SERVER|" ./src/common.rs
 
-      - name: Process Icons
+      - name: Process Icons (Safe Mode)
         if: ${{ inputs.iconlink != 'false' }}
         shell: bash
         run: |
           mkdir -p ./res
-          # Téléchargement via CURL (Standard Bash)
           curl -L -o ./res/temp_raw.png "${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}&uuid=${{ fromJson(inputs.iconlink).uuid }}"
           
-          # Magick
+          # Création des icônes de base
           magick ./res/temp_raw.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
           
+          # Redimensionnements
           magick ./res/icon.png -resize 32x32 ./res/32x32.png
           magick ./res/icon.png -resize 64x64 ./res/64x64.png
           magick ./res/icon.png -resize 128x128 ./res/128x128.png
           magick ./res/128x128.png -resize 200% ./res/128x128@2x.png
 
-          mv ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
-          magick ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
+          # Remplacement sécurisé (Ne plante pas si le fichier n'existe pas)
+          TARGET_SVG="./flutter/assets/images/icon.svg"
+          if [ -f "$TARGET_SVG" ]; then
+             mv "$TARGET_SVG" "${TARGET_SVG}.bak"
+             magick ./res/icon.png "$TARGET_SVG"
+          elif [ -f "./rustdesk/data/flutter_assets/assets/icon.svg" ]; then
+             # Cas legacy
+             mv "./rustdesk/data/flutter_assets/assets/icon.svg" "./rustdesk/data/flutter_assets/assets/icon.svg.bak"
+             magick ./res/icon.png "./rustdesk/data/flutter_assets/assets/icon.svg"
+          else
+             echo "Icon SVG non trouvé, remplacement ignoré pour éviter le crash."
+          fi
 
-      - name: Process Logo
+      - name: Process Logo (Safe Mode)
         if: ${{ inputs.logolink != 'false' }}
         shell: bash
         run: |
-          curl -L -o ./rustdesk/data/flutter_assets/assets/logo.png "${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}&uuid=${{ fromJson(inputs.logolink).uuid }}"
+          LOGO_PATH="./flutter/assets/images/logo.png"
+          
+          # On télécharge directement au bon endroit si le dossier existe
+          if [ -d "./flutter/assets/images" ]; then
+             curl -L -o "$LOGO_PATH" "${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}&uuid=${{ fromJson(inputs.logolink).uuid }}"
+          else
+             echo "Dossier assets/images non trouvé, logo ignoré."
+          fi
 
       - name: Report Status 20%
         uses: fjogeleit/http-request-action@v1
@@ -228,7 +244,7 @@ jobs:
           python3 ./build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
           
-          # Téléchargement Drivers (avec CURL pour Bash)
+          # Téléchargement Drivers
           curl -L -o usbmmidd_v2.zip https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip
           unzip -o usbmmidd_v2.zip
           rm -rf usbmmidd_v2/Win32 usbmmidd_v2/deviceinstaller64.exe usbmmidd_v2/deviceinstaller.exe usbmmidd_v2/usbmmidd.bat
