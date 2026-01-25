@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'version to buld'
+        description: 'version to build'
         required: true
         default: ''
         type: string
@@ -13,7 +13,6 @@ on:
         required: true
         default: ''
         type: string
-      # Cet input manquait et faisait planter le declenchement
       upload-tag:
         description: 'tag name'
         required: false
@@ -29,7 +28,6 @@ env:
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   VERSION: "${{ inputs.version }}"
   UPLOAD_ARTIFACT: 'true'
-  STATUS_URL: "${{ secrets.GENURL }}/updategh"
 
 jobs:
   generate-bridge:
@@ -59,11 +57,13 @@ jobs:
         shell: python
         run: |
           import requests, pyzipper, io, os, json
+          # Récupération sécurisée du ZIP
           r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}', timeout=60)
           with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
               zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
               with zf.open('secrets.json') as f:
                   secrets = json.load(f)
+          # Injection dans l'environnement GITHUB
           with open(os.environ['GITHUB_ENV'], 'a') as env_file:
               for key, value in secrets.items():
                   env_file.write(f"{key}={value}\n")
@@ -81,25 +81,34 @@ jobs:
           name: bridge-artifact
           path: ./
 
-      - name: Apply Config
+      - name: Apply Branding and Config
         shell: bash
         run: |
-          # Correction Rust Base64
+          # 1. Fix Base64 compilation error
           sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
           sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
-          # Config Serveurs
+          
+          # 2. Config Serveurs et Clé
           sed -i -e "s|rs-ny.rustdesk.com|${{ env.server }}|" ./libs/hbb_common/src/config.rs
           sed -i -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.key }}|" ./libs/hbb_common/src/config.rs
           sed -i -e "s|https://admin.rustdesk.com|${{ env.apiServer }}|" ./src/common.rs
+          
+          # 3. Branding de base
+          sed -i -e "s|description = \"RustDesk Remote Desktop\"|description = \"${{ env.appname }}\"|" ./Cargo.toml
+          sed -i -e "s|ProductName = \"RustDesk\"|ProductName = \"${{ env.appname }}\"|" ./Cargo.toml
 
       - name: Install ImageMagick
         run: choco install -y imagemagick.app --no-progress
 
       - name: Process Icons
         if: ${{ env.iconlink_url != 'false' }}
+        shell: bash
         run: |
-          Invoke-WebRequest -Uri ${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}"&"uuid=${{ env.iconlink_uuid }} -OutFile ./res/icon.png
+          mkdir -p ./res
+          curl -L -o ./res/temp_raw.png "${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}&uuid=${{ env.iconlink_uuid }}"
+          magick ./res/temp_raw.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
+          cp ./res/icon.ico ./res/tray-icon.ico
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -107,7 +116,7 @@ jobs:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      - name: Fix Dependencies
+      - name: Fix Flutter Dependencies (intl)
         shell: bash
         run: |
           echo "dependency_overrides:" >> ./flutter/pubspec.yaml
@@ -134,7 +143,7 @@ jobs:
           cd $VCPKG_ROOT
           ./vcpkg install ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
 
-      - name: Build
+      - name: Build RustDesk
         run: |
           python3 ./build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
