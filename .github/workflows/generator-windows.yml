@@ -95,6 +95,9 @@ jobs:
       - name: Apply patches and custom branding
         shell: bash
         run: |
+          # Fix Base64 (Import de l'Engine)
+          sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
+          sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
           
           # Branding (App Name & Company)
           sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ inputs.appname }}"|' ./Cargo.toml
@@ -128,7 +131,7 @@ jobs:
         shell: bash
         run: |
           # On force le classic mode pour installer ffmpeg sans erreur de manifest
-          $VCPKG_ROOT/vcpkg install --classic ffmpeg:x64-windows-static opus:x64-windows-static libmfx:x64-windows-static
+          $VCPKG_ROOT/vcpkg install --classic ffmpeg:x64-windows-static opus:x64-windows-static libmfx:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@v1
