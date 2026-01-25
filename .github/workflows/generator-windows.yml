@@ -58,8 +58,6 @@ env:
   SCITER_RUST_VERSION: "1.75"
   RUST_VERSION: "1.75"
   CARGO_NDK_VERSION: "3.1.2"
-  SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
-  SCITER_NASM_DEBVERSION: "2.14-1"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
   VCPKG_COMMIT_ID: "460551b0ec06be1ba6b918448bf3b0f44add813d"
@@ -103,21 +101,24 @@ jobs:
       - name: Install ImageMagick
         run: choco install -y imagemagick.app --no-progress
 
-      # --- CORRECTIF BASE64 ---
-      - name: fix deprecated hbb_common::base64::encode
+      # --- PERSONNALISATION DU NOM ET DES LIENS (TES SED) ---
+      - name: change appname and company
         shell: bash
         run: |
+          sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ inputs.appname }}"|' ./Cargo.toml
+          sed -i -e 's|Purslane Ltd|${{ fromJson(inputs.extras).compname }}|g' ./Cargo.toml
+          sed -i -e 's|https://rustdesk.com|${{ fromJson(inputs.extras).urlLink }}|g' ./build.py
+          # Correction Base64
           sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
           sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
 
-      # --- GESTION DE L'ICÔNE (LOGO CLOUD GASCON) ---
+      # --- GESTION DE L'ICÔNE (CLOUD GASCON) ---
       - name: icon processing
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
           mkdir -p ./res
           Invoke-WebRequest -Uri ${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}"&"uuid=${{ fromJson(inputs.iconlink).uuid }} -OutFile ./res/temp_raw.png
-          # Nettoyage ImageMagick pour éviter l'erreur NoDecoder
           magick ./res/temp_raw.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
@@ -125,40 +126,45 @@ jobs:
           magick ./res/icon.png -resize 64x64 ./res/64x64.png
           magick ./res/icon.png -resize 128x128 ./res/128x128.png
 
-      - name: Ensure tray-icon exists (Fail-safe)
+      - name: Ensure tray-icon exists
         run: |
-          if (!(Test-Path "./res/tray-icon.ico")) {
-             if (Test-Path "./res/icon.ico") { cp ./res/icon.ico ./res/tray-icon.ico }
-          }
+          if (!(Test-Path "./res/tray-icon.ico")) { cp ./res/icon.ico ./res/tray-icon.ico -ErrorAction SilentlyContinue }
 
-      # --- CONFIGURATION RUST (CORRECTION HWCODEC / RUSTFMT) ---
+      - name: set server, key, and patches
+        shell: bash
+        run: |
+          sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ inputs.key }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
+
+      # --- INSTALLATION DES OUTILS ---
       - name: Install Rust
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ env.SCITER_RUST_VERSION }}
           targets: x86_64-pc-windows-msvc
-          components: rustfmt # Nécessaire pour hwcodec
+          components: rustfmt
 
       - name: Install LLVM
         uses: KyleMayes/install-llvm-action@v1
         with:
-          version: "15.0.6"
+          version: ${{ env.LLVM_VERSION }}
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
-          flutter-version: "3.24.5"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
 
+      # --- BUILD FINAL (FIX DES CHEMINS BASH) ---
       - name: Build rustdesk
         shell: bash
         run: |
-          # Double sécurité pour rustfmt
           rustup component add rustfmt
-          python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
+          # Utilisation de / pour éviter l'erreur d'échappement .build.py
+          python3 ./build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
-      # --- CALLBACK FINAL ---
       - name: send file to api server
         shell: bash
         run: |
