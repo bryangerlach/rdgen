@@ -16,24 +16,19 @@ on:
 
 
 env:
-  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  RUST_VERSION: "1.75" # sciter failed on m1 with 1.78 because of https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
+  SCITER_RUST_VERSION: "1.75" 
+  RUST_VERSION: "1.75" 
   CARGO_NDK_VERSION: "3.1.2"
   SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
   SCITER_NASM_DEBVERSION: "2.15.05-1"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
   ANDROID_FLUTTER_VERSION: "3.24.5" 
-  # for arm64 linux because official Dart SDK does not work
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  # vcpkg version: 2024.07.12
-  VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
-  ARMV7_VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
   VERSION: "${{ inputs.version }}"
   NDK_VERSION: "r27c"
-  #signing keys env variable checks
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
   UPLOAD_ARTIFACT: 'true'
@@ -67,15 +62,12 @@ jobs:
       fail-fast: false
       matrix:
         job:
-          # - { target: i686-pc-windows-msvc        , os: windows-2022                  }
-          # - { target: x86_64-pc-windows-gnu       , os: windows-2022                  }
           - {
               target: x86_64-pc-windows-msvc,
               os: windows-2022,
               arch: x86_64,
               vcpkg-triplet: x64-windows-static,
             }
-          # - { target: aarch64-pc-windows-msvc, os: windows-2022, arch: aarch64 }
     steps:
       - name: install python deps
         run: |
@@ -121,7 +113,7 @@ jobs:
           print("Secrets loaded into environment.")
 
       - name: Finalize and Cleanup zip/json
-        if: always() # Run even if previous steps fail
+        if: always() 
         continue-on-error: true
         uses: fjogeleit/http-request-action@v1
         with:
@@ -181,6 +173,13 @@ jobs:
         run: |
           choco install -y imagemagick.app --no-progress
           Get-ChildItem -Path "${env:ProgramFiles}" | % { $_.FullName } | Select-String -Pattern "[\/\\]ImageMagick[^\/\\]*$" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+
+      # --- PATCH 1: FIX COMPILATION RUST ---
+      - name: Fix Base64 compilation error
+        shell: bash
+        run: |
+          sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
+          sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
 
       - name: fix flutter_gpu_texture_renderer (fixed in master rustdesk)
         shell: bash
@@ -249,7 +248,7 @@ jobs:
           sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./Cargo.toml
           sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./libs/portable/Cargo.toml
           sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./res/msi/Package/License.rtf
-             
+              
       - name: change url to custom
         if: env.urlLink != 'https://rustdesk.com'
         continue-on-error: true
@@ -280,8 +279,6 @@ jobs:
           sed -i -e 's|rs-ny.rustdesk.com|${{ env.server }}|' ./libs/hbb_common/src/config.rs
           sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.key }}|' ./libs/hbb_common/src/config.rs
           sed -i -e 's|https://admin.rustdesk.com|${{ env.apiServer }}|' ./src/common.rs
-          # ./flutter/pubspec.yaml
-          #sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
 
       - name: allow custom.txt
         continue-on-error: true
@@ -312,6 +309,14 @@ jobs:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
+      # --- PATCH 2: FIX FLUTTER DEPENDENCY (INTL) ---
+      - name: Fix Flutter Dependencies (Overrides)
+        shell: bash
+        run: |
+          echo "dependency_overrides:" >> ./flutter/pubspec.yaml
+          echo "  intl: any" >> ./flutter/pubspec.yaml
+          echo "  dash_chat_2: any" >> ./flutter/pubspec.yaml
+
       # https://github.com/flutter/flutter/issues/155685
       - name: Replace engine with rustdesk custom flutter engine
         run: |
@@ -319,7 +324,7 @@ jobs:
           flutter precache --windows
           Invoke-WebRequest -Uri https://github.com/rustdesk/engine/releases/download/main/windows-x64-release.zip -OutFile windows-x64-release.zip
           Expand-Archive -Path windows-x64-release.zip -DestinationPath windows-x64-release
-          mv -Force windows-x64-release/*  C:/hostedtoolcache/windows/flutter/stable-${{ env.FLUTTER_VERSION }}-x64/bin/cache/artifacts/engine/windows-x64-release/
+          mv -Force windows-x64-release/* C:/hostedtoolcache/windows/flutter/stable-${{ env.FLUTTER_VERSION }}-x64/bin/cache/artifacts/engine/windows-x64-release/
 
       - name: Patch flutter
         shell: bash
@@ -357,46 +362,37 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ env.uuid }}", "status": "20% complete"}'
 
-      - name: Setup vcpkg with Github Actions binary cache
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgDirectory: C:\vcpkg
-          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-          doNotCache: false
-
-      - name: Install vcpkg dependencies
-        env:
-          VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.job.vcpkg-triplet }}
-        run: |
-          if ! $VCPKG_ROOT/vcpkg \
-            install \
-            --triplet ${{ matrix.job.vcpkg-triplet }} \
-            --x-install-root="$VCPKG_ROOT/installed"; then
-            find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
-              echo "$_1:"
-              echo "======"
-              cat "$_1"
-              echo "======"
-              echo ""
-            done
-            exit 1
-          fi
-          head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-${{ matrix.job.vcpkg-triplet }}-rel-out.log" || true
+      # --- PATCH 3: VCPKG MANUAL INSTALL (VERSION 2022.02.23 for libmfx) ---
+      # REMPLACEMENT TOTAL DE L'ETAPE LUKKA ET INSTALL
+      - name: Install VCPKG Manually (Tag 2022.02.23)
         shell: bash
-          
+        run: |
+          cd $RUNNER_TEMP
+          rm -rf vcpkg
+          git clone --depth 1 --branch 2022.02.23 https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          ./bootstrap-vcpkg.bat
+          echo "VCPKG_ROOT=$(pwd)" >> $GITHUB_ENV
+
+      - name: Install vcpkg dependencies (Manual)
+        shell: bash
+        run: |
+          cd $VCPKG_ROOT
+          ./vcpkg install ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
+
       - name: magick stuff
         if: ${{ env.iconlink_url != 'false' }}
         continue-on-error: true
         run: |
           Invoke-WebRequest -Uri ${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}"&"uuid=${{ env.iconlink_uuid }} -OutFile ./res/iconx.png 
-          mv ./res/icon.ico ./res/icon.ico.bak
-          mv ./res/icon.png ./res/icon.png.bak
-          mv ./res/tray-icon.ico ./res/tray-icon.ico.bak
-          mv ./res/iconx.png ./res/icon.png
-          mv ./res/32x32.png ./res/32x32.png.bak
-          mv ./res/64x64.png ./res/64x64.png.bak
-          mv ./res/128x128.png ./res/128x128.png.bak
-          mv ./res/128x128@2x.png ./res/128x128@2x.png.bak
+          Move-Item -Path ./res/icon.ico -Destination ./res/icon.ico.bak -ErrorAction SilentlyContinue
+          Move-Item -Path ./res/icon.png -Destination ./res/icon.png.bak -ErrorAction SilentlyContinue
+          Move-Item -Path ./res/tray-icon.ico -Destination ./res/tray-icon.ico.bak -ErrorAction SilentlyContinue
+          Move-Item -Path ./res/iconx.png -Destination ./res/icon.png -ErrorAction SilentlyContinue
+          Move-Item -Path ./res/32x32.png -Destination ./res/32x32.png.bak -ErrorAction SilentlyContinue
+          Move-Item -Path ./res/64x64.png -Destination ./res/64x64.png.bak -ErrorAction SilentlyContinue
+          Move-Item -Path ./res/128x128.png -Destination ./res/128x128.png.bak -ErrorAction SilentlyContinue
+          Move-Item -Path ./res/128x128@2x.png -Destination ./res/128x128@2x.png.bak -ErrorAction SilentlyContinue
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
           magick ./res/icon.png -resize 32x32 ./res/32x32.png
@@ -444,16 +440,6 @@ jobs:
           sed -i -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
           sed -i '/let (request, url) =/,/Ok(())/{/Ok(())/!d}' ./src/common.rs
 
-      # - name: run as admin
-      #   continue-on-error: true
-      #   if: ${{ env.runasadmin == 'true' }}
-      #   shell: bash
-      #   run: |
-      #     sed -i '/<\/compatibility>/a \
-      #           <security> \
-      #             <requestedExecutionLevel level="requireAdministrator" uiAccess="false"/> \
-      #           </security>' ./flutter/windows/runner/runner.exe.manifest
-
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
@@ -493,7 +479,7 @@ jobs:
           Expand-Archive usbmmidd_v2.zip -DestinationPath . -Force
           Remove-Item -Path usbmmidd_v2\Win32 -Recurse
           Remove-Item -Path "usbmmidd_v2\deviceinstaller64.exe", "usbmmidd_v2\deviceinstaller.exe", "usbmmidd_v2\usbmmidd.bat"
-          mv -Force .\usbmmidd_v2 ./rustdesk   
+          mv -Force .\usbmmidd_v2 ./rustdesk    
 
           # Download printer driver files and extract them to ./rustdesk
           try {
@@ -525,8 +511,9 @@ jobs:
       - name: icon stuff
         if: ${{ env.iconlink_url != 'false' }}
         continue-on-error: true
+        #  - Image tag removed as unnecessary here
         run: |
-          mv ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
+          Move-Item -Path ./rustdesk/data/flutter_assets/assets/icon.svg -Destination ./rustdesk/data/flutter_assets/assets/icon.svg.bak -ErrorAction SilentlyContinue
           magick ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
 
       - name: logo stuff
