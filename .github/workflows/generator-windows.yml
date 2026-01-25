@@ -1,87 +1,161 @@
 name: Custom Windows Client Generator
-
-on:
+run-name: Custom Windows Client Generator
+on: 
   workflow_dispatch:
     inputs:
-      server:
-        description: 'Relay Server'
+      version:
+        description: 'version to build'
         required: true
-      key:
-        description: 'Public Key'
+        default: ''
+        type: string
+      zip_url:
+        description: 'url to zip of json'
         required: true
-      apiServer:
-        description: 'API Server'
-        required: true
-      custom:
-        description: 'Custom Config (Base64)'
-        required: true
-      uuid:
-        description: 'Job UUID'
-        required: true
-      appname:
-        description: 'Application Name'
-        required: true
-      filename:
-        description: 'Output Filename'
-        required: true
-      extras:
-        description: 'Extra parameters (JSON)'
-        required: true
-      iconlink:
-        description: 'Icon Download Link'
+        default: ''
+        type: string
+      upload-tag:
+        description: 'tag name'
         required: false
-      logolink:
-        description: 'Logo Download Link'
-        required: false
+        default: 'latest'
+        type: string
+
+env:
+  SCITER_RUST_VERSION: "1.75"
+  RUST_VERSION: "1.75"
+  LLVM_VERSION: "15.0.6"
+  FLUTTER_VERSION: "3.24.5"
+  TAG_NAME: "${{ inputs.upload-tag }}"
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  VERSION: "${{ inputs.version }}"
+  UPLOAD_ARTIFACT: 'true'
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4 # Version stable actuelle
+  generate-bridge:
+    uses: ./.github/workflows/bridge.yml
+    with:
+      version: ${{ inputs.version }}
 
-      - name: Setup Flutter
+  build-RustDeskTempTopMostWindow:
+    uses: ./.github/workflows/third-party-RustDeskTempTopMostWindow.yml
+    with:
+      upload-artifact: true
+      target: windows-2022
+      configuration: Release
+      platform: x64
+      target_version: Windows10
+    secrets: inherit
+
+  build-for-windows-flutter:
+    name: Build Windows
+    needs: [build-RustDeskTempTopMostWindow, generate-bridge]
+    runs-on: windows-2022
+    steps:
+      - name: install python deps
+        run: pip install requests pyzipper
+
+      - name: Download and Decrypt Secrets
+        shell: python
+        run: |
+          import requests, pyzipper, io, os, json
+          r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}', timeout=60)
+          with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
+              zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
+              with zf.open('secrets.json') as f:
+                  secrets = json.load(f)
+          with open(os.environ['GITHUB_ENV'], 'a') as env_file:
+              for key, value in secrets.items():
+                  env_file.write(f"{key}={value}\n")
+
+      - name: Checkout RustDesk Source
+        uses: actions/checkout@v4
+        with:
+          repository: rustdesk/rustdesk
+          ref: ${{ env.VERSION == 'master' && 'master' || format('refs/tags/{0}', env.VERSION) }}
+          submodules: recursive
+
+      - name: Restore bridge files
+        uses: actions/download-artifact@master
+        with:
+          name: bridge-artifact
+          path: ./
+
+      # --- INJECTION DES VARIABLES DANS LE CODE ---
+      - name: Apply Branding and Config
+        shell: bash
+        run: |
+          # Correction Base64
+          sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
+          sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
+          
+          # Noms et Compagnies
+          sed -i -e "s|description = \"RustDesk Remote Desktop\"|description = \"${{ env.appname }}\"|" ./Cargo.toml
+          sed -i -e "s|ProductName = \"RustDesk\"|ProductName = \"${{ env.appname }}\"|" ./Cargo.toml
+          
+          # Serveurs et Clé
+          sed -i -e "s|rs-ny.rustdesk.com|${{ env.server }}|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.key }}|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|https://admin.rustdesk.com|${{ env.apiServer }}|" ./src/common.rs
+
+      - name: Install ImageMagick
+        run: choco install -y imagemagick.app --no-progress
+
+      - name: Process Icons
+        if: ${{ env.iconlink_url != 'false' }}
+        run: |
+          Invoke-WebRequest -Uri ${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}"&"uuid=${{ env.iconlink_uuid }} -OutFile ./res/icon.png
+          magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
+          cp ./res/icon.ico ./res/tray-icon.ico
+
+      - name: Install Flutter
         uses: subosito/flutter-action@v2
         with:
-            flutter-version: '3.24.4' # Version recommandée pour RustDesk
-            channel: 'stable'
+          channel: "stable"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      - name: Install Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
+      - name: Fix Flutter Dependencies (intl)
+        shell: bash
+        run: |
+          echo "dependency_overrides:" >> ./flutter/pubspec.yaml
+          echo "  intl: any" >> ./flutter/pubspec.yaml
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@v1
         with:
-          toolchain: stable
+          toolchain: ${{ env.SCITER_RUST_VERSION }}
           targets: x86_64-pc-windows-msvc
+          components: rustfmt
 
-      - name: Install Dependencies
-        run: |
-          vcpkg install sqlite3:x86_64-windows-static
-          pip install requests
-
-      - name: Run Build Script
+      - name: Install VCPKG (Tag 2022.02.23)
         shell: bash
         run: |
-          # Ici le script va injecter tes variables dans le code source de RustDesk
-          # On utilise python pour traiter les extras et l'URL de retour (Ngrok)
-          python rdgenerator/builder.py \
-            --platform windows \
-            --server "${{ github.event.inputs.server }}" \
-            --key "${{ github.event.inputs.key }}" \
-            --api "${{ github.event.inputs.apiServer }}" \
-            --custom "${{ github.event.inputs.custom }}" \
-            --uuid "${{ github.event.inputs.uuid }}" \
-            --appname "${{ github.event.inputs.appname }}" \
-            --extras '${{ github.event.inputs.extras }}'
+          cd $RUNNER_TEMP
+          git clone --depth 1 --branch 2022.02.23 https://github.com/microsoft/vcpkg.git
+          ./vcpkg/bootstrap-vcpkg.bat
+          echo "VCPKG_ROOT=$(pwd)/vcpkg" >> $GITHUB_ENV
 
-      - name: Upload Result to API (Ngrok)
+      - name: Install Media Stack
         shell: bash
         run: |
-          # Récupération de l'URL Ngrok via les extras
-          GENURL=$(echo '${{ github.event.inputs.extras }}' | jq -r '.genurl')
-          
-          echo "Envoi du fichier vers : $GENURL"
-          
-          curl -X POST -F "file=@${{ github.event.inputs.filename }}.exe" \
-               -F "uuid=${{ github.event.inputs.uuid }}" \
-               -F "status=Finished" \
-               "$GENURL/update_github_run"
+          cd $VCPKG_ROOT
+          ./vcpkg install ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
+
+      - name: Build RustDesk
+        run: |
+          python3 ./build.py --portable --hwcodec --flutter --vram --skip-portable-pack
+          mv ./flutter/build/windows/x64/runner/Release ./rustdesk
+
+      - name: Build self-extracted Packer
+        shell: bash
+        run: |
+          mv "./rustdesk/rustdesk.exe" "./rustdesk/${{ env.appname }}.exe"
+          pushd ./libs/portable
+          pip3 install -r requirements.txt
+          python3 ./generate.py -f ../../rustdesk/ -o . -e "../../rustdesk/${{ env.appname }}.exe"
+          popd
+          mkdir -p ./SignOutput
+          mv ./target/release/rustdesk-portable-packer.exe "./SignOutput/${{ env.filename }}.exe"
+
+      - name: Final Upload
+        shell: bash
+        run: |
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.exe" -F "uuid=${{ env.uuid }}" ${{ env.apiServer }}/api/save_custom_client
