@@ -59,7 +59,7 @@ env:
   RUST_VERSION: "1.75"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  # Commit d'Octobre 2023 (Compatible libmfx)
+  # Commit VCPKG d'Octobre 2023 (Compatible libmfx)
   VCPKG_COMMIT_ID: "5e5d0e1cd7785623065e77eff011a4ee44316868"
   VERSION: "${{ fromJson(inputs.extras).version }}"
 
@@ -119,18 +119,31 @@ jobs:
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
 
-      # --- DEPENDENCIES (VCPKG CUSTOM) ---
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
-        with:
-          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-          # CRUCIAL : On installe dans un dossier À PART pour éviter le conflit Git (Erreur 128)
-          vcpkgDirectory: ${{ github.workspace }}/vcpkg_custom
+      # --- DEPENDENCIES (MANUAL VCPKG) ---
+      # Cette étape remplace le plugin pour éviter les conflits Git
+      - name: Install VCPKG Manually (Clean Environment)
+        shell: bash
+        run: |
+          # On se place dans le dossier temporaire du runner (hors du projet)
+          cd $RUNNER_TEMP
+          
+          # On clone VCPKG proprement
+          git clone https://github.com/microsoft/vcpkg.git
+          cd vcpkg
+          
+          # On remonte le temps (Octobre 2023) pour retrouver libmfx
+          git checkout ${{ env.VCPKG_COMMIT_ID }}
+          
+          # On prépare l'exécutable
+          ./bootstrap-vcpkg.bat
+          
+          # On sauvegarde le chemin pour les étapes suivantes
+          echo "VCPKG_ROOT=$(pwd)" >> $GITHUB_ENV
 
       - name: Install Full Media Stack (Classic Mode)
         shell: bash
         run: |
-          # VCPKG est maintenant dans un dossier propre, et libmfx existe dans cette version !
+          # Installation du pack complet multimédia + libmfx
           $VCPKG_ROOT/vcpkg install --classic ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
 
       - name: Install Rust
