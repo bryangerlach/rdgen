@@ -4,55 +4,42 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version (ex: 1.2.3)'
+        description: 'version to buld'
         required: true
-        default: '1.2.3'
+        default: ''
         type: string
-      appname:
-        description: 'App Name'
+      zip_url:
+        description: 'url to zip of json'
         required: true
-        default: 'rustdesk'
-        type: string
-      filename:
-        description: 'Filename'
-        required: true
-        default: 'rustdesk'
-        type: string
-      server:
-        required: true
-        type: string
-      key:
-        required: true
-        type: string
-      apiServer:
-        required: true
-        type: string
-      custom:
-        required: true
-        type: string
-      uuid:
-        required: true
-        type: string
-      iconlink:
-        required: false
-        default: 'false'
-        type: string
-      logolink:
-        required: false
-        default: 'false'
-        type: string
-      extras:
-        description: 'JSON Extras'
-        required: true
-        default: '{}'
+        default: ''
         type: string
 
+
 env:
-  SCITER_RUST_VERSION: "1.75"
-  RUST_VERSION: "1.75"
+  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
+  RUST_VERSION: "1.75" # sciter failed on m1 with 1.78 because of https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
+  CARGO_NDK_VERSION: "3.1.2"
+  SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
+  SCITER_NASM_DEBVERSION: "2.15.05-1"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
+  ANDROID_FLUTTER_VERSION: "3.24.5" 
+  # for arm64 linux because official Dart SDK does not work
+  FLUTTER_ELINUX_VERSION: "3.16.9"
+  TAG_NAME: "${{ inputs.upload-tag }}"
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  # vcpkg version: 2024.07.12
+  VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
+  ARMV7_VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
+  VERSION: "${{ inputs.version }}"
+  NDK_VERSION: "r27c"
+  #signing keys env variable checks
+  ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
+  MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
   UPLOAD_ARTIFACT: 'true'
+  SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
+  STATUS_URL: "${{ secrets.GENURL }}/updategh"
+
 
 jobs:
   generate-bridge:
@@ -68,88 +55,348 @@ jobs:
       configuration: Release
       platform: x64
       target_version: Windows10
+    secrets: inherit
+    strategy:
+      fail-fast: false
 
   build-for-windows-flutter:
     name: Build Windows
     needs: [build-RustDeskTempTopMostWindow, generate-bridge]
-    runs-on: windows-2022
-    env:
-      SIGN_BASE_URL: ${{ secrets.SIGN_BASE_URL }}
-      SIGN_API_KEY: ${{ secrets.SIGN_API_KEY }}
-      STATUS_URL: ${{ inputs.apiServer }}/api/updategh
-      
+    runs-on: ${{ matrix.job.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        job:
+          # - { target: i686-pc-windows-msvc        , os: windows-2022                  }
+          # - { target: x86_64-pc-windows-gnu       , os: windows-2022                  }
+          - {
+              target: x86_64-pc-windows-msvc,
+              os: windows-2022,
+              arch: x86_64,
+              vcpkg-triplet: x64-windows-static,
+            }
+          # - { target: aarch64-pc-windows-msvc, os: windows-2022, arch: aarch64 }
     steps:
+      - name: install python deps
+        run: |
+          pip install requests pyzipper
+      - name: Download, Decrypt, and Mask
+        shell: python
+        run: |
+          import requests
+          import pyzipper
+          import io
+          import os
+          import json
+          import time
+
+          for attempt in range(5):
+            try:
+              print(f"Downloading secrets (Attempt {attempt + 1})...")
+              r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}', timeout=60)
+              r.raise_for_status()
+              break
+            except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
+              if attempt < 4:
+                print(f"Timeout/Error occurred: {e}. Retrying in 5 seconds...")
+                time.sleep(5)
+              else:
+                print("Max retries reached. Failing.")
+                raise e
+          
+          try:
+            with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
+              zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
+              with zf.open('secrets.json') as f:
+                secrets = json.load(f)
+          except Exception as e:
+            print(f"Error: Could not decrypt ZIP. Check if password matches. {e}")
+            exit(1)
+
+          with open(os.environ['GITHUB_ENV'], 'a') as env_file:
+            for key, value in secrets.items():
+              print(f"::add-mask::{value}")
+              env_file.write(f"{key}={value}\n")
+          
+          print("Secrets loaded into environment.")
+
+      - name: Finalize and Cleanup zip/json
+        if: always() # Run even if previous steps fail
+        continue-on-error: true
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: "${{ secrets.GENURL }}/cleanzip"
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ env.uuid }}"}'
+
+      - name: Export GitHub Actions cache environment variables
+        uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+      
+      - name: Set rdgen value
+        if: ${{ env.rdgen == 'true' }}
+        run: |
+          echo "STATUS_URL=${{ secrets.GENURL }}/updategh" >> $env:GITHUB_ENV
+
+      - name: Set rdgen value
+        if: ${{ env.rdgen == 'false' }}
+        run: |
+          echo "STATUS_URL=${{ env.apiServer }}/api/updategh" >> $env:GITHUB_ENV
+
+      - name: Report Status
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "5% complete"}'
+
       - name: Checkout source code
+        if: ${{ env.VERSION != 'master' }}
         uses: actions/checkout@v4
         with:
           repository: rustdesk/rustdesk
-          ref: ${{ inputs.version == 'master' && 'master' || format('refs/tags/{0}', inputs.version) }}
+          ref: refs/tags/${{ env.VERSION }}
           submodules: recursive
 
-      - name: Install ImageMagick
-        run: choco install -y imagemagick.app --no-progress
+      - name: Checkout source code
+        if: ${{ env.VERSION == 'master' }}
+        uses: actions/checkout@v4
+        with:
+          repository: rustdesk/rustdesk
+          submodules: recursive
 
-      # --- FIX 1 : BASE64 COMPILATION ---
-      - name: Fix Base64 compilation error
+      - name: Restore bridge files
+        uses: actions/download-artifact@master
+        with:
+          name: bridge-artifact
+          path: ./
+
+      - name: Install ImageMagick on Windows
+        run: |
+          choco install -y imagemagick.app --no-progress
+          Get-ChildItem -Path "${env:ProgramFiles}" | % { $_.FullName } | Select-String -Pattern "[\/\\]ImageMagick[^\/\\]*$" | Out-File -Append -FilePath $env:GITHUB_PATH -Encoding utf8
+
+      - name: fix flutter_gpu_texture_renderer (fixed in master rustdesk)
         shell: bash
         run: |
-          sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
-          sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
-
-      # --- BRANDING (Ton code d'origine) ---
-      - name: Apply Branding
+          sed -i -e 's|2ded7f146437a761ffe6981e2f742038f85ca68d|08a471bb8ceccdd50483c81cdfa8b81b07b14b87|' ./flutter/pubspec.lock
+          sed -i -e 's|2ded7f146437a761ffe6981e2f742038f85ca68d|08a471bb8ceccdd50483c81cdfa8b81b07b14b87|' ./flutter/pubspec.yaml
+      
+      - name: change appname to custom
+        if: env.appname != 'rustdesk'
+        continue-on-error: true
         shell: bash
         run: |
-          APPNAME="${{ inputs.appname }}"
-          FILENAME="${{ inputs.filename }}"
-          COMPNAME="${{ fromJson(inputs.extras).compname }}"
-          URL_LINK="${{ fromJson(inputs.extras).urlLink }}"
-          SERVER="${{ inputs.server }}"
-          KEY="${{ inputs.key }}"
-          API_SERVER="${{ inputs.apiServer }}"
-          
-          # Branding Cargo & Flutter
-          sed -i -e "s|description = \"RustDesk Remote Desktop\"|description = \"$APPNAME\"|" ./Cargo.toml
-          sed -i -e "s|ProductName = \"RustDesk\"|ProductName = \"$APPNAME\"|" ./Cargo.toml
-          sed -i -e "s|FileDescription = \"RustDesk Remote Desktop\"|FileDescription = \"$APPNAME\"|" ./Cargo.toml
-          sed -i -e "s|OriginalFilename = \"rustdesk.exe\"|OriginalFilename = \"$APPNAME.exe\"|" ./Cargo.toml
-          
-          sed -i -e "s|description = \"RustDesk Remote Desktop\"|description = \"$APPNAME\"|" ./libs/portable/Cargo.toml
-          sed -i -e "s|ProductName = \"RustDesk\"|ProductName = \"$APPNAME\"|" ./libs/portable/Cargo.toml
-          
-          sed -i -e "s|\"RustDesk Remote Desktop\"|\"$APPNAME\"|" ./flutter/windows/runner/Runner.rc
-          sed -i -e "s|VALUE \"InternalName\", \"rustdesk\" \"\\\0\"|VALUE \"InternalName\", \"$APPNAME\" \"\\\0\"|" ./flutter/windows/runner/Runner.rc
-          sed -i -e "s|\"rustdesk.exe\"|\"$FILENAME\"|" ./flutter/windows/runner/Runner.rc
-          sed -i -e "s|\"RustDesk\"|\"$APPNAME\"|" ./flutter/windows/runner/Runner.rc
-          
-          # Company
-          sed -i -e "s|Purslane Ltd|$COMPNAME|" ./flutter/lib/desktop/pages/desktop_setting_page.dart
-          sed -i -e "s|Purslane Ltd|$COMPNAME|" ./Cargo.toml
-          sed -i -e "s|Purslane Ltd|$COMPNAME|" ./libs/portable/Cargo.toml
-          sed -i -e "s|Purslane Ltd|$COMPNAME|" ./flutter/windows/runner/Runner.rc
-          sed -i -e "s|\"Copyright © 2025 Purslane Ltd. All rights reserved.\"|\"Copyright © 2025 $COMPNAME. All rights reserved.\"|" ./flutter/windows/runner/Runner.rc
+          # ./Cargo.toml
+          sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ env.appname }}"|' ./Cargo.toml
+          sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ env.appname }}"|' ./Cargo.toml
+          sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ env.appname }}"|' ./Cargo.toml
+          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.appname }}.exe"|' ./Cargo.toml
+          # ./libs/portable/Cargo.toml
+          sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
+          sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
+          sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
+          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.appname }}.exe"|' ./libs/portable/Cargo.toml
+          # ./flutter/windows/runner/Runner.rc
+          sed -i -e 's|"RustDesk Remote Desktop"|"${{ env.appname }}"|' ./flutter/windows/runner/Runner.rc
+          sed -i -e 's|VALUE "InternalName", "rustdesk" "\0"|VALUE "InternalName", "${{ env.appname }}" "\0"|' ./flutter/windows/runner/Runner.rc
+          sed -i -e 's|"rustdesk.exe"|"${{ env.filename }}"|' ./flutter/windows/runner/Runner.rc
+          sed -i -e 's|"RustDesk"|"${{ env.appname }}"|' ./flutter/windows/runner/Runner.rc
+          # ./src/lang/en.rs
+          # change powered by rustdek to powered by compname
+          if [ ! -z "${{ env.compname }}" ]; then
+            find ./src/lang -name "*.rs" -exec sed -i '/powered_by_me/s|RustDesk|${{ env.compname }}|g' {} \;
+          fi
+          find ./src/lang -name "*.rs" -exec sed -i -e 's|RustDesk|${{ env.appname }}|' {} \;
+          sed -i -e 's|RustDesk|${{ env.appname }}|' ./res/msi/Package/License.rtf
 
-          # URLs & Config
-          sed -i -e "s|Homepage: https://rustdesk.com|Homepage: $URL_LINK|" ./build.py
-          sed -i -e "s|launchUrl(Uri.parse('https://rustdesk.com'));|launchUrl(Uri.parse('$URL_LINK'));|" ./flutter/lib/common.dart
-          sed -i -e "s|rustdesk.com|$URL_LINK|" ./res/msi/Package/License.rtf
-          sed -i -e "s|rs-ny.rustdesk.com|$SERVER|" ./libs/hbb_common/src/config.rs
-          sed -i -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|$KEY|" ./libs/hbb_common/src/config.rs
-          sed -i -e "s|https://admin.rustdesk.com|$API_SERVER|" ./src/common.rs
-          
-          # Registre
+      - name: fix registry if appname has a space
+        if: contains(env.appname, ' ')
+        continue-on-error: true
+        shell: bash
+        run: |
+          #./src/platform/windows.rs
           sed -i -e 's|reg add {}|reg add \\\"{}\\\"|' ./src/platform/windows.rs
           sed -i -e 's|reg add HKEY_CLASSES_ROOT\\\\.{ext} /f|reg add \\\"HKEY_CLASSES_ROOT\\\\.{ext}\\\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\\\.{ext}\\\\DefaultIcon /f|reg add \\\"HKEY_CLASSES_ROOT\\\\.{ext}\\\\DefaultIcon\\\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\\\.{ext}\\\\shell /f|reg add \\\"HKEY_CLASSES_ROOT\\\\.{ext}\\\\shell\\\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\\\.{ext}\\\\shell\\\\open /f|reg add \\\"HKEY_CLASSES_ROOT\\\\.{ext}\\\\shell\\\\open\\\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\\\.{ext}\\\\shell\\\\open\\\\command|reg add \\\"HKEY_CLASSES_ROOT\\\\.{ext}\\\\shell\\\\open\\\\command\\\"|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\\\{ext} /f|reg add \\\"HKEY_CLASSES_ROOT\\\\{ext}\\\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\\\{ext}\\\\shell /f|reg add \\\"HKEY_CLASSES_ROOT\\\\{ext}\\\\shell\\\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\\\{ext}\\\\shell\\\\open /f|reg add \\\"HKEY_CLASSES_ROOT\\\\{ext}\\\\shell\\\\open\\\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\\\{ext}\\\\shell\\\\open\\\\command /f|reg add \\\"HKEY_CLASSES_ROOT\\\\{ext}\\\\shell\\\\open\\\\command\\\" /f|' ./src/platform/windows.rs
           sed -i -e 's|{subkey}|\\\"{subkey}\\\"|' ./src/platform/windows.rs
-
-      - name: Process Icons (Safe)
-        if: ${{ inputs.iconlink != 'false' }}
+          sed -i -e 's|reg delete HKEY_CLASSES_ROOT\\\\.{ext} /f|reg delete \\\"HKEY_CLASSES_ROOT\\\\.{ext}\\\" /f|' ./src/platform/windows.rs
+          sed -i -e 's|reg delete HKEY_CLASSES_ROOT\\\\{ext} /f|reg delete \\\"HKEY_CLASSES_ROOT\\\\{ext}\\\" /f|' ./src/platform/windows.rs
+          
+      - name: change company name
+        if: env.compname != 'Purslane Ltd'
+        continue-on-error: true
         shell: bash
         run: |
-          mkdir -p ./res
-          curl -L -o ./res/temp_raw.png "${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}&uuid=${{ fromJson(inputs.iconlink).uuid }}"
+          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./flutter/lib/desktop/pages/desktop_setting_page.dart
+          sed -i -e 's|PURSLANE|${{ env.compname }}|' ./res/msi/preprocess.py
+          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./res/msi/preprocess.py
+          sed -i -e 's|"Copyright © 2025 Purslane Ltd. All rights reserved."|"Copyright © 2025 ${{ env.compname }}. All rights reserved."|' ./flutter/windows/runner/Runner.rc
+          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./flutter/windows/runner/Runner.rc
+          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./Cargo.toml
+          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./libs/portable/Cargo.toml
+          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./res/msi/Package/License.rtf
+             
+      - name: change url to custom
+        if: env.urlLink != 'https://rustdesk.com'
+        continue-on-error: true
+        shell: bash
+        run: |
+          sed -i -e 's|Homepage: https://rustdesk.com|Homepage: ${{ env.urlLink }}|' ./build.py
+          sed -i -e "s|launchUrl(Uri.parse('https://rustdesk.com'));|launchUrl(Uri.parse('${{ env.urlLink }}'));|" ./flutter/lib/common.dart
+          sed -i -e "s|launchUrlString('https://rustdesk.com');|launchUrlString('${{ env.urlLink }}');|" ./flutter/lib/desktop/pages/desktop_setting_page.dart
+          sed -i -e "s|launchUrlString('https://rustdesk.com/privacy.html')|launchUrlString('${{ env.urlLink }}/privacy.html')|" ./flutter/lib/desktop/pages/desktop_setting_page.dart
+          sed -i -e "s|const url = 'https://rustdesk.com/';|const url = '${{ env.urlLink }}';|" ./flutter/lib/mobile/pages/settings_page.dart
+          sed -i -e "s|launchUrlString('https://rustdesk.com/privacy.html')|launchUrlString('${{ env.urlLink }}/privacy.html')|" ./flutter/lib/mobile/pages/settings_page.dart
+          sed -i -e "s|https://rustdesk.com/privacy.html|${{ env.urlLink }}/privacy.html|" ./flutter/lib/desktop/pages/install_page.dart
+          sed -i -e "s|rustdesk.com|${{ env.urlLink }}|" ./res/msi/Package/License.rtf
+
+      - name: change download link to custom
+        if: env.downloadLink != 'https://rustdesk.com/download'
+        continue-on-error: true
+        shell: bash
+        run: |
+          sed -i -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./flutter/lib/desktop/pages/desktop_home_page.dart
+          sed -i -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./flutter/lib/mobile/pages/connection_page.dart
+          sed -i -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./src/ui/index.tis
+
+      - name: set server, key, and apiserver
+        continue-on-error: true
+        shell: bash
+        run: |
+          sed -i -e 's|rs-ny.rustdesk.com|${{ env.server }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.key }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|https://admin.rustdesk.com|${{ env.apiServer }}|' ./src/common.rs
+          # ./flutter/pubspec.yaml
+          #sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
+
+      - name: allow custom.txt
+        continue-on-error: true
+        run: |
+          Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/allowCustom.py -OutFile allowCustom.py
+          python allowCustom.py
+          # Remove Setup Server Tip
+          Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeSetupServerTip.diff -OutFile removeSetupServerTip.diff
+          git apply removeSetupServerTip.diff
+
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v1
+        with:
+          version: ${{ env.LLVM_VERSION }}
+
+      - name: Report Status
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "10% complete"}'
+
+      - name: Install flutter
+        uses: subosito/flutter-action@v2.12.0 #https://github.com/subosito/flutter-action/issues/277
+        with:
+          channel: "stable"
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+
+      # https://github.com/flutter/flutter/issues/155685
+      - name: Replace engine with rustdesk custom flutter engine
+        run: |
+          flutter doctor -v
+          flutter precache --windows
+          Invoke-WebRequest -Uri https://github.com/rustdesk/engine/releases/download/main/windows-x64-release.zip -OutFile windows-x64-release.zip
+          Expand-Archive -Path windows-x64-release.zip -DestinationPath windows-x64-release
+          mv -Force windows-x64-release/*  C:/hostedtoolcache/windows/flutter/stable-${{ env.FLUTTER_VERSION }}-x64/bin/cache/artifacts/engine/windows-x64-release/
+
+      - name: Patch flutter
+        shell: bash
+        run: |
+          cp .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff $(dirname $(dirname $(which flutter)))
+          cd $(dirname $(dirname $(which flutter)))
+          [[ "3.24.5" == ${{env.FLUTTER_VERSION}} ]] && git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ env.SCITER_RUST_VERSION }}
+          targets: ${{ matrix.job.target }}
+          components: "rustfmt"
+
+      - name: Report Status
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "15% complete"}'
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: ${{ matrix.job.os }}
+        
+      - name: Report Status
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "20% complete"}'
+
+      - name: Setup vcpkg with Github Actions binary cache
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: C:\vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install vcpkg dependencies
+        env:
+          VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.job.vcpkg-triplet }}
+        run: |
+          if ! $VCPKG_ROOT/vcpkg \
+            install \
+            --triplet ${{ matrix.job.vcpkg-triplet }} \
+            --x-install-root="$VCPKG_ROOT/installed"; then
+            find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
+              echo "$_1:"
+              echo "======"
+              cat "$_1"
+              echo "======"
+              echo ""
+            done
+            exit 1
+          fi
+          head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-${{ matrix.job.vcpkg-triplet }}-rel-out.log" || true
+        shell: bash
           
-          magick ./res/temp_raw.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
+      - name: magick stuff
+        if: ${{ env.iconlink_url != 'false' }}
+        continue-on-error: true
+        run: |
+          Invoke-WebRequest -Uri ${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}"&"uuid=${{ env.iconlink_uuid }} -OutFile ./res/iconx.png 
+          mv ./res/icon.ico ./res/icon.ico.bak
+          mv ./res/icon.png ./res/icon.png.bak
+          mv ./res/tray-icon.ico ./res/tray-icon.ico.bak
+          mv ./res/iconx.png ./res/icon.png
+          mv ./res/32x32.png ./res/32x32.png.bak
+          mv ./res/64x64.png ./res/64x64.png.bak
+          mv ./res/128x128.png ./res/128x128.png.bak
+          mv ./res/128x128@2x.png ./res/128x128@2x.png.bak
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
           magick ./res/icon.png -resize 32x32 ./res/32x32.png
@@ -157,114 +404,152 @@ jobs:
           magick ./res/icon.png -resize 128x128 ./res/128x128.png
           magick ./res/128x128.png -resize 200% ./res/128x128@2x.png
 
-          if [ -f "./flutter/assets/images/icon.svg" ]; then
-             cp ./flutter/assets/images/icon.svg ./flutter/assets/images/icon.svg.bak
-             magick ./res/icon.png ./flutter/assets/images/icon.svg
-          elif [ -f "./rustdesk/data/flutter_assets/assets/icon.svg" ]; then
-             cp ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
-             magick ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
-          fi
 
-      - name: Process Logo (Safe)
-        if: ${{ inputs.logolink != 'false' }}
+      - name: ui.rs icon
+        if: ${{ env.iconlink_url != 'false' }}
+        continue-on-error: true
         shell: bash
         run: |
-          TARGET="./flutter/assets/images/logo.png"
-          if [ -d "./flutter/assets/images" ]; then
-             curl -L -o "$TARGET" "${{ fromJson(inputs.logolink).url }}/get_png?filename=${{ fromJson(inputs.logolink).file }}&uuid=${{ fromJson(inputs.logolink).uuid }}"
-          fi
+          cp ./src/ui.rs ./src/ui.rs.bak
+          b64=$(base64 -w0 < ./res/icon.png)
+          perl -0777 -pe "s|iVBORw0KGgoAAAANSUhEUgAAAIAAAACACAYAAADDPmHL[A-Za-z0-9+/=]+|$b64|g" -i.bak ./src/ui.rs
+          b64=""
 
-      - name: Report Status 20%
+      - name: fix connection delay
+        continue-on-error: true
+        if: ${{ env.delayFix == 'true' }}
+        shell: bash
+        run: |
+          sed -i -e 's|!key.is_empty()|false|' ./src/client.rs
+
+      - name: add cycle monitors to toolbar
+        continue-on-error: true
+        if: env.cycleMonitor == 'true'
+        run: |
+          Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/cycle_monitor.diff -OutFile cycle_monitor.diff
+          git apply cycle_monitor.diff
+
+      - name: use X for offline display instead of orange circle
+        continue-on-error: true
+        if: env.xOffline == 'true'
+        run: |
+          Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/xoffline.diff -OutFile xoffline.diff
+          git apply xoffline.diff
+
+      - name: removeNewVersionNotif
+        continue-on-error: true
+        if: env.removeNewVersionNotif == 'true'
+        shell: bash
+        run: | 
+          sed -i -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
+          sed -i '/let (request, url) =/,/Ok(())/{/Ok(())/!d}' ./src/common.rs
+
+      # - name: run as admin
+      #   continue-on-error: true
+      #   if: ${{ env.runasadmin == 'true' }}
+      #   shell: bash
+      #   run: |
+      #     sed -i '/<\/compatibility>/a \
+      #           <security> \
+      #             <requestedExecutionLevel level="requireAdministrator" uiAccess="false"/> \
+      #           </security>' ./flutter/windows/runner/runner.exe.manifest
+
+      - name: Report Status
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "20% (Dependencies)"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "25% complete"}'
 
-      # --- FIX 2 : VCPKG (Février 2022 pour libmfx) ---
-      - name: Install VCPKG (Tag 2022.02.23)
-        shell: bash
+      - name: replace flutter icons
+        if: ${{ env.iconlink_url != 'false' }}
+        continue-on-error: true
         run: |
-          cd $RUNNER_TEMP
-          rm -rf vcpkg
-          git clone --depth 1 --branch 2022.02.23 https://github.com/microsoft/vcpkg.git
-          cd vcpkg
-          ./bootstrap-vcpkg.bat
-          echo "VCPKG_ROOT=$(pwd)" >> $GITHUB_ENV
+          cd ./flutter
+          #flutter pub upgrade win32
+          flutter pub get
+          flutter pub run flutter_launcher_icons
+          cd ..
 
-      - name: Install Full Media Stack
-        shell: bash
-        run: |
-          cd $VCPKG_ROOT
-          ./vcpkg install ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: ${{ env.SCITER_RUST_VERSION }}
-          targets: x86_64-pc-windows-msvc
-          components: rustfmt
-
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: "stable"
-          flutter-version: ${{ env.FLUTTER_VERSION }}
-
-      # --- FIX 3 : FLUTTER DEPENDENCY HELL ---
-      # C'est ÇA qui manquait et qui casse la compatibilité avec ta version de Flutter
-      - name: Fix Flutter Dependencies
-        shell: bash
-        run: |
-          echo "Overriding dependencies for compatibility..."
-          echo "dependency_overrides:" >> ./flutter/pubspec.yaml
-          echo "  intl: any" >> ./flutter/pubspec.yaml
-          echo "  dash_chat_2: any" >> ./flutter/pubspec.yaml
-
-      - name: Patch flutter dropdown
-        shell: bash
-        run: |
-          PATCH_FILE=".github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff"
-          FLUTTER_DIR=$(dirname $(dirname $(which flutter)))
-          if [ -f "$PATCH_FILE" ]; then
-             cp "$PATCH_FILE" "$FLUTTER_DIR"
-             cd "$FLUTTER_DIR"
-             git apply flutter_3.24.4_dropdown_menu_enableFilter.diff || true
-          fi
-
-      - name: Report Status 50%
+      - name: Report Status
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "50% (Building)"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "50% complete, this step takes about 5 minutes, be patient."}'
 
-      # --- COMPILATION (Ton code original) ---
       - name: Build rustdesk
+        run: |
+          # Windows: build RustDesk
+          python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
+          mv ./flutter/build/windows/x64/runner/Release ./rustdesk
+ 
+          # Download usbmmidd_v2.zip and extract it to ./rustdesk
+          Invoke-WebRequest -Uri https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip -OutFile usbmmidd_v2.zip
+          Expand-Archive usbmmidd_v2.zip -DestinationPath . -Force
+          Remove-Item -Path usbmmidd_v2\Win32 -Recurse
+          Remove-Item -Path "usbmmidd_v2\deviceinstaller64.exe", "usbmmidd_v2\deviceinstaller.exe", "usbmmidd_v2\usbmmidd.bat"
+          mv -Force .\usbmmidd_v2 ./rustdesk   
+
+          # Download printer driver files and extract them to ./rustdesk
+          try {
+            Invoke-WebRequest -Uri https://github.com/rustdesk/hbb_common/releases/download/driver/rustdesk_printer_driver_v4-1.4.zip -OutFile rustdesk_printer_driver_v4-1.4.zip
+            Invoke-WebRequest -Uri https://github.com/rustdesk/hbb_common/releases/download/driver/printer_driver_adapter.zip -OutFile printer_driver_adapter.zip
+            Invoke-WebRequest -Uri https://github.com/rustdesk/hbb_common/releases/download/driver/sha256sums -OutFile sha256sums
+
+            # Check and move the files
+            $checksum_driver = (Select-String -Path .\sha256sums -Pattern '^([a-fA-F0-9]{64}) \*rustdesk_printer_driver_v4-1.4\.zip$').Matches.Groups[1].Value
+            $downloadsum_driver = Get-FileHash -Path rustdesk_printer_driver_v4-1.4.zip -Algorithm SHA256
+            $checksum_adapter = (Select-String -Path .\sha256sums -Pattern '^([a-fA-F0-9]{64}) \*printer_driver_adapter\.zip$').Matches.Groups[1].Value
+            $downloadsum_adapter = Get-FileHash -Path printer_driver_adapter.zip -Algorithm SHA256
+            if ($checksum_driver -eq $downloadsum_driver.Hash -and $checksum_adapter -eq $downloadsum_adapter.Hash) {
+                Write-Output "rustdesk_printer_driver_v4-1.4, checksums match, extract the file."
+                Expand-Archive rustdesk_printer_driver_v4-1.4.zip -DestinationPath .
+                mkdir ./rustdesk/drivers
+                mv -Force .\rustdesk_printer_driver_v4-1.4 ./rustdesk/drivers/RustDeskPrinterDriver
+                Expand-Archive printer_driver_adapter.zip -DestinationPath .
+                mv -Force .\printer_driver_adapter.dll ./rustdesk
+            } elseif ($checksum_driver -ne $downloadsum_driver.Hash) {
+                Write-Output "rustdesk_printer_driver_v4-1.4, checksums do not match, ignore the file."
+            } else {
+                Write-Output "printer_driver_adapter.dll, checksums do not match, ignore the file."
+            }
+          } catch {
+              Write-Host "Ingore the printer driver error."
+          }
+
+      - name: icon stuff
+        if: ${{ env.iconlink_url != 'false' }}
+        continue-on-error: true
+        run: |
+          mv ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
+          magick ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
+
+      - name: logo stuff
+        if: ${{ env.logolink_url != 'false' }}
+        continue-on-error: true
+        run: |
+          Invoke-WebRequest -Uri ${{ env.logolink_url }}/get_png?filename=${{ env.logolink_file }}"&"uuid=${{ env.logolink_uuid }} -OutFile ./rustdesk/data/flutter_assets/assets/logo.png
+
+      - name: find Runner.res
+        # Windows: find Runner.res (compiled from ./flutter/windows/runner/Runner.rc), copy to ./Runner.res
+        # Runner.rc does not contain actual version, but Runner.res does
+        continue-on-error: true
         shell: bash
         run: |
-          rustup component add rustfmt
-          python3 ./build.py --portable --hwcodec --flutter --vram --skip-portable-pack
-          mv ./flutter/build/windows/x64/runner/Release ./rustdesk
-          
-          # Drivers
-          curl -L -o usbmmidd_v2.zip https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip
-          unzip -o usbmmidd_v2.zip
-          rm -rf usbmmidd_v2/Win32 usbmmidd_v2/deviceinstaller64.exe usbmmidd_v2/deviceinstaller.exe usbmmidd_v2/usbmmidd.bat
-          mv -f usbmmidd_v2 ./rustdesk/
-          
-          # Printer
-          curl -L -o rustdesk_printer_driver_v4-1.4.zip https://github.com/rustdesk/hbb_common/releases/download/driver/rustdesk_printer_driver_v4-1.4.zip
-          curl -L -o printer_driver_adapter.zip https://github.com/rustdesk/hbb_common/releases/download/driver/printer_driver_adapter.zip
-          unzip -o rustdesk_printer_driver_v4-1.4.zip
-          mkdir -p ./rustdesk/drivers/RustDeskPrinterDriver
-          mv -f rustdesk_printer_driver_v4-1.4/* ./rustdesk/drivers/RustDeskPrinterDriver/
-          unzip -o printer_driver_adapter.zip
-          mv -f printer_driver_adapter.dll ./rustdesk/
+          runner_res=$(find . -name "Runner.res");
+          if [ "$runner_res" == "" ]; then
+            echo "Runner.res: not found";
+          else
+            echo "Runner.res: $runner_res";
+            cp $runner_res ./libs/portable/Runner.res;
+            echo "list ./libs/portable/Runner.res";
+            ls -l ./libs/portable/Runner.res;
+          fi
 
       - name: Download RustDeskTempTopMostWindow artifacts
         uses: actions/download-artifact@master
@@ -273,93 +558,160 @@ jobs:
           name: topmostwindow-artifacts
           path: "./rustdesk"
 
-      - name: Report Status 70%
+      - name: Report Status
         uses: fjogeleit/http-request-action@v1
         continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "70% (Signing)"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "70% complete, this step takes about 5 minutes, be patient."}'
+      
+      - name: zip dlls
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Compress-Archive -Path ./rustdesk/*.dll, ./rustdesk/*.exe -DestinationPath ./rustdesk/unsigned_files.zip -CompressionLevel Fastest
 
-      # --- SIGNATURE (Ton code original) ---
-      - name: Sign DLLs and EXE
+      - name: sign dlls
+        continue-on-error: true
         shell: bash
         run: |
-          echo -n "${{ inputs.custom }}" | cat > ./rustdesk/custom_.txt
-          cd rustdesk
-          7z a -tzip unsigned_files.zip *.dll *.exe
-          
-          if [ ! -z "$SIGN_BASE_URL" ] && [ ! -z "$SIGN_API_KEY" ]; then
-             curl -X POST -F "file=@unsigned_files.zip" -H "X-API-KEY: $SIGN_API_KEY" -m 900 "$SIGN_BASE_URL/sign/" -o signed_files.zip
-             if [ -f "signed_files.zip" ]; then
-                unzip -o signed_files.zip
-                rm unsigned_files.zip signed_files.zip
-             fi
+          if [ ! -z "${{ secrets.SIGN_BASE_URL }}" ] && [ ! -z "${{ secrets.SIGN_API_KEY }}" ]; then
+            curl -X POST -F "file=@./rustdesk/unsigned_files.zip" \
+              -H "X-API-KEY: ${{ secrets.SIGN_API_KEY }}" \
+              -m 900 \
+              "${{ secrets.SIGN_BASE_URL }}/sign/" -o ./rustdesk/signed_files.zip
+          else
+            echo "Signing skipped - signing URL or API key not configured"
+            cp ./rustdesk/unsigned_files.zip ./rustdesk/signed_files.zip
           fi
-          cd ..
+
+      - name: unzip dlls
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Expand-Archive -Path ./rustdesk/signed_files.zip -DestinationPath ./rustdesk/ -Force
+          Remove-Item ./rustdesk/unsigned_files.zip
+          Remove-Item ./rustdesk/signed_files.zip
+
+      - name: Create custom.txt file
+        shell: bash
+        run: |
+          echo -n "${{ env.custom }}" | cat > ./rustdesk/custom_.txt
 
       - name: Build self-extracted executable
         shell: bash
+        if: env.UPLOAD_ARTIFACT == 'true'
         run: |
-          mv "./rustdesk/rustdesk.exe" "./rustdesk/${{ inputs.appname }}.exe"
+          mv "./rustdesk/rustdesk.exe" "./rustdesk/${{ env.appname }}.exe" || echo "rustdesk.exe"
+          sed -i '/dpiAware/d' res/manifest.xml
           pushd ./libs/portable
           pip3 install -r requirements.txt
-          python3 ./generate.py -f ../../rustdesk/ -o . -e "../../rustdesk/${{ inputs.appname }}.exe"
+          python3 ./generate.py -f ../../rustdesk/ -o . -e "../../rustdesk/${{ env.appname }}.exe"
           popd
           mkdir -p ./SignOutput
-          mv ./target/release/rustdesk-portable-packer.exe "./SignOutput/${{ inputs.filename }}.exe"
+          mv ./target/release/rustdesk-portable-packer.exe "./SignOutput/rustdesk.exe"
 
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
 
-      - name: Build MSI via MSBuild
+      - name: Build msi
+        continue-on-error: true
+        if: env.UPLOAD_ARTIFACT == 'true'
         run: |
-           $myappname = "${{ inputs.appname }}" -replace '\s','_'
-           cp "rustdesk/${{ inputs.appname }}.exe" "rustdesk/${myappname}.exe"
-           pushd ./res/msi
-           python preprocess.py --app-name "$myappname" --arp -d ../../rustdesk
-           nuget restore msi.sln
-           msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
-           mv ./Package/bin/x64/Release/en-us/Package.msi ../../SignOutput/${{ inputs.filename }}.msi
+          $myappname = "${{ env.appname }}" -replace '\s','_'
+          cp "rustdesk/${{ env.appname }}.exe" "rustdesk/${myappname}.exe" -ErrorAction SilentlyContinue
+          pushd ./res/msi
+          python preprocess.py --app-name "$myappname" --arp -d ../../rustdesk
+          nuget restore msi.sln
+          msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
+          cp ./Package/bin/x64/Release/en-us/Package.msi ../../SignOutput/rustdesk-latest.msi
+          mv ./Package/bin/x64/Release/en-us/Package.msi ../../SignOutput/rustdesk.msi
+          sha256sum ../../SignOutput/rustdesk.msi
 
-      - name: Final Signing
+      - name: Report Status
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "85% complete"}'
+
+      - name: zip exe and msi
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Compress-Archive -Path ./SignOutput/*.exe, ./SignOutput/*.msi -DestinationPath ./SignOutput/unsigned_files.zip -CompressionLevel Fastest
+
+      - name: sign exe and msi
+        continue-on-error: true
         shell: bash
         run: |
-           cd SignOutput
-           7z a -tzip unsigned_final.zip *.exe *.msi
-           if [ ! -z "$SIGN_BASE_URL" ] && [ ! -z "$SIGN_API_KEY" ]; then
-             curl -X POST -F "file=@unsigned_final.zip" -H "X-API-KEY: $SIGN_API_KEY" -m 900 "$SIGN_BASE_URL/sign/" -o signed_final.zip
-             if [ -f "signed_final.zip" ]; then
-                unzip -o signed_final.zip
-                rm unsigned_final.zip signed_final.zip
-             fi
-           fi
-
-      # --- UPLOAD FINAL (Ton code original) ---
-      - name: Send files to API
-        shell: bash
-        run: |
-          TOKEN="${{ fromJson(inputs.extras).token }}"
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer $TOKEN" -F "file=@./SignOutput/${{ inputs.filename }}.exe" -F "uuid=${{ inputs.uuid }}" ${{ inputs.apiServer }}/api/save_custom_client
-          
-          if [ -f "./SignOutput/${{ inputs.filename }}.msi" ]; then
-             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer $TOKEN" -F "file=@./SignOutput/${{ inputs.filename }}.msi" -F "uuid=${{ inputs.uuid }}" ${{ inputs.apiServer }}/api/save_custom_client
+          if [ ! -z "${{ secrets.SIGN_BASE_URL }}" ] && [ ! -z "${{ secrets.SIGN_API_KEY }}" ]; then
+            curl -X POST -F "file=@./SignOutput/unsigned_files.zip" \
+              -H "X-API-KEY: ${{ secrets.SIGN_API_KEY }}" \
+              -m 900 \
+              "${{ secrets.SIGN_BASE_URL }}/sign/" -o ./SignOutput/signed_files.zip
+          else
+            echo "Signing skipped - signing URL or API key not configured"
+            cp ./SignOutput/unsigned_files.zip ./SignOutput/signed_files.zip
           fi
 
-      - name: Report Success
+      - name: unzip exe and msi
+        continue-on-error: true
+        shell: pwsh
+        run: |
+          Expand-Archive -Path ./SignOutput/signed_files.zip -DestinationPath ./SignOutput/ -Force
+          Remove-Item ./SignOutput/unsigned_files.zip
+          Remove-Item ./SignOutput/signed_files.zip
+
+      - name: rename rustdesk.exe to filename.exe
+        run: |
+          mv ./SignOutput/rustdesk.exe "./SignOutput/${{ env.filename }}.exe" || echo "rustdesk"
+
+      - name: rename rustdesk.msi to filename.msi
+        continue-on-error: true
+        run: |
+          mv ./SignOutput/rustdesk.msi "./SignOutput/${{ env.filename }}.msi" || echo "rustdesk"
+
+      - name: send file to rdgen server
+        if: ${{ env.rdgen == 'true' }}
+        shell: bash
+        run: |
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.exe" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.msi" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client || true
+
+      - name: send file to api server
+        if: ${{ env.rdgen == 'false' }}
+        shell: bash
+        run: |
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.exe" ${{ env.apiServer }}/api/save_custom_client
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.msi" ${{ env.apiServer }}/api/save_custom_client || true
+
+      - name: Report Status
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "Success"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "Success"}'
 
-      - name: Report Failure
+      - name: failed
         if: failure()
         uses: fjogeleit/http-request-action@v1
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
-          data: '{"uuid": "${{ inputs.uuid }}", "status": "Generation failed"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "Generation failed, try again"}'
+
+      - name: failed
+        if: cancelled()
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "Generation cancelled, try again"}'
