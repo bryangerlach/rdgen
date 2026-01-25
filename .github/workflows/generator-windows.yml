@@ -59,7 +59,32 @@ env:
   RUST_VERSION: "1.75"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
+  # Mapping des inputs vers les variables du script Pro
   VERSION: "${{ fromJson(inputs.extras).version }}"
+  appname: "${{ inputs.appname }}"
+  filename: "${{ inputs.filename }}"
+  compname: "${{ fromJson(inputs.extras).compname }}"
+  urlLink: "${{ fromJson(inputs.extras).urlLink }}"
+  downloadLink: "${{ fromJson(inputs.extras).urlLink }}/download"
+  server: "${{ inputs.server }}"
+  key: "${{ inputs.key }}"
+  apiServer: "${{ inputs.apiServer }}"
+  custom: "${{ inputs.custom }}"
+  uuid: "${{ inputs.uuid }}"
+  # Gestion des liens icônes/logos
+  iconlink_url: "${{ fromJson(inputs.iconlink).url }}"
+  iconlink_file: "${{ fromJson(inputs.iconlink).file }}"
+  iconlink_uuid: "${{ fromJson(inputs.iconlink).uuid }}"
+  logolink_url: "${{ fromJson(inputs.logolink).url }}"
+  logolink_file: "${{ fromJson(inputs.logolink).file }}"
+  logolink_uuid: "${{ fromJson(inputs.logolink).uuid }}"
+  # Variables système
+  STATUS_URL: "${{ inputs.apiServer }}/api/updategh"
+  token: "${{ fromJson(inputs.extras).token }}"
+  UPLOAD_ARTIFACT: 'true'
+  # Secrets pour la signature (mappés depuis extras ou secrets github si dispos)
+  SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
+  SIGN_API_KEY: "${{ secrets.SIGN_API_KEY }}"
 
 jobs:
   generate-bridge:
@@ -67,9 +92,18 @@ jobs:
     with:
       version: ${{ fromJson(inputs.extras).version }}
 
+  build-RustDeskTempTopMostWindow:
+    uses: ./.github/workflows/third-party-RustDeskTempTopMostWindow.yml
+    with:
+      upload-artifact: true
+      target: windows-2022
+      configuration: Release
+      platform: x64
+      target_version: Windows10
+
   build-for-windows-flutter:
     name: Build Windows
-    needs: [generate-bridge]
+    needs: [build-RustDeskTempTopMostWindow, generate-bridge]
     runs-on: windows-2022
     steps:
       - name: Checkout source code
@@ -79,74 +113,116 @@ jobs:
           ref: ${{ env.VERSION == 'master' && 'master' || format('refs/tags/{0}', env.VERSION) }}
           submodules: recursive
 
-      - name: Set API Status URL
-        run: |
-          if ("${{ fromJson(inputs.extras).rdgen }}" -eq "false") {
-            echo "STATUS_URL=${{ inputs.apiServer }}/api/updategh" >> $env:GITHUB_ENV
-          } else {
-            echo "STATUS_URL=${{ secrets.GENURL }}/updategh" >> $env:GITHUB_ENV
-          }
-
       - name: Install ImageMagick
         run: choco install -y imagemagick.app --no-progress
 
-      # --- 1. PATCHS & BRANDING ---
-      - name: Apply patches and branding
+      # --- 0. FIX COMPILATION BASE64 (CRITIQUE) ---
+      - name: Fix Base64 compilation error
         shell: bash
         run: |
-          # Correction du Base64 (Ajout de l'import Engine)
           sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
           sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
-          
-          # Application des noms et liens personnalisés
-          sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ inputs.appname }}"|' ./Cargo.toml
-          sed -i -e 's|Purslane Ltd|${{ fromJson(inputs.extras).compname }}|g' ./Cargo.toml
-          sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
-          sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ inputs.key }}|' ./libs/hbb_common/src/config.rs
-          sed -i -e 's|https://admin.rustdesk.com|${{ inputs.apiServer }}|' ./src/common.rs
-          sed -i -e 's|https://rustdesk.com|${{ fromJson(inputs.extras).urlLink }}|g' ./build.py
 
-      # --- 2. TRAITEMENT DES ICÔNES ---
-      - name: Process icons
+      # --- 1. BRANDING AVANCÉ (REGISTRE, CARGO, FLUTTER) ---
+      - name: Change App Name & Company
+        shell: bash
+        run: |
+          # Cargo.toml edits
+          sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ env.appname }}"|' ./Cargo.toml
+          sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ env.appname }}"|' ./Cargo.toml
+          sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ env.appname }}"|' ./Cargo.toml
+          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.appname }}.exe"|' ./Cargo.toml
+          
+          # Portable Cargo
+          sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
+          sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
+          
+          # Flutter Runner
+          sed -i -e 's|"RustDesk Remote Desktop"|"${{ env.appname }}"|' ./flutter/windows/runner/Runner.rc
+          sed -i -e 's|VALUE "InternalName", "rustdesk" "\0"|VALUE "InternalName", "${{ env.appname }}" "\0"|' ./flutter/windows/runner/Runner.rc
+          sed -i -e 's|"rustdesk.exe"|"${{ env.filename }}"|' ./flutter/windows/runner/Runner.rc
+          sed -i -e 's|"RustDesk"|"${{ env.appname }}"|' ./flutter/windows/runner/Runner.rc
+          
+          # Company Name replacements
+          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./flutter/lib/desktop/pages/desktop_setting_page.dart
+          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./Cargo.toml
+          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./libs/portable/Cargo.toml
+          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./flutter/windows/runner/Runner.rc
+
+      - name: Fix Registry keys (Advanced Branding)
+        if: contains(env.appname, ' ')
+        continue-on-error: true
+        shell: bash
+        run: |
+          # Modification complexe du registre pour les noms avec espaces
+          sed -i -e 's|reg add {}|reg add \\\"{}\\\"|' ./src/platform/windows.rs
+          sed -i -e 's|reg add HKEY_CLASSES_ROOT\\\\.{ext} /f|reg add \\\"HKEY_CLASSES_ROOT\\\\.{ext}\\\" /f|' ./src/platform/windows.rs
+          # (J'ai conservé tes regex avancées ici car elles sont nécessaires pour le pro branding)
+          sed -i -e 's|{subkey}|\\\"{subkey}\\\"|' ./src/platform/windows.rs
+
+      - name: Change URLs
+        shell: bash
+        run: |
+          sed -i -e 's|Homepage: https://rustdesk.com|Homepage: ${{ env.urlLink }}|' ./build.py
+          sed -i -e "s|launchUrl(Uri.parse('https://rustdesk.com'));|launchUrl(Uri.parse('${{ env.urlLink }}'));|" ./flutter/lib/common.dart
+          sed -i -e "s|rustdesk.com|${{ env.urlLink }}|" ./res/msi/Package/License.rtf
+          
+          # Config Server
+          sed -i -e 's|rs-ny.rustdesk.com|${{ env.server }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.key }}|' ./libs/hbb_common/src/config.rs
+          sed -i -e 's|https://admin.rustdesk.com|${{ env.apiServer }}|' ./src/common.rs
+
+      - name: Process Icons and Logos
         if: ${{ inputs.iconlink != 'false' }}
         continue-on-error: true
         run: |
           mkdir -p ./res
-          Invoke-WebRequest -Uri ${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}"&"uuid=${{ fromJson(inputs.iconlink).uuid }} -OutFile ./res/temp_raw.png
-          # Le flag -strip est vital pour éviter le crash de Flutter sur les profils de couleur
+          # Téléchargement via ton API
+          Invoke-WebRequest -Uri ${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}"&"uuid=${{ env.iconlink_uuid }} -OutFile ./res/temp_raw.png
+          
+          # FIX CRITIQUE: -strip pour éviter le crash Flutter
           magick ./res/temp_raw.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
+          
+          # Génération des autres tailles requises par le script Pro
+          magick ./res/icon.png -resize 32x32 ./res/32x32.png
+          magick ./res/icon.png -resize 64x64 ./res/64x64.png
+          magick ./res/icon.png -resize 128x128 ./res/128x128.png
+          magick ./res/128x128.png -resize 200% ./res/128x128@2x.png
 
-      # --- 3. DÉPENDANCES VCPKG (VERSION 2023 / LIBMFS) ---
+          # Mise à jour du logo SVG Flutter
+          mv ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
+          magick ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
+
+      - name: Report Status 20%
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "20% (Dependencies)"}'
+
+      # --- 2. INSTALLATION VCPKG (MÉTHODE TAG 2023 - FIX CRITIQUE) ---
       - name: Install VCPKG Manually (Tag 2023.10.19)
         shell: bash
         run: |
-          # On se place dans le dossier temporaire pour éviter tout conflit Git avec le projet principal
           cd $RUNNER_TEMP
           rm -rf vcpkg
-          
-          # On clone spécifiquement le tag officiel d'Octobre 2023
           git clone --depth 1 --branch 2023.10.19 https://github.com/microsoft/vcpkg.git
-          
           cd vcpkg
           ./bootstrap-vcpkg.bat
-          
-          # On enregistre le chemin pour l'étape suivante
           echo "VCPKG_ROOT=$(pwd)" >> $GITHUB_ENV
 
       - name: Install Full Media Stack
         shell: bash
         run: |
-          # IMPORTANT : On se déplace DANS le dossier VCPKG.
-          # Cela empêche VCPKG de voir le fichier 'vcpkg.json' qui est à la racine du projet RustDesk.
-          # Ainsi, il accepte la commande manuelle (mode classique).
           cd $VCPKG_ROOT
-          
-          # Installation des paquets
+          # Installation manuelle qui fonctionne
           ./vcpkg install ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
 
-      # --- 4. ENVIRONNEMENT DE BUILD ---
+      # --- 3. BUILD ENVIRONMENT ---
       - name: Install Rust
         uses: dtolnay/rust-toolchain@v1
         with:
@@ -160,21 +236,35 @@ jobs:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      # --- 5. COMPILATION ---
+      - name: Report Status 50%
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "50% (Building)"}'
+
+      # --- 4. COMPILATION & DRIVERS ---
       - name: Build rustdesk
-        shell: bash
         run: |
           rustup component add rustfmt
-          # Utilisation de ./build.py avec slash avant pour compatibilité Bash
+          # Utilisation de python3 et slash (fix bash)
           python3 ./build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
-
-      # --- 6. UPLOAD ---
-      - name: send file to api server
-        shell: bash
-        run: |
-          curl -i -X POST -H "Content-Type: multipart/form-data" \
-            -H "Authorization: Bearer ${{ fromJson(inputs.extras).token }}" \
-            -F "file=@./rustdesk/${{ inputs.appname }}.exe" \
-            -F "uuid=${{ inputs.uuid }}" \
-            ${{ inputs.apiServer }}/api/save_custom_client
+          
+          # --- Injection des Drivers (Récupéré de ton fichier Pro) ---
+          # 1. USBMMIDD (Ecran virtuel)
+          Invoke-WebRequest -Uri https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip -OutFile usbmmidd_v2.zip
+          Expand-Archive usbmmidd_v2.zip -DestinationPath . -Force
+          Remove-Item -Path usbmmidd_v2\Win32 -Recurse
+          Remove-Item -Path "usbmmidd_v2\deviceinstaller64.exe", "usbmmidd_v2\deviceinstaller.exe", "usbmmidd_v2\usbmmidd.bat"
+          mv -Force .\usbmmidd_v2 ./rustdesk
+          
+          # 2. Driver Imprimante
+          try {
+            Invoke-WebRequest -Uri https://github.com/rustdesk/hbb_common/releases/download/driver/rustdesk_printer_driver_v4-1.4.zip -OutFile rustdesk_printer_driver_v4-1.4.zip
+            Invoke-WebRequest -Uri https://github.com/rustdesk/hbb_common/releases/download/driver/printer_driver_adapter.zip -OutFile printer_driver_adapter.zip
+            Expand-Archive rustdesk_printer_driver_v4-1.4.zip -DestinationPath .
+            mkdir ./rustdesk/drivers
+            mv -Force .\rustdesk_printer_driver_v4-1.4 ./rustdesk
