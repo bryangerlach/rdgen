@@ -13,6 +13,7 @@ on:
         required: true
         default: ''
         type: string
+      # Cet input doit exister car il est appelé dans env
       upload-tag:
         description: 'tag name'
         required: false
@@ -28,6 +29,7 @@ env:
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
   VERSION: "${{ inputs.version }}"
   UPLOAD_ARTIFACT: 'true'
+  STATUS_URL: "${{ secrets.GENURL }}/updategh"
 
 jobs:
   generate-bridge:
@@ -57,13 +59,13 @@ jobs:
         shell: python
         run: |
           import requests, pyzipper, io, os, json
-          # Récupération sécurisée du ZIP
+          # Récupération du ZIP via l'URL fournie en input
           r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}', timeout=60)
           with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
               zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
               with zf.open('secrets.json') as f:
                   secrets = json.load(f)
-          # Injection dans l'environnement GITHUB
+          # On écrit les secrets dans le GITHUB_ENV pour les étapes suivantes
           with open(os.environ['GITHUB_ENV'], 'a') as env_file:
               for key, value in secrets.items():
                   env_file.write(f"{key}={value}\n")
@@ -84,31 +86,30 @@ jobs:
       - name: Apply Branding and Config
         shell: bash
         run: |
-          # 1. Fix Base64 compilation error
+          # Fix Base64 compilation
           sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
           sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
           
-          # 2. Config Serveurs et Clé
-          sed -i -e "s|rs-ny.rustdesk.com|${{ env.server }}|" ./libs/hbb_common/src/config.rs
-          sed -i -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.key }}|" ./libs/hbb_common/src/config.rs
-          sed -i -e "s|https://admin.rustdesk.com|${{ env.apiServer }}|" ./src/common.rs
+          # Configuration des serveurs (Variables issues du ZIP secrets)
+          sed -i -e "s|rs-ny.rustdesk.com|${server}|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${key}|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|https://admin.rustdesk.com|${apiServer}|" ./src/common.rs
           
-          # 3. Branding de base
-          sed -i -e "s|description = \"RustDesk Remote Desktop\"|description = \"${{ env.appname }}\"|" ./Cargo.toml
-          sed -i -e "s|ProductName = \"RustDesk\"|ProductName = \"${{ env.appname }}\"|" ./Cargo.toml
+          # Noms
+          sed -i -e "s|description = \"RustDesk Remote Desktop\"|description = \"${appname}\"|" ./Cargo.toml
 
       - name: Install ImageMagick
         run: choco install -y imagemagick.app --no-progress
 
       - name: Process Icons
-        if: ${{ env.iconlink_url != 'false' }}
-        shell: bash
+        shell: pwsh
         run: |
-          mkdir -p ./res
-          curl -L -o ./res/temp_raw.png "${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}&uuid=${{ env.iconlink_uuid }}"
-          magick ./res/temp_raw.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
-          magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
-          cp ./res/icon.ico ./res/tray-icon.ico
+          if ("${env:iconlink_url}" -ne "false") {
+            Invoke-WebRequest -Uri "${env:iconlink_url}/get_png?filename=${env:iconlink_file}&uuid=${env:iconlink_uuid}" -OutFile ./res/icon.png
+            magick ./res/icon.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
+            magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
+            cp ./res/icon.ico ./res/tray-icon.ico
+          }
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -151,15 +152,15 @@ jobs:
       - name: Finalize Packer
         shell: bash
         run: |
-          mv "./rustdesk/rustdesk.exe" "./rustdesk/${{ env.appname }}.exe"
+          mv "./rustdesk/rustdesk.exe" "./rustdesk/${appname}.exe"
           pushd ./libs/portable
           pip3 install -r requirements.txt
-          python3 ./generate.py -f ../../rustdesk/ -o . -e "../../rustdesk/${{ env.appname }}.exe"
+          python3 ./generate.py -f ../../rustdesk/ -o . -e "../../rustdesk/${appname}.exe"
           popd
           mkdir -p ./SignOutput
-          mv ./target/release/rustdesk-portable-packer.exe "./SignOutput/${{ env.filename }}.exe"
+          mv ./target/release/rustdesk-portable-packer.exe "./SignOutput/${filename}.exe"
 
-      - name: Upload
+      - name: Upload to Server
         shell: bash
         run: |
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.exe" -F "uuid=${{ env.uuid }}" ${{ env.apiServer }}/api/save_custom_client
+          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${token}" -F "file=@./SignOutput/${filename}.exe" -F "uuid=${uuid}" ${apiServer}/api/save_custom_client
