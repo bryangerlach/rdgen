@@ -59,7 +59,6 @@ env:
   RUST_VERSION: "1.75"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  # On n'utilise plus de commit ID, mais un TAG officiel dans la commande git clone
   VERSION: "${{ fromJson(inputs.extras).version }}"
 
 jobs:
@@ -91,15 +90,15 @@ jobs:
       - name: Install ImageMagick
         run: choco install -y imagemagick.app --no-progress
 
-      # --- 1. APPLICATION DES PATCHS (Code & Branding) ---
+      # --- 1. PATCHS & BRANDING ---
       - name: Apply patches and branding
         shell: bash
         run: |
-          # Correction Base64 (Import Engine)
+          # Correction du Base64 (Ajout de l'import Engine)
           sed -i '1i use hbb_common::base64::Engine;' ./src/hbbs_http/sync.rs
           sed -i 's/hbb_common::base64::encode/hbb_common::base64::engine::general_purpose::STANDARD.encode/g' ./src/hbbs_http/sync.rs
           
-          # Personnalisation (App Name, Company, Server URL)
+          # Application des noms et liens personnalisés
           sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ inputs.appname }}"|' ./Cargo.toml
           sed -i -e 's|Purslane Ltd|${{ fromJson(inputs.extras).compname }}|g' ./Cargo.toml
           sed -i -e 's|rs-ny.rustdesk.com|${{ inputs.server }}|' ./libs/hbb_common/src/config.rs
@@ -114,48 +113,43 @@ jobs:
         run: |
           mkdir -p ./res
           Invoke-WebRequest -Uri ${{ fromJson(inputs.iconlink).url }}/get_png?filename=${{ fromJson(inputs.iconlink).file }}"&"uuid=${{ fromJson(inputs.iconlink).uuid }} -OutFile ./res/temp_raw.png
-          # Option -strip pour nettoyer les métadonnées qui font planter Flutter
+          # Le flag -strip est vital pour éviter le crash de Flutter sur les profils de couleur
           magick ./res/temp_raw.png -strip -background none -alpha set -define png:color-type=6 -resize 256x256 ./res/icon.png
           magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
           cp ./res/icon.ico ./res/tray-icon.ico
 
-      # --- 3. INSTALLATION DÉPENDANCES (MÉTHODE TAG) ---
-      # C'est ici que la magie opère pour éviter les erreurs Git
-      - name: Install VCPKG Manually (Tag Method)
+      # --- 3. DÉPENDANCES VCPKG (VERSION 2023 / LIBMFS) ---
+      - name: Install VCPKG Manually (Tag 2023.10.19)
         shell: bash
         run: |
-          # 1. Aller dans un dossier neutre
+          # On se place dans le dossier temporaire pour éviter tout conflit Git avec le projet principal
           cd $RUNNER_TEMP
-          
-          # 2. Nettoyage préventif
           rm -rf vcpkg
           
-          # 3. Clone de la version OFFICIELLE du 19 Octobre 2023
-          # --branch 2023.10.19 : On cible l'étiquette exacte
-          # --depth 1 : Téléchargement instantané sans historique lourd
+          # On clone spécifiquement le tag officiel d'Octobre 2023
+          # C'est la version qui contient encore 'libmfx'
           git clone --depth 1 --branch 2023.10.19 https://github.com/microsoft/vcpkg.git
           
           cd vcpkg
-          
-          # 4. Initialisation
           ./bootstrap-vcpkg.bat
           
-          # 5. Sauvegarde du chemin pour la suite
+          # On enregistre le chemin pour l'étape suivante
           echo "VCPKG_ROOT=$(pwd)" >> $GITHUB_ENV
 
-      - name: Install Full Media Stack (Classic Mode)
+      - name: Install Full Media Stack
         shell: bash
         run: |
-          # Installation du pack complet multimédia + libmfx (présent dans le tag 2023.10.19)
-          $VCPKG_ROOT/vcpkg install --classic ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
+          # Installation des paquets SANS le flag --classic (inutile sur cette version 2023)
+          # Cela installe ffmpeg, les codecs vidéo, l'audio opus et l'accélération Intel
+          $VCPKG_ROOT/vcpkg install ffmpeg:x64-windows-static libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static libmfx:x64-windows-static
 
-      # --- 4. CONFIGURATION DE BUILD ---
+      # --- 4. ENVIRONNEMENT DE BUILD ---
       - name: Install Rust
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: ${{ env.SCITER_RUST_VERSION }}
           targets: x86_64-pc-windows-msvc
-          components: rustfmt # Indispensable pour hwcodec
+          components: rustfmt # Requis pour la compilation de hwcodec
 
       - name: Install Flutter
         uses: subosito/flutter-action@v2
@@ -163,16 +157,16 @@ jobs:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
 
-      # --- 5. COMPILATION FINALE ---
+      # --- 5. COMPILATION ---
       - name: Build rustdesk
         shell: bash
         run: |
           rustup component add rustfmt
-          # Utilisation de ./build.py pour éviter les erreurs de chemin Windows/Bash
+          # Utilisation de ./build.py avec slash avant pour compatibilité Bash
           python3 ./build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
 
-      # --- 6. ENVOI DU FICHIER ---
+      # --- 6. UPLOAD ---
       - name: send file to api server
         shell: bash
         run: |
