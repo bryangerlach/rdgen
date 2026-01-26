@@ -94,7 +94,7 @@ jobs:
             except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
               if attempt < 4:
                 print(f"Timeout/Error occurred: {e}. Retrying in 5 seconds...")
-                time.sleep(5)
+                time.sleep(30)
               else:
                 print("Max retries reached. Failing.")
                 raise e
@@ -687,7 +687,7 @@ jobs:
             except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
               if attempt < 4:
                 print(f"Timeout/Error occurred: {e}. Retrying in 5 seconds...")
-                time.sleep(5)
+                time.sleep(30)
               else:
                 print("Max retries reached. Failing.")
                 raise e
@@ -805,7 +805,7 @@ jobs:
             except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
               if attempt < 4:
                 print(f"Timeout/Error occurred: {e}. Retrying in 5 seconds...")
-                time.sleep(5)
+                time.sleep(30)
               else:
                 print("Max retries reached. Failing.")
                 raise e
@@ -922,7 +922,7 @@ jobs:
             except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
               if attempt < 4:
                 print(f"Timeout/Error occurred: {e}. Retrying in 5 seconds...")
-                time.sleep(5)
+                time.sleep(30)
               else:
                 print("Max retries reached. Failing.")
                 raise e
