@@ -3,29 +3,28 @@ name: build RustDeskTempTopMostWindow
 on:
   workflow_call:
     inputs:
-        upload-artifact:
-          type: boolean
-          default: true
-        target:
-            description: 'Target'
-            required: true
-            type: string
-            default: 'windows-2022'
-        configuration:
-            description: 'Configuration'
-            required: true
-            type: string
-            default: 'Release'
-        platform:
-            description: 'Platform'
-            required: true
-            type: string
-            default: 'x64'
-        target_version:
-            description: 'TargetVersion'
-            required: true
-            type: string
-            default: 'Windows10'
+      upload-artifact:
+        type: boolean
+        default: true
+      target:
+        required: true
+        type: string
+        default: windows-2022
+      configuration:
+        required: true
+        type: string
+        default: Release
+      platform:
+        required: true
+        type: string
+        default: x64
+      target_version:
+        required: true
+        type: string
+        default: Windows10
+      zip_url:
+        required: true
+        type: string
 
 env:
   project_path: WindowInjection/WindowInjection.vcxproj
@@ -33,88 +32,94 @@ env:
 jobs:
   build-RustDeskTempTopMostWindow:
     runs-on: ${{ inputs.target }}
-    strategy:
-        fail-fast: false
     env:
       build_output_dir: RustDeskTempTopMostWindow/WindowInjection/${{ inputs.platform }}/${{ inputs.configuration }}
+
     steps:
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
 
-      - name: Download the source code
+      - name: Download source code
         run: |
-          git clone https://github.com/rustdesk-org/RustDeskTempTopMostWindow RustDeskTempTopMostWindow
+          git clone https://github.com/rustdesk-org/RustDeskTempTopMostWindow
 
-      - name: install python deps
+      - name: Install Python dependencies
         run: |
-          pip install requests pyzipper
+          pip install --no-cache-dir requests pyzipper
+
       - name: Download, Decrypt, and Mask
         shell: python
+        env:
+          ZIP_PASSWORD: ${{ secrets.ZIP_PASSWORD }}
         run: |
-          import requests
-          import pyzipper
-          import io
-          import os
-          import json
-          import time
+          import requests, pyzipper, io, os, json, time
+
+          zip_info = json.loads(r'''${{ inputs.zip_url }}''')
+          url = f"{zip_info['url']}/get_zip?filename={zip_info['file']}"
 
           for attempt in range(5):
-            try:
-              print(f"Downloading secrets (Attempt {attempt + 1})...")
-              r = requests.get('${{ fromJson(inputs.zip_url).url }}/get_zip?filename=${{ fromJson(inputs.zip_url).file }}', timeout=60)
-              r.raise_for_status()
-              break
-            except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
-              if attempt < 4:
-                print(f"Timeout/Error occurred: {e}. Retrying in 5 seconds...")
-                time.sleep(5)
-              else:
-                print("Max retries reached. Failing.")
-                raise e
-          
-          try:
-            with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
-              zf.setpassword('${{ secrets.ZIP_PASSWORD }}'.encode())
-              with zf.open('secrets.json') as f:
-                secrets = json.load(f)
-          except Exception as e:
-            print(f"Error: Could not decrypt ZIP. Check if password matches. {e}")
-            exit(1)
+              try:
+                  print(f"Downloading secrets (Attempt {attempt + 1})...")
+                  r = requests.get(url, timeout=60)
+                  r.raise_for_status()
+                  break
+              except Exception as e:
+                  if attempt == 4:
+                      raise
+                  print(f"Retrying in 5s due to error: {e}")
+                  time.sleep(5)
 
-          with open(os.environ['GITHUB_ENV'], 'a') as env_file:
-            for key, value in secrets.items():
-              print(f"::add-mask::{value}")
-              env_file.write(f"{key}={value}\n")
-          
+          with pyzipper.AESZipFile(io.BytesIO(r.content)) as zf:
+              zf.setpassword(os.environ["ZIP_PASSWORD"].encode())
+              with zf.open("secrets.json") as f:
+                  secrets = json.load(f)
+
+          with open(os.environ["GITHUB_ENV"], "a") as env_file:
+              for k, v in secrets.items():
+                  print(f"::add-mask::{v}")
+                  env_file.write(f"{k}={v}\n")
+
           print("Secrets loaded into environment.")
 
-      - name: Finalize and Cleanup zip/json
-        if: always() # Run even if previous steps fail
+      - name: Cleanup zip on rdgen
+        if: always()
         continue-on-error: true
         uses: fjogeleit/http-request-action@v1
         with:
           url: "${{ secrets.GENURL }}/cleanzip"
-          method: 'POST'
+          method: POST
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ env.uuid }}"}'
 
-        # Build. commit 53b548a5398624f7149a382000397993542ad796 is tag v0.3
-      - name: Build the project
+      - name: Build project
+        shell: pwsh
         run: |
-          cd RustDeskTempTopMostWindow && git checkout 53b548a5398624f7149a382000397993542ad796
-          if ($env:privacylink_url-ne "false") {
-            Invoke-WebRequest -Uri ${{ env.privacylink_url }}/get_png?filename=${{ env.privacylink_file }}"&"uuid=${{ env.privacylink_uuid }} -OutFile privacy.png
-            Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/privacyScreen.py -OutFile privacyScreen.py
-            python privacyScreen.py
-            rm ./WindowInjection/img.cpp
-            mv img.cpp ./WindowInjection/img.cpp
-          }
-          msbuild ${{ env.project_path }} -p:Configuration=${{ inputs.configuration }} -p:Platform=${{ inputs.platform }} /p:TargetVersion=${{ inputs.target_version }}
+          cd RustDeskTempTopMostWindow
+          git checkout 53b548a5398624f7149a382000397993542ad796
 
-      - name: Archive build artifacts
-        uses: actions/upload-artifact@master
+          if ($env:privacylink_url -ne "false") {
+            Invoke-WebRequest `
+              -Uri "$env:privacylink_url/get_png?filename=$env:privacylink_file&uuid=$env:privacylink_uuid" `
+              -OutFile privacy.png
+
+            Invoke-WebRequest `
+              -Uri "https://raw.githubusercontent.com/bryangerlach/rdgen/master/.github/patches/privacyScreen.py" `
+              -OutFile privacyScreen.py
+
+            python privacyScreen.py
+            Remove-Item ./WindowInjection/img.cpp
+            Move-Item img.cpp ./WindowInjection/img.cpp
+          }
+
+          msbuild $env:project_path `
+            -p:Configuration=${{ inputs.configuration }} `
+            -p:Platform=${{ inputs.platform }} `
+            -p:TargetVersion=${{ inputs.target_version }}
+
+      - name: Upload build artifacts
         if: ${{ inputs.upload-artifact }}
+        uses: actions/upload-artifact@v4
         with:
-            name: topmostwindow-artifacts
-            path: |
-              ./${{ env.build_output_dir }}/WindowInjection.dll
+          name: topmostwindow-artifacts
+          path: |
+            ./${{ env.build_output_dir }}/WindowInjection.dll
