@@ -33,6 +33,16 @@
 5. Now just run ```docker compose up -d```
 
 
+## Use your own Windows code signing token
+
+1. You will need a USB signing token plugged into a Windows computer
+2. On the computer with the USB signing token, you need to make sure it is set up correctly to sign using signtool.exe
+3. Run a small [signing api](https://github.com/bryangerlach/signing_api) server on the computer with the USB token connected. Follow the setup instructions for this server.
+4. Now for your rdgen repo, add github secrets for 
+   - SIGN_BASE_URL (the accesible over the internet URL for the signing api server)
+   - SIGN_API_KEY (the api key you have set on your signing api server)
+
+
 ## Host manually:
 
 1. A Github account with a fork of this repo  
