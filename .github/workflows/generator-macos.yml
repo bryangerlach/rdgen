@@ -93,6 +93,7 @@ jobs:
         if: always() # Run even if previous steps fail
         continue-on-error: true
         uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
         with:
           url: "${{ secrets.GENURL }}/cleanzip"
           method: 'POST'
