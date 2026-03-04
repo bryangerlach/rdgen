@@ -1,23 +1,17 @@
-# RDGen, a RustDesk client generator to use with your self-hosted RustDesk server
+# 🚀 RDGen - Proxmox & Cloudflare Enhanced Edition
 
-The client generator is currently hosted [here](https://rdgen.crayoneater.org).
-If you would like to host the generator yourself, see [here](setup.md)
+Ce projet est un **Fork optimisé** du générateur RustDesk original. Il a été spécifiquement stabilisé pour les infrastructures auto-hébergées complexes.
 
-## Features
+### 🌟 Pourquoi utiliser ce Fork ?
+Si vous faites tourner votre serveur sur une **VM Proxmox** (via Docker) et que vous utilisez des **Tunnels Cloudflare** ou un Reverse Proxy, la version originale peut échouer à cause des micro-coupures de l'API. Ce fork règle ces problèmes.
 
-- Embed server and key into client
-- Custom app name
-- Custom icon/logo
-- Set default settings for the client
-- Support for rustdesk advanced settings (https://rustdesk.com/docs/en/self-host/client-configuration/advanced-settings/)
+### ✨ Améliorations clés :
+* **Build Resilient :** Ajout de `continue-on-error` sur les notifications de statut. Votre compilation ne crashera plus jamais à 5% ou 85% à cause d'une erreur réseau mineure.
+* **Synchronisation API :** Correction du bug de communication via le secret `GENURL`.
+* **Optimisation Windows :** Support complet des formats `.exe` et `.msi` avec accélération matérielle activée.
+* **Multi-Plateforme :** Workflows testés et validés pour macOS (Intel/Silicon), Linux, Windows et Android.
 
-## Generate RustDesk clients from command line instead of using a web browser
-
-Save your configuration from the rdgen web interface, or generate your own, then use that json file with [@AlekseyLapunov's rdgen-cli](https://github.com/AlekseyLapunov/rdgen-cli) to build from the command line on Windows, Linux, or MacOS like this: `python rdgen-cli -f my_config.json --set-version 1.4.5 --set-platform windows -s https://rdgen.crayoneater.org`
-
-## Notes
-
-- Icons should be square (256x256 recommended)
-- Avoid special characters or non-English characters in app name and file name
-- Build time is currently 30 - 45 minutes
-
+### 🚀 Installation rapide
+1. Forkez ce dépôt.
+2. Configurez vos secrets GitHub (`SH_SECRET`, `ZIP_PASSWORD`, `GENURL`).
+3. Lancez le build depuis votre instance rdgen locale.
