@@ -121,7 +121,7 @@ jobs:
           if [[ "${{ matrix.job.arch }}" == "x86_64" ]]; then
             sudo apt-get install -y qemu-user-static
           fi
-        
+       
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -744,7 +744,7 @@ jobs:
         job:
           - {
               target: x86_64-unknown-linux-gnu,
-              distro: ubuntu18.04,
+              distro: ubuntu22.04,
               on: ubuntu-22.04,
               arch: x86_64,
               suffix: "",
@@ -774,4 +774,151 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: rustdesk/rustdesk
-          ref: refs/tags/${{ env.VERSION
+          ref: refs/tags/${{ env.VERSION }}
+          submodules: recursive
+
+      - name: Checkout source code
+        if: ${{ env.VERSION == 'master' }}
+        uses: actions/checkout@v4
+        with:
+          repository: rustdesk/rustdesk
+          submodules: recursive
+
+      - name: Download Binary
+        uses: actions/download-artifact@master
+        with:
+          name: ${{ env.filename }}-${{ matrix.job.arch }}.deb
+          path: .
+
+      - name: Rename Binary
+        run: |
+          mv ${{ env.filename }}-${{ matrix.job.arch }}.deb flatpak/rustdesk.deb
+
+      - uses: rustdesk-org/run-on-arch-action@amd64-support
+        name: Build rustdesk flatpak package for ${{ matrix.job.arch }}
+        timeout-minutes: 45
+        id: flatpak
+        with:
+          arch: ${{ matrix.job.arch }}
+          distro: ${{ matrix.job.distro }}
+          githubToken: ${{ github.token }}
+          setup: |
+            ls -l "${PWD}"
+          dockerRunArgs: |
+            --volume "${PWD}:/workspace"
+          shell: /bin/bash
+          install: |
+            apt-get update -y
+            apt-get install -y git flatpak flatpak-builder
+          run: |
+            git config --global --add safe.directory "*"
+            cd /workspace/flatpak
+            flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+            if [ ! -d "shared-modules" ]; then
+              git clone https://github.com/flathub/shared-modules.git --depth=1
+            fi
+            flatpak-builder --user --install-deps-from=flathub -y --force-clean --repo=repo ./build ./rustdesk.json
+            flatpak build-bundle ./repo ./${{ env.filename }}-${{ matrix.job.arch }}.flatpak com.rustdesk.RustDesk
+            ls -lh ./${{ env.filename }}-${{ matrix.job.arch }}.flatpak
+
+      - name: send file to rdgen server
+        if: ${{ env.rdgen == 'true' }}
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 1
+          max_attempts: 3
+          shell: bash
+          command: |
+            curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./flatpak/${{ env.filename }}-${{ matrix.job.arch }}.flatpak" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client
+          
+      - name: send file to api server
+        if: ${{ env.rdgen == 'false' }}
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 1
+          max_attempts: 3
+          shell: bash
+          command: |
+            curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./flatpak/${{ env.filename }}-${{ matrix.job.arch }}.flatpak" ${{ env.apiServer }}/api/save_custom_client
+
+      - name: failed
+        if: failure()
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "${{ matrix.job.arch }} Flatpak failed, waiting on others to finish."}'
+
+      - name: failed
+        if: cancelled()
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "${{ matrix.job.arch }} Flatpak cancelled, waiting on others to finish."}'
+
+  deploy:
+    needs: [build-rustdesk-linux,build-flatpak,build-appimage]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        
+      - uses: actions/download-artifact@v4
+        with:
+          name: encrypted-secrets-zip
+
+      - name: Load Secrets
+        uses: ./.github/actions/decrypt-secrets
+        with:
+          zip_password: ${{ secrets.ZIP_PASSWORD }}
+
+      - name: Finalize and Cleanup zip/json
+        if: always() 
+        continue-on-error: true
+        uses: fjogeleit/http-request-action@v1
+        with:
+          url: "${{ secrets.GENURL }}/cleanzip"
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ env.uuid }}"}'
+
+      - name: Set rdgen value
+        if: ${{ env.rdgen == 'true' }}
+        run: |
+          echo "STATUS_URL=${{ secrets.GENURL }}/updategh" >> $GITHUB_ENV
+
+      - name: Set rdgen value
+        if: ${{ env.rdgen == 'false' }}
+        run: |
+          echo "STATUS_URL=${{ env.apiServer }}/api/updategh" >> $GITHUB_ENV
+          
+      - name: Report Status
+        uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
+        with:
+          url: ${{ env.STATUS_URL }}
+          method: 'POST'
+          customHeaders: '{"Content-Type": "application/json"}'
+          data: '{"uuid": "${{ env.uuid }}", "status": "Success"}'
+
+      - uses: geekyeggo/delete-artifact@v5
+        continue-on-error: true
+        with:
+            name: ${{ env.filename }}-*.deb
+
+  cleanup:
+    needs: [build-rustdesk-linux,build-flatpak,build-appimage,deploy]
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    if: always()
+    steps:
+      - name: Delete secrets artifact
+        uses: geekyeggo/delete-artifact@v5
+        with:
+          name: encrypted-secrets-zip
