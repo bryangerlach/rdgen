@@ -15,8 +15,8 @@ on:
         type: string
 
 env:
-  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  RUST_VERSION: "1.75" # sciter failed on m1 with 1.78 because of https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
+  SCITER_RUST_VERSION: "1.75" 
+  RUST_VERSION: "1.75" 
   CARGO_NDK_VERSION: "3.1.2"
   SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
   SCITER_NASM_DEBVERSION: "2.14-1"
@@ -24,16 +24,13 @@ env:
   FLUTTER_VERSION: "3.24.5"
   ANDROID_FLUTTER_VERSION: "3.24.5" 
   FLUTTER_RUST_BRIDGE_VERSION: "1.80.1"
-  # for arm64 linux because official Dart SDK does not work
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  # vcpkg version: 2024.07.12
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   ARMV7_VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
   VERSION: "${{ inputs.version }}"
   NDK_VERSION: "r27c"
-  #signing keys env variable checks
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
   UPLOAD_ARTIFACT: 'true'
@@ -58,7 +55,6 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # use a high level qemu-user-static
         job:
           - {
               arch: x86_64,
@@ -125,7 +121,7 @@ jobs:
           if [[ "${{ matrix.job.arch }}" == "x86_64" ]]; then
             sudo apt-get install -y qemu-user-static
           fi
-      
+       
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -172,7 +168,6 @@ jobs:
 
       - name: Disable rust bridge build
         run: |
-          # only build cdylib
           sed -i  "s/\[\"cdylib\", \"staticlib\", \"rlib\"\]/\[\"cdylib\"\]/g" Cargo.toml
 
       - name: Report Status
@@ -287,7 +282,6 @@ jobs:
             wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeSetupServerTip.diff
             git apply removeSetupServerTip.diff
             echo -n "${{ env.custom }}" | cat > ./custom_.txt
-            # sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
             sed -i -e 's|https://admin.rustdesk.com|${{ env.apiServer }}|' ./src/common.rs
           
       - name: change url to custom
@@ -427,29 +421,22 @@ jobs:
                wget \
                xz-utils \
                libssl-dev
-            # we have libopus compiled by us.
             apt-get remove -y libopus-dev || true
-            # output devs
             ls -l ./
             tree -L 3 /opt/artifacts/vcpkg/installed
           run: |
-            # disable git safe.directory
             git config --global --add safe.directory "*"
-            # rust
             pushd /opt
-            # do not use rustup, because memory overflow in qemu
             wget -O rust.tar.gz https://static.rust-lang.org/dist/rust-${{env.RUST_TOOLCHAIN_VERSION}}-${{ matrix.job.target }}.tar.gz
             tar -zxvf rust.tar.gz > /dev/null && rm rust.tar.gz
             cd rust-${{env.RUST_TOOLCHAIN_VERSION}}-${{ matrix.job.target }} && ./install.sh
             rm -rf rust-${{env.RUST_TOOLCHAIN_VERSION}}-${{ matrix.job.target }}
-            # edit config
             mkdir -p ~/.cargo/
             echo """
               [source.crates-io]
               registry = 'https://github.com/rust-lang/crates.io-index'
             """ > ~/.cargo/config
             cat ~/.cargo/config
-            # start build
             pushd /workspace
             export VCPKG_ROOT=/opt/artifacts/vcpkg
             if [[ "${{ matrix.job.arch }}" == "aarch64" ]]; then
@@ -462,8 +449,6 @@ jobs:
             rm -rf target/release/deps target/release/build
             rm -rf ~/.cargo
 
-            # Setup Flutter
-            # disable git safe.directory
             git config --global --add safe.directory "*"
             pushd /workspace
             case ${{ matrix.job.arch }} in
@@ -482,7 +467,6 @@ jobs:
             tar xf flutter_linux_${{ env.FLUTTER_VERSION }}-stable.tar.xz
             case ${{ matrix.job.arch }} in
               aarch64)
-                # clone repo and reset to flutter ${{ env.FLUTTER_VERSION }}
                 git clone https://github.com/sony/flutter-elinux.git || true
                 pushd flutter-elinux
                   git fetch
@@ -511,7 +495,6 @@ jobs:
               popd
             fi
 
-            # build flutter
             pushd /workspace
             mkdir output
             chmod 777 output -R
@@ -540,7 +523,6 @@ jobs:
               mv "$name" /workspace/output/"${{ env.filename }}-${{ matrix.job.arch }}.deb"
             done
 
-            # rpm package
             echo -e "start packaging fedora package"
             pushd /workspace
             case ${{ matrix.job.arch }} in
@@ -554,7 +536,6 @@ jobs:
                 mv "$name" /workspace/output/"${{ env.filename }}-${{ matrix.job.arch }}.rpm"
             done
 
-            # rpm suse package
             echo -e "start packaging suse package"
             pushd /workspace
             case ${{ matrix.job.arch }} in
@@ -568,9 +549,6 @@ jobs:
                 mv "$name" /workspace/output/"${{ env.filename }}-suse-${{ matrix.job.arch }}.rpm"
             done
 
-      # only x86_64 for arch since we can not find newest arm64 docker image to build
-      # old arch image does not make sense for arch since it is "arch" which always update to date
-      # and failed to makepkg arm64 on x86_64
       - name: Patch archlinux PKGBUILD
         continue-on-error: true
         if: matrix.job.arch == 'x86_64' && env.UPLOAD_ARTIFACT == 'true' && env.VERSION != 'master'
@@ -640,6 +618,7 @@ jobs:
       - name: failed
         if: failure()
         uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
@@ -649,6 +628,7 @@ jobs:
       - name: failed
         if: cancelled()
         uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
@@ -706,12 +686,9 @@ jobs:
       - name: Build appimage package
         shell: bash
         run: |
-          # install libarchive-tools for bsdtar command used in AppImageBuilder.yml
           sudo apt-get update -y
           sudo apt-get install -y libarchive-tools libfuse2
-          # set-up appimage-builder
           sudo pip3 install git+https://github.com/rustdesk-org/appimage-builder.git
-          # run appimage-builder
           pushd appimage
           sudo appimage-builder --skip-tests --recipe ./AppImageBuilder-${{ matrix.job.arch }}.yml
           sudo mv ./rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}.AppImage ./${{ env.filename }}-${{ matrix.job.arch }}.AppImage
@@ -739,6 +716,7 @@ jobs:
       - name: failed
         if: failure()
         uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
@@ -748,6 +726,7 @@ jobs:
       - name: failed
         if: cancelled()
         uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
@@ -765,14 +744,13 @@ jobs:
         job:
           - {
               target: x86_64-unknown-linux-gnu,
-              distro: ubuntu18.04,
+              distro: ubuntu22.04,
               on: ubuntu-22.04,
               arch: x86_64,
               suffix: "",
             }
           - {
               target: aarch64-unknown-linux-gnu,
-              # try out newer flatpak since error of "error: Nothing matches org.freedesktop.Platform in remote flathub"
               distro: ubuntu22.04,
               on: ubuntu-22.04-arm,
               arch: aarch64,
@@ -818,8 +796,7 @@ jobs:
 
       - uses: rustdesk-org/run-on-arch-action@amd64-support
         name: Build rustdesk flatpak package for ${{ matrix.job.arch }}
-        continue-on-error: true
-        timeout-minutes: 30
+        timeout-minutes: 45
         id: flatpak
         with:
           arch: ${{ matrix.job.arch }}
@@ -834,16 +811,15 @@ jobs:
             apt-get update -y
             apt-get install -y git flatpak flatpak-builder
           run: |
-            # disable git safe.directory
             git config --global --add safe.directory "*"
-            pushd /workspace
-            # flatpak deps
+            cd /workspace/flatpak
             flatpak --user remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-            # package
-            pushd flatpak
-            git clone https://github.com/flathub/shared-modules.git --depth=1
+            if [ ! -d "shared-modules" ]; then
+              git clone https://github.com/flathub/shared-modules.git --depth=1
+            fi
             flatpak-builder --user --install-deps-from=flathub -y --force-clean --repo=repo ./build ./rustdesk.json
-            flatpak build-bundle ./repo ${{ env.filename }}-${{ matrix.job.arch }}.flatpak com.rustdesk.RustDesk
+            flatpak build-bundle ./repo ./${{ env.filename }}-${{ matrix.job.arch }}.flatpak com.rustdesk.RustDesk
+            ls -lh ./${{ env.filename }}-${{ matrix.job.arch }}.flatpak
 
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
@@ -868,6 +844,7 @@ jobs:
       - name: failed
         if: failure()
         uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
@@ -877,6 +854,7 @@ jobs:
       - name: failed
         if: cancelled()
         uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
@@ -901,7 +879,7 @@ jobs:
           zip_password: ${{ secrets.ZIP_PASSWORD }}
 
       - name: Finalize and Cleanup zip/json
-        if: always() # Run even if previous steps fail
+        if: always() 
         continue-on-error: true
         uses: fjogeleit/http-request-action@v1
         with:
@@ -922,6 +900,7 @@ jobs:
           
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
+        continue-on-error: true
         with:
           url: ${{ env.STATUS_URL }}
           method: 'POST'
