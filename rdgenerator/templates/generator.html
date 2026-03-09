@@ -603,7 +603,7 @@
             }
 
             const privacyPreview = document.getElementById('privacy-preview');
-            if (privacyPreview.firstChild && logoPrprivacyPrevieweview.firstChild.src.startsWith('data:image/png;base64')) {
+            if (privacyPreview.firstChild && privacyPreview.firstChild.src.startsWith('data:image/png;base64')) {
                 formData.privacyfile = privacyPreview.firstChild.src; // Use existing base64
             } else { //if it's a file upload
                 const privacyFile = document.getElementById("{{ form.privacyfile.id_for_label }}").files[0];
