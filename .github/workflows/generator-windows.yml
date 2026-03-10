@@ -241,6 +241,12 @@ jobs:
           sed -i -e "s|https://rustdesk.com/privacy.html|${{ env.urlLink }}/privacy.html|" ./flutter/lib/desktop/pages/install_page.dart
           sed -i -e "s|rustdesk.com|${{ env.urlLink }}|" ./res/msi/Package/License.rtf
 
+      - name: change about text
+        continue-on-error: true
+        shell: bash
+        run: |
+          find ./flutter -name "*.dart" -exec sed -i -e 's|在这个混乱的世界中，用心制作！|信息部|g' {} \;
+
       - name: change download link to custom
         if: env.downloadLink != 'https://rustdesk.com/download'
         continue-on-error: true
