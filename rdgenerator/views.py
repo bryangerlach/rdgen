@@ -318,9 +318,10 @@ def generator_view(request):
             )
             try:
                 response = requests.post(url, json=data, headers=headers)
-                print(response)
+                #print(response)
                 if response.status_code == 204 or response.status_code == 200:
                     github_data = response.json()
+                    print(github_data)
                     new_github_run.github_run_id = github_data.get('id')
                     new_github_run.status = "in_progress"
                     new_github_run.save()
