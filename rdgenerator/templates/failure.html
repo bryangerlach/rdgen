@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generation Failed</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f9f9f9;
+            color: #333;
+        }
+        .container {
+            text-align: center;
+            padding: 2rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 400px;
+        }
+        .icon {
+            font-size: 48px;
+            color: #d9534f; 
+            margin-bottom: 1rem;
+        }
+        h1 {
+            margin: 0 0 1rem 0;
+            font-size: 24px;
+        }
+        p {
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 2rem;
+        }
+        .btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            text-decoration: none;
+            border-radius: 4px;
+            font-weight: bold;
+            transition: background 0.2s;
+        }
+        .btn:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="icon">✕</div>
+        <h1>Generation Failed</h1>
+        <p>Something went wrong during the GitHub Action process. This could be due to a timeout, a script error, or a server issue.</p>
+        
+        <a href="/" class="btn">Return to Form</a>
+    </div>
+
+    <div class="container">
+        <div class="icon">✕</div>
+        <h1>Generation Failed</h1>
+        <p>Something went wrong during the process.</p>
+        
+        <div style="background: #f1f1f1; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <a href="{{ log_url }}" target="_blank" style="color: #d9534f; font-weight: bold;">
+                Check GitHub Logs for Errors
+            </a>
+        </div>
+
+        <a href="/" class="btn">Return to Form</a>
+    </div>
+
+</body>
+</html>

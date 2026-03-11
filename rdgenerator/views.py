@@ -302,7 +302,8 @@ def generator_view(request):
                 "inputs":{
                     "version":version,
                     "zip_url":zip_url
-                }
+                },
+                "return_run_details": True
             } 
             #print(data)
             headers = {
@@ -311,13 +312,26 @@ def generator_view(request):
                 'Authorization': 'Bearer '+_settings.GHBEARER,
                 'X-GitHub-Api-Version': '2022-11-28'
             }
-            create_github_run(myuuid)
-            response = requests.post(url, json=data, headers=headers)
-            print(response)
-            if response.status_code == 204 or response.status_code == 200:
-                return render(request, 'waiting.html', {'filename':filename, 'uuid':myuuid, 'status':"Starting generator...please wait", 'platform':platform})
-            else:
-                return JsonResponse({"error": "Something went wrong"})
+            new_github_run = GithubRun(
+                uuid=myuuid,
+                status="Starting generator...please wait"
+            )
+            try:
+                response = requests.post(url, json=data, headers=headers)
+                #print(response)
+                if response.status_code == 204 or response.status_code == 200:
+                    github_data = response.json()
+                    new_github_run.github_run_id = github_data.get('id')
+                    new_github_run.status = "in_progress"
+                    new_github_run.save()
+
+                    return render(request, 'waiting.html', {'filename':filename, 'uuid':myuuid, 'status':"Starting generator...please wait", 'platform':platform})
+                else:
+                    new_github_run.delete()
+                    return JsonResponse({"error": "GitHub rejected the start request"}, status=500)
+            except Exception as e:
+                new_github_run.delete()
+                return JsonResponse({"error": f"Connection error: {str(e)}"}, status=500)
     else:
         form = GenerateForm()
     #return render(request, 'maintenance.html')
@@ -330,12 +344,31 @@ def check_for_file(request):
     platform = request.GET['platform']
     gh_run = GithubRun.objects.filter(Q(uuid=uuid)).first()
     status = gh_run.status
+    if status not in ['success', 'failure', 'cancelled']:
+        headers = {"Authorization": f"Bearer {_settings.GHBEARER}"}
+        api_url = f"https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/runs/{gh_run.github_run_id}"
+        github_log_url = f"https://github.com/{_settings.GHUSER}/{_settings.REPONAME}/actions/runs/{gh_run.github_run_id}"
+
+        timeout_limit = gh_run.created_at + timedelta(hours=2)
+        
+        try:
+            gh_response = requests.get(api_url, headers=headers)
+            if gh_response.status_code == 200:
+                gh_data = gh_response.json()
+                
+                if gh_data['status'] == 'completed':
+                    gh_run.status = gh_data['conclusion'] # 'success' or 'failure'
+                    gh_run.save()
+        except Exception as e:
+            print(f"Error checking GitHub: {e}")
 
     #if file_exists:
-    if status == "Success":
+    if gh_run.status == "success":
         return render(request, 'generated.html', {'filename': filename, 'uuid':uuid, 'platform':platform})
+    elif gh_run.status == "failure":
+        return render(request, 'failure.html', {'log_url': github_log_url})
     else:
-        return render(request, 'waiting.html', {'filename':filename, 'uuid':uuid, 'status':status, 'platform':platform})
+        return render(request, 'waiting.html', {'filename':filename, 'uuid':uuid, 'status':status, 'platform':platform, 'log_url': github_log_url})
 
 def download(request):
     filename = request.GET['filename']
@@ -362,13 +395,6 @@ def get_png(request):
         })
 
     return response
-
-def create_github_run(myuuid):
-    new_github_run = GithubRun(
-        uuid=myuuid,
-        status="Starting generator...please wait"
-    )
-    new_github_run.save()
 
 def update_github_run(request):
     data = json.loads(request.body)
