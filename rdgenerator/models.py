@@ -5,4 +5,3 @@ class GithubRun(models.Model):
     uuid = models.CharField(verbose_name="uuid", max_length=100)
     status = models.CharField(verbose_name="status", max_length=100)
     github_run_id = models.BigIntegerField(null=True, blank=True)
-    created_at = models.DateTimeField(auto_now_add=True)

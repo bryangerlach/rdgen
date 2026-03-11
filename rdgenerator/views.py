@@ -348,8 +348,6 @@ def check_for_file(request):
         headers = {"Authorization": f"Bearer {_settings.GHBEARER}"}
         api_url = f"https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/runs/{gh_run.github_run_id}"
         github_log_url = f"https://github.com/{_settings.GHUSER}/{_settings.REPONAME}/actions/runs/{gh_run.github_run_id}"
-
-        timeout_limit = gh_run.created_at + timedelta(hours=2)
         
         try:
             gh_response = requests.get(api_url, headers=headers)
@@ -395,6 +393,13 @@ def get_png(request):
         })
 
     return response
+
+def create_github_run(myuuid):
+    new_github_run = GithubRun(
+        uuid=myuuid,
+        status="Starting generator...please wait"
+    )
+    new_github_run.save()
 
 def update_github_run(request):
     data = json.loads(request.body)
