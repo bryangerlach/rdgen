@@ -328,10 +328,10 @@ def generator_view(request):
 
                     return render(request, 'waiting.html', {'filename':filename, 'uuid':myuuid, 'status':"Starting generator...please wait", 'platform':platform, 'log_url': github_data.get('html_url')})
                 else:
-                    new_github_run.delete()
+                    #new_github_run.delete()
                     return JsonResponse({"error": "GitHub rejected the start request"}, status=500)
             except Exception as e:
-                new_github_run.delete()
+                #new_github_run.delete()
                 return JsonResponse({"error": f"Connection error: {str(e)}"}, status=500)
     else:
         form = GenerateForm()
@@ -339,16 +339,22 @@ def generator_view(request):
     return render(request, 'generator.html', {'form': form})
 
 
+from django.shortcuts import render, get_object_or_404
+from django.db.models import Q
+
 def check_for_file(request):
-    filename = request.GET['filename']
-    uuid = request.GET['uuid']
-    platform = request.GET['platform']
-    gh_run = GithubRun.objects.filter(Q(uuid=uuid)).first()
-    status = gh_run.status
-    if status not in ['success', 'failure', 'cancelled']:
-        headers = {"Authorization": f"Bearer {_settings.GHBEARER}"}
+    filename = request.GET.get('filename')
+    uuid = request.GET.get('uuid')
+    platform = request.GET.get('platform')
+    gh_run = get_object_or_404(GithubRun, uuid=uuid)
+    github_log_url = f"https://github.com/{_settings.GHUSER}/{_settings.REPONAME}/actions/runs/{gh_run.github_run_id}"
+
+    if gh_run.status not in ['success', 'failure', 'cancelled', 'timed_out', 'skipped']:
+        headers = {
+            "Authorization": f"Bearer {_settings.GHBEARER}",
+            "Accept": "application/vnd.github+json"
+        }
         api_url = f"https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/runs/{gh_run.github_run_id}"
-        github_log_url = f"https://github.com/{_settings.GHUSER}/{_settings.REPONAME}/actions/runs/{gh_run.github_run_id}"
         
         try:
             gh_response = requests.get(api_url, headers=headers)
@@ -356,18 +362,35 @@ def check_for_file(request):
                 gh_data = gh_response.json()
                 
                 if gh_data['status'] == 'completed':
-                    gh_run.status = gh_data['conclusion'] # 'success' or 'failure'
+                    gh_run.status = gh_data['conclusion']
                     gh_run.save()
         except Exception as e:
             print(f"Error checking GitHub: {e}")
-
-    #if file_exists:
+    
     if gh_run.status == "success":
-        return render(request, 'generated.html', {'filename': filename, 'uuid':uuid, 'platform':platform})
-    elif gh_run.status == "failure":
-        return render(request, 'failure.html', {'log_url': github_log_url})
+        return render(request, 'generated.html', {
+            'filename': filename, 
+            'uuid': uuid, 
+            'platform': platform
+        })
+        
+    elif gh_run.status in ['failure', 'cancelled', 'timed_out', 'skipped', 'action_required']:
+        return render(request, 'failure.html', {
+            'log_url': github_log_url, 
+            'filename': filename, 
+            'uuid': uuid, 
+            'platform': platform,
+            'status': gh_run.status
+        })
+        
     else:
-        return render(request, 'waiting.html', {'filename':filename, 'uuid':uuid, 'status':status, 'platform':platform, 'log_url': github_log_url})
+        return render(request, 'waiting.html', {
+            'filename': filename, 
+            'uuid': uuid, 
+            'status': gh_run.status, 
+            'platform': platform, 
+            'log_url': github_log_url
+        })
 
 def download(request):
     filename = request.GET['filename']

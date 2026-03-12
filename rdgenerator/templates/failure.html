@@ -1,80 +1,156 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Generation Failed</title>
+    <title id="pageTitle">Build Failure</title>
     <style>
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             height: 100vh;
             margin: 0;
-            background-color: #f9f9f9;
-            color: #333;
-        }
-        .container {
             text-align: center;
-            padding: 2rem;
+            background: linear-gradient(135deg, #ffcfcf 0%, #e2c3c3 100%);
+        }
+        .platform-logo {
+            width: 150px;
+            height: 150px;
+            margin-bottom: 30px;
+            display: none;
+            filter: drop-shadow(0 10px 15px rgba(0,0,0,0.2));
+            transition: transform 0.3s ease;
+        }
+        .error-container {
             background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            max-width: 500px;
+            width: 90%;
+        }
+        .error-header {
+            color: #c0392b;
+            font-weight: 700;
+            margin-bottom: 10px;
+            font-size: 1.5em;
+        }
+        .warning-box {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 15px;
             border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            max-width: 400px;
+            margin-bottom: 20px;
+            font-size: 0.9em;
+            text-align: left;
         }
-        .icon {
-            font-size: 48px;
-            color: #d9534f; 
-            margin-bottom: 1rem;
+        .download-section {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border: 1px dashed #ccc;
         }
-        h1 {
-            margin: 0 0 1rem 0;
-            font-size: 24px;
-        }
-        p {
-            color: #666;
-            line-height: 1.5;
-            margin-bottom: 2rem;
-        }
-        .btn {
-            display: inline-block;
-            padding: 10px 20px;
-            background-color: #007bff;
+        .download-link {
+            display: block;
+            margin: 10px 0;
+            padding: 12px;
+            background-color: #34495e;
             color: white;
             text-decoration: none;
-            border-radius: 4px;
-            font-weight: bold;
-            transition: background 0.2s;
+            border-radius: 5px;
+            transition: opacity 0.3s ease;
         }
-        .btn:hover {
-            background-color: #0056b3;
+        .download-link:hover {
+            opacity: 0.8;
+        }
+        .log-link {
+            display: inline-block;
+            margin-top: 15px;
+            color: #3498db;
+            text-decoration: none;
+            font-size: 0.85em;
+        }
+        .platform-note {
+            color: #666;
+            font-size: 0.85em;
+            margin-top: 15px;
         }
     </style>
 </head>
 <body>
-
-    <div class="container">
-        <div class="icon">✕</div>
-        <h1>Generation Failed</h1>
-        <p>Something went wrong during the GitHub Action process. This could be due to a timeout, a script error, or a server issue.</p>
+    <svg id="windowsLogo" class="platform-logo" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+        <rect width="256" height="256" rx="50" ry="50" fill="#0078D7"/>
+        <text x="128" y="160" font-family="Arial" font-size="50" font-weight="bold" text-anchor="middle" fill="white">Win</text>
+    </svg>
+    <div class="error-container">
+        <h2 class="error-header">Workflow Interrupted</h2>
         
-        <a href="/" class="btn">Return to Form</a>
-    </div>
-
-    <div class="container">
-        <div class="icon">✕</div>
-        <h1>Generation Failed</h1>
-        <p>Something went wrong during the process.</p>
-        
-        <div style="background: #f1f1f1; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
-            <a href="{{ log_url }}" target="_blank" style="color: #d9534f; font-weight: bold;">
-                Check GitHub Logs for Errors
-            </a>
+        <div class="warning-box">
+            <strong>Warning:</strong> The build process did not complete successfully. Some files may be missing. You can attempt to download the available files below.
         </div>
 
-        <a href="/" class="btn">Return to Form</a>
+        <div class="download-section">
+            {% if platform == 'windows' %}
+                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">Download {{filename}}.exe</a>
+                <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">Download {{filename}}.msi</a>
+            {% elif platform == 'windows-x86' %}
+                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">Download {{filename}}.exe</a>
+            {% elif platform == 'linux' %}
+                <a href='/download?filename={{filename}}-x86_64.deb&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.deb</a>
+                <a href='/download?filename={{filename}}-x86_64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.rpm</a>
+                <a href='/download?filename={{filename}}-suse-x86_64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-suse-x86_64.rpm</a>
+                <a href='/download?filename={{filename}}-x86_64.pkg.tar.zst&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.pkg.tar.zst</a>
+                <a href='/download?filename={{filename}}-aarch64.deb&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.deb</a>
+                <a href='/download?filename={{filename}}-aarch64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.rpm</a>
+                <a href='/download?filename={{filename}}-suse-aarch64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-suse-aarch64.rpm</a>
+                <a href='/download?filename={{filename}}-aarch64.pkg.tar.zst&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.pkg.tar.zst</a>
+                <a href='/download?filename={{filename}}-x86_64.AppImage&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.AppImage</a>
+                <a href='/download?filename={{filename}}-aarch64.AppImage&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.AppImage</a>
+                <a href='/download?filename={{filename}}-x86_64.flatpak&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.flatpak</a>
+                <a href='/download?filename={{filename}}-aarch64.flatpak&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.flatpak</a>
+            {% elif platform == 'android' %}
+                <a href='/download?filename={{filename}}-aarch64.apk&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.apk</a>
+                <a href='/download?filename={{filename}}-x86_64.apk&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.apk</a>
+                <a href='/download?filename={{filename}}-armv7.apk&uuid={{uuid}}' class="download-link">Download {{filename}}-armv7.apk</a>
+            {% elif platform == 'macos' %}
+                <a href='/download?filename={{filename}}-x86_64.dmg&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.dmg</a>
+                <a href='/download?filename={{filename}}-aarch64.dmg&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.dmg</a>
+            {% else %}
+                <p>Error: No file generated</p>
+            {% endif %}
+        </div>
+
+        <a href="{{ log_url }}" target="_blank" class="log-link">Check GitHub Logs for error details ↗</a>
+        
+        <div id="platformNote" class="platform-note"></div>
+        <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+        <a href="/" style="font-size: 0.9em; color: #666; text-decoration: none;">← Return to Form</a>
     </div>
 
+    <script>
+        function updatePlatformUI() {
+            const platform = '{{platform}}'.toLowerCase();
+            const platformLogos = {
+                'windows': document.getElementById('windowsLogo'),
+                'macos': document.getElementById('macosLogo'),
+                'linux': document.getElementById('linuxLogo'),
+                'android': document.getElementById('androidLogo')
+            };
+            
+            Object.values(platformLogos).forEach(logo => { if(logo) logo.style.display = 'none'; });
+
+            if (platform.includes('windows')) {
+                document.getElementById('pageTitle').textContent = 'Windows Build Failed';
+                if(platformLogos.windows) platformLogos.windows.style.display = 'block';
+            } else if (platform === 'macos') {
+                if(platformLogos.macos) platformLogos.macos.style.display = 'block';
+            } else if (platform === 'linux') {
+                if(platformLogos.linux) platformLogos.linux.style.display = 'block';
+            }
+        }
+        updatePlatformUI();
+    </script>
 </body>
 </html>
