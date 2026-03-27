@@ -20,4 +20,4 @@ Save your configuration from the rdgen web interface, or generate your own, then
 - Icons should be square (256x256 recommended)
 - Avoid special characters or non-English characters in app name and file name
 - Build time is currently 30 - 45 minutes
-
+- test
