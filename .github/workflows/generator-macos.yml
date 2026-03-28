@@ -15,6 +15,7 @@ on:
         type: string
 
 env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true' # Retire le warning jaune Node.js 20
   SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
   RUST_VERSION: "1.75" # sciter failed on m1 with 1.78 because of https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
   MAC_RUST_VERSION: "1.81" 
@@ -538,6 +539,8 @@ jobs:
         if: env.MACOS_P12_BASE64 != ''
         run: |
             cd flutter/build/macos/Build/Products/Release
+            echo "Current directory contents:"
+            ls -la
             
             # 1. Création du fichier de permissions (Entitlements)
             echo '<?xml version="1.0" encoding="UTF-8"?>
@@ -557,8 +560,6 @@ jobs:
             </dict>
             </plist>' > entitlements.plist
 
-            echo "Current directory contents:"
-            ls -la
             if [ -d "RustDesk.app" ]; then
               mv "RustDesk.app" "${{ env.appname }}.app"
               echo "Renamed RustDesk.app to ${{ env.appname }}.app"
@@ -570,11 +571,19 @@ jobs:
             echo "${{ secrets.MACOS_P12_BASE64 }}" | base64 --decode > certificate.p12
             
             if [ -d "${{ env.appname }}.app/Contents/MacOS" ]; then
-              echo "Signing frameworks (Inside-Out)..."
-              find "${{ env.appname }}.app/Contents/Frameworks" -type f -not -name ".*" -exec \
-                rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" \
-                --code-signature-flags runtime --entitlements entitlements.plist {} \;
+              # ÉTAPE A : Signer les Frameworks COMME DES BLOCS ENTIERS (SANS entitlements)
+              echo "Signing frameworks properly..."
+              if [ -d "${{ env.appname }}.app/Contents/Frameworks" ]; then
+                for item in "${{ env.appname }}.app/Contents/Frameworks/"*; do
+                  if [ -e "$item" ]; then
+                    echo "Signing $item"
+                    rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" \
+                      --code-signature-flags runtime "$item"
+                  fi
+                done
+              fi
               
+              # ÉTAPE B : Signer le binaire principal (AVEC entitlements)
               echo "Signing main executable..."
               MAIN_EXECUTABLE="${{ env.appname }}.app/Contents/MacOS/${{ env.appname }}"
               if [ -f "$MAIN_EXECUTABLE" ]; then
@@ -592,6 +601,7 @@ jobs:
                 fi
               fi
               
+              # ÉTAPE C : Signer le bundle global (AVEC entitlements)
               echo "Signing main bundle..."
               rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" \
                 --code-signature-flags runtime --entitlements entitlements.plist "${{ env.appname }}.app"
@@ -599,7 +609,7 @@ jobs:
               echo "Error: Invalid app bundle structure"
               exit 1
             fi
-            rm certificate.p12 
+            rm certificate.p12 entitlements.plist
 
       - name: Create DMG
         run: |
