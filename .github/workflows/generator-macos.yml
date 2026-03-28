@@ -448,7 +448,7 @@ jobs:
             sed -i -e "s/MACOSX_DEPLOYMENT_TARGET = [0-9]*.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = ${MIN_MACOS_VERSION};/" flutter/macos/Runner.xcodeproj/project.pbxproj
           fi
           sed -i -e "s/RustDesk.app/\"${{ env.appname }}.app\"/" build.py
-          ./build.py --flutter --hwcodec --unix-file-copy-paste --no-sign ${{ matrix.job.extra-build-args }}
+          ./build.py --flutter --hwcodec --unix-file-copy-paste ${{ matrix.job.extra-build-args }}
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
