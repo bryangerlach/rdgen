@@ -448,7 +448,7 @@ jobs:
             sed -i -e "s/MACOSX_DEPLOYMENT_TARGET = [0-9]*.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = ${MIN_MACOS_VERSION};/" flutter/macos/Runner.xcodeproj/project.pbxproj
           fi
           sed -i -e "s/RustDesk.app/\"${{ env.appname }}.app\"/" build.py
-          ./build.py --flutter --hwcodec --unix-file-copy-paste ${{ matrix.job.extra-build-args }}
+          ./build.py --flutter --hwcodec --unix-file-copy-paste --no-sign ${{ matrix.job.extra-build-args }}
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
@@ -530,7 +530,7 @@ jobs:
         run: |
             cd flutter/build/macos/Build/Products/Release
             
-            # 1. Entitlements avec le flag critique
+            # 1. Création des autorisations
             echo '<?xml version="1.0" encoding="UTF-8"?>
             <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
             <plist version="1.0">
@@ -552,10 +552,9 @@ jobs:
 
             if [ -d "RustDesk.app" ]; then
               mv "RustDesk.app" "${{ env.appname }}.app"
-              echo "Renamed RustDesk.app to ${{ env.appname }}.app"
             fi
             
-            # 2. Setup Keychain
+            # 2. Configuration du Trousseau (Keychain)
             CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
@@ -570,23 +569,39 @@ jobs:
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "actions" $KEYCHAIN_PATH
 
             IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep -o '".*"' | head -n 1 | tr -d '"')
-            echo "Deep signing with identity: $IDENTITY"
-
+            
             if [ -z "$IDENTITY" ]; then
               echo "Error: Impossible de trouver un certificat valide dans le fichier P12."
               exit 1
             fi
 
-            # 3. LA MÉTHODE FORCÉE : On signe tout en profondeur d'un coup
-            echo "Signing Frameworks and Dylibs..."
-            find "${{ env.appname }}.app" -name "*.dylib" -exec codesign --force --sign "$IDENTITY" --options runtime --timestamp {} \;
-            find "${{ env.appname }}.app/Contents/Frameworks" -name "*.framework" -exec codesign --force --sign "$IDENTITY" --options runtime --timestamp {} \;
+            # --- LA NOUVELLE MÉTHODE CHIRURGICALE ---
+            echo "Nettoyage des anciennes signatures corrompues..."
+            find "${{ env.appname }}.app" -name "_CodeSignature" -exec rm -rf {} + 2>/dev/null || true
+
+            echo "1. Signature brutale des binaires cachés (Le cœur du problème)..."
+            if [ -f "${{ env.appname }}.app/Contents/Frameworks/FlutterMacOS.framework/Versions/A/FlutterMacOS" ]; then
+                codesign --force --sign "$IDENTITY" --options runtime --timestamp "${{ env.appname }}.app/Contents/Frameworks/FlutterMacOS.framework/Versions/A/FlutterMacOS"
+            fi
+            if [ -f "${{ env.appname }}.app/Contents/Frameworks/App.framework/Versions/A/App" ]; then
+                codesign --force --sign "$IDENTITY" --options runtime --timestamp "${{ env.appname }}.app/Contents/Frameworks/App.framework/Versions/A/App"
+            fi
+
+            echo "2. Signature des dossiers framework entiers..."
+            for fw in "${{ env.appname }}.app/Contents/Frameworks/"*.framework; do
+              if [ -e "$fw" ]; then
+                codesign --force --deep --sign "$IDENTITY" --options runtime --timestamp "$fw"
+              fi
+            done
+
+            echo "3. Signature de l'exécutable principal NEOPC avec autorisations..."
+            codesign --force --sign "$IDENTITY" --entitlements entitlements.plist --options runtime --timestamp "${{ env.appname }}.app/Contents/MacOS/${{ env.appname }}"
+
+            echo "4. Clôture et signature globale de l'App..."
+            codesign --force --sign "$IDENTITY" --entitlements entitlements.plist --options runtime --timestamp "${{ env.appname }}.app"
             
-            echo "Signing Main App with Entitlements..."
-            codesign --force --sign "$IDENTITY" --entitlements entitlements.plist --options runtime --deep --timestamp "${{ env.appname }}.app"
-            
-            # Vérification immédiate dans les logs
-            codesign -vvv --deep --strict "${{ env.appname }}.app"
+            echo "Vérification finale :"
+            codesign -vvv --strict "${{ env.appname }}.app"
 
       - name: Create DMG
         run: |
