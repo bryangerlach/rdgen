@@ -448,7 +448,7 @@ jobs:
             sed -i -e "s/MACOSX_DEPLOYMENT_TARGET = [0-9]*.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = ${MIN_MACOS_VERSION};/" flutter/macos/Runner.xcodeproj/project.pbxproj
           fi
           sed -i -e "s/RustDesk.app/\"${{ env.appname }}.app\"/" build.py
-          ./build.py --flutter --hwcodec --unix-file-copy-paste ${{ matrix.job.extra-build-args }}
+          ./build.py --flutter --hwcodec --unix-file-copy-paste --no-sign ${{ matrix.job.extra-build-args }}
 
       - name: Report Status
         uses: fjogeleit/http-request-action@v1
@@ -530,7 +530,7 @@ jobs:
         run: |
             cd flutter/build/macos/Build/Products/Release
             
-            # 1. Création du fichier de permissions
+            # 1. Entitlements avec le flag critique
             echo '<?xml version="1.0" encoding="UTF-8"?>
             <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
             <plist version="1.0">
@@ -545,6 +545,8 @@ jobs:
                 <true/>
                 <key>com.apple.security.device.camera</key>
                 <true/>
+                <key>com.apple.security.automation.apple-events</key>
+                <true/>
             </dict>
             </plist>' > entitlements.plist
 
@@ -553,7 +555,7 @@ jobs:
               echo "Renamed RustDesk.app to ${{ env.appname }}.app"
             fi
             
-            # 2. Configuration du Trousseau (Keychain) officiel macOS
+            # 2. Setup Keychain
             CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
             KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
 
@@ -564,31 +566,27 @@ jobs:
             security unlock-keychain -p "actions" $KEYCHAIN_PATH
             security list-keychains -d user -s $KEYCHAIN_PATH
 
-            # Importation de ton certificat avec ton mot de passe
             security import $CERTIFICATE_PATH -P "${{ secrets.MACOS_P12_PASSWORD }}" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
             security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "actions" $KEYCHAIN_PATH
 
-            # Récupération de l'identité exacte du certificat
             IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep -o '".*"' | head -n 1 | tr -d '"')
-            echo "Certificate Identity: $IDENTITY"
+            echo "Deep signing with identity: $IDENTITY"
 
             if [ -z "$IDENTITY" ]; then
               echo "Error: Impossible de trouver un certificat valide dans le fichier P12."
               exit 1
             fi
 
-            # 3. SIGNATURE OFFICIELLE APPLE (Inside-Out)
+            # 3. LA MÉTHODE FORCÉE : On signe tout en profondeur d'un coup
             echo "Signing Frameworks and Dylibs..."
-            if [ -d "${{ env.appname }}.app/Contents/Frameworks" ]; then
-               find "${{ env.appname }}.app/Contents/Frameworks" -type f -name "*.dylib" -exec codesign --force --sign "$IDENTITY" --options runtime --timestamp {} \;
-               find "${{ env.appname }}.app/Contents/Frameworks" -maxdepth 1 -type d -name "*.framework" -exec codesign --force --sign "$IDENTITY" --options runtime --timestamp {} \;
-            fi
+            find "${{ env.appname }}.app" -name "*.dylib" -exec codesign --force --sign "$IDENTITY" --options runtime --timestamp {} \;
+            find "${{ env.appname }}.app/Contents/Frameworks" -name "*.framework" -exec codesign --force --sign "$IDENTITY" --options runtime --timestamp {} \;
             
             echo "Signing Main App with Entitlements..."
-            codesign --force --sign "$IDENTITY" --entitlements entitlements.plist --options runtime --timestamp "${{ env.appname }}.app"
+            codesign --force --sign "$IDENTITY" --entitlements entitlements.plist --options runtime --deep --timestamp "${{ env.appname }}.app"
             
-            # Preuve que ça a marché
-            codesign -dvv --entitlements :- "${{ env.appname }}.app"
+            # Vérification immédiate dans les logs
+            codesign -vvv --deep --strict "${{ env.appname }}.app"
 
       - name: Create DMG
         run: |
