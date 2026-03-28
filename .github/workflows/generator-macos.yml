@@ -15,26 +15,24 @@ on:
         type: string
 
 env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true' # Retire le warning jaune Node.js 20
-  SCITER_RUST_VERSION: "1.75" # https://github.com/rustdesk/rustdesk/discussions/7503, also 1.78 has ABI change which causes our sciter version not working, https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
-  RUST_VERSION: "1.75" # sciter failed on m1 with 1.78 because of https://blog.rust-lang.org/2024/03/30/i128-layout-update.html
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+  SCITER_RUST_VERSION: "1.75"
+  RUST_VERSION: "1.75"
   MAC_RUST_VERSION: "1.81" 
   CARGO_NDK_VERSION: "3.1.2"
   SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
   SCITER_NASM_DEBVERSION: "2.14-1"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  ANDROID_FLUTTER_VERSION: "3.24.5" # >= 3.16 is very slow on my android phone, but work well on most of others. We may switch to new flutter after changing to texture rendering (I believe it can solve my problem).
-  FLUTTER_RUST_BRIDGE_VERSION: "1.80.1"  # for arm64 linux because official Dart SDK does not work
+  ANDROID_FLUTTER_VERSION: "3.24.5"
+  FLUTTER_RUST_BRIDGE_VERSION: "1.80.1"
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
   VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
-  # vcpkg version: 2024.07.12
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   ARMV7_VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
   VERSION: "${{ inputs.version }}"
   NDK_VERSION: "r27c"
-  #signing keys env variable checks
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
   UPLOAD_ARTIFACT: 'true'
@@ -459,6 +457,16 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ env.uuid }}", "status": "50% complete, this step takes about 5 minutes, be patient."}'
        
+      - name: Install rcodesign tool
+        if: env.MACOS_P12_BASE64 != null
+        shell: bash
+        run: |
+          pushd /tmp
+          wget https://github.com/indygreg/apple-platform-rs/releases/download/apple-codesign%2F0.22.0/apple-codesign-0.22.0-macos-universal.tar.gz
+          tar -zxvf apple-codesign-0.22.0-macos-universal.tar.gz
+          mv apple-codesign-0.22.0-macos-universal/rcodesign /usr/local/bin
+          popd
+
       - name: Install build runtime
         run: |
           brew install llvm create-dmg nasm cmake gcc wget ninja
@@ -525,84 +533,25 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ env.uuid }}", "status": "85% complete"}'
 
-      - name: Create Entitlements and Sign macOS app bundle natively
+      - name: Sign macOS app bundle
         if: env.MACOS_P12_BASE64 != ''
         run: |
             cd flutter/build/macos/Build/Products/Release
             
-            # 1. Création des autorisations
-            echo '<?xml version="1.0" encoding="UTF-8"?>
-            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-            <plist version="1.0">
-            <dict>
-                <key>com.apple.security.cs.allow-jit</key>
-                <true/>
-                <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-                <true/>
-                <key>com.apple.security.cs.disable-library-validation</key>
-                <true/>
-                <key>com.apple.security.device.audio-input</key>
-                <true/>
-                <key>com.apple.security.device.camera</key>
-                <true/>
-                <key>com.apple.security.automation.apple-events</key>
-                <true/>
-            </dict>
-            </plist>' > entitlements.plist
-
+            # 1. Renommer proprement le bundle
             if [ -d "RustDesk.app" ]; then
               mv "RustDesk.app" "${{ env.appname }}.app"
-              echo "Renamed RustDesk.app to ${{ env.appname }}.app"
             fi
             
-            # 2. Configuration du Trousseau (Keychain)
-            CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-            KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
-
-            echo "${{ secrets.MACOS_P12_BASE64 }}" | base64 --decode > $CERTIFICATE_PATH
-
-            security create-keychain -p "actions" $KEYCHAIN_PATH
-            security set-keychain-settings -lut 21600 $KEYCHAIN_PATH
-            security unlock-keychain -p "actions" $KEYCHAIN_PATH
-            security list-keychains -d user -s $KEYCHAIN_PATH
-
-            security import $CERTIFICATE_PATH -P "${{ secrets.MACOS_P12_PASSWORD }}" -A -t cert -f pkcs12 -k $KEYCHAIN_PATH
-            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "actions" $KEYCHAIN_PATH
-
-            IDENTITY=$(security find-identity -v -p codesigning $KEYCHAIN_PATH | grep -o '".*"' | head -n 1 | tr -d '"')
+            # 2. Extraire le certificat
+            echo "${{ secrets.MACOS_P12_BASE64 }}" | base64 --decode > certificate.p12
             
-            if [ -z "$IDENTITY" ]; then
-              echo "Error: Impossible de trouver un certificat valide dans le fichier P12."
-              exit 1
-            fi
-
-            # --- LA NOUVELLE MÉTHODE CHIRURGICALE ---
-            echo "Nettoyage des anciennes signatures corrompues..."
-            find "${{ env.appname }}.app" -name "_CodeSignature" -exec rm -rf {} + 2>/dev/null || true
-
-            echo "1. Signature brutale des binaires cachés (Le cœur du problème)..."
-            if [ -f "${{ env.appname }}.app/Contents/Frameworks/FlutterMacOS.framework/Versions/A/FlutterMacOS" ]; then
-                codesign --force --sign "$IDENTITY" --options runtime --timestamp "${{ env.appname }}.app/Contents/Frameworks/FlutterMacOS.framework/Versions/A/FlutterMacOS"
-            fi
-            if [ -f "${{ env.appname }}.app/Contents/Frameworks/App.framework/Versions/A/App" ]; then
-                codesign --force --sign "$IDENTITY" --options runtime --timestamp "${{ env.appname }}.app/Contents/Frameworks/App.framework/Versions/A/App"
-            fi
-
-            echo "2. Signature des dossiers framework entiers..."
-            for fw in "${{ env.appname }}.app/Contents/Frameworks/"*.framework; do
-              if [ -e "$fw" ]; then
-                codesign --force --deep --sign "$IDENTITY" --options runtime --timestamp "$fw"
-              fi
-            done
-
-            echo "3. Signature de l'exécutable principal NEOPC avec autorisations..."
-            codesign --force --sign "$IDENTITY" --entitlements entitlements.plist --options runtime --timestamp "${{ env.appname }}.app/Contents/MacOS/${{ env.appname }}"
-
-            echo "4. Clôture et signature globale de l'App..."
-            codesign --force --sign "$IDENTITY" --entitlements entitlements.plist --options runtime --timestamp "${{ env.appname }}.app"
+            # 3. Laisser rcodesign faire sa magie en UNE SEULE COMMANDE
+            echo "Signature du bundle avec rcodesign..."
+            rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" \
+              --code-signature-flags runtime "${{ env.appname }}.app"
             
-            echo "Vérification finale :"
-            codesign -vvv --strict "${{ env.appname }}.app"
+            rm certificate.p12
 
       - name: Create DMG
         run: |
