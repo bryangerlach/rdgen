@@ -534,10 +534,29 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ env.uuid }}", "status": "85% complete"}'
 
-      - name: Sign macOS app bundle
+      - name: Create Entitlements and Sign macOS app bundle
         if: env.MACOS_P12_BASE64 != ''
         run: |
             cd flutter/build/macos/Build/Products/Release
+            
+            # 1. Création du fichier de permissions (Entitlements)
+            echo '<?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+                <key>com.apple.security.cs.allow-jit</key>
+                <true/>
+                <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+                <true/>
+                <key>com.apple.security.cs.disable-library-validation</key>
+                <true/>
+                <key>com.apple.security.device.audio-input</key>
+                <true/>
+                <key>com.apple.security.device.camera</key>
+                <true/>
+            </dict>
+            </plist>' > entitlements.plist
+
             echo "Current directory contents:"
             ls -la
             if [ -d "RustDesk.app" ]; then
@@ -547,13 +566,20 @@ jobs:
             echo "App bundle contents after rename:"
             ls -la "${{ env.appname }}.app" || echo "App not found"
             ls -la "${{ env.appname }}.app/Contents" || echo "Contents not found"
+            
             echo "${{ secrets.MACOS_P12_BASE64 }}" | base64 --decode > certificate.p12
+            
             if [ -d "${{ env.appname }}.app/Contents/MacOS" ]; then
+              echo "Signing frameworks (Inside-Out)..."
+              find "${{ env.appname }}.app/Contents/Frameworks" -type f -not -name ".*" -exec \
+                rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" \
+                --code-signature-flags runtime --entitlements entitlements.plist {} \;
+              
               echo "Signing main executable..."
               MAIN_EXECUTABLE="${{ env.appname }}.app/Contents/MacOS/${{ env.appname }}"
               if [ -f "$MAIN_EXECUTABLE" ]; then
                 rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" \
-                  --code-signature-flags runtime "$MAIN_EXECUTABLE"
+                  --code-signature-flags runtime --entitlements entitlements.plist "$MAIN_EXECUTABLE"
               else
                 echo "Main executable not found at expected path: $MAIN_EXECUTABLE"
                 echo "Available executables in MacOS directory:"
@@ -562,16 +588,13 @@ jobs:
                 if [ -n "$ACTUAL_EXECUTABLE" ]; then
                   echo "Found executable: $ACTUAL_EXECUTABLE"
                   rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" \
-                    --code-signature-flags runtime "${{ env.appname }}.app/Contents/MacOS/$ACTUAL_EXECUTABLE"
+                    --code-signature-flags runtime --entitlements entitlements.plist "${{ env.appname }}.app/Contents/MacOS/$ACTUAL_EXECUTABLE"
                 fi
               fi
-              echo "Signing frameworks..."
-              find "${{ env.appname }}.app/Contents/Frameworks" -type f -not -name ".*" -exec \
-                rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" \
-                --code-signature-flags runtime {} \;
+              
               echo "Signing main bundle..."
               rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" \
-                --code-signature-flags runtime "${{ env.appname }}.app"
+                --code-signature-flags runtime --entitlements entitlements.plist "${{ env.appname }}.app"
             else
               echo "Error: Invalid app bundle structure"
               exit 1
