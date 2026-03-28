@@ -538,20 +538,51 @@ jobs:
         run: |
             cd flutter/build/macos/Build/Products/Release
             
-            # 1. Renommer proprement le bundle
             if [ -d "RustDesk.app" ]; then
               mv "RustDesk.app" "${{ env.appname }}.app"
             fi
             
-            # 2. Extraire le certificat
             echo "${{ secrets.MACOS_P12_BASE64 }}" | base64 --decode > certificate.p12
             
-            # 3. Laisser rcodesign faire sa magie en UNE SEULE COMMANDE
-            echo "Signature du bundle avec rcodesign..."
-            rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" \
-              --code-signature-flags runtime "${{ env.appname }}.app"
+            echo "Création du fichier Entitlements..."
+            echo '<?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+                <key>com.apple.security.cs.allow-jit</key>
+                <true/>
+                <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+                <true/>
+                <key>com.apple.security.cs.disable-library-validation</key>
+                <true/>
+                <key>com.apple.security.device.audio-input</key>
+                <true/>
+                <key>com.apple.security.device.camera</key>
+                <true/>
+            </dict>
+            </plist>' > entitlements.plist
+
+            echo "Suppression des anciennes signatures pour forcer la mise à jour..."
+            find "${{ env.appname }}.app" -name "_CodeSignature" -exec rm -rf {} + 2>/dev/null || true
             
-            rm certificate.p12
+            echo "1. Signature des dylibs et frameworks internes..."
+            find "${{ env.appname }}.app/Contents/Frameworks" -type f -name "*.dylib" -exec rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" --code-signature-flags runtime {} \;
+            
+            if [ -d "${{ env.appname }}.app/Contents/Frameworks/FlutterMacOS.framework" ]; then
+              rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" --code-signature-flags runtime "${{ env.appname }}.app/Contents/Frameworks/FlutterMacOS.framework"
+            fi
+            
+            if [ -d "${{ env.appname }}.app/Contents/Frameworks/App.framework" ]; then
+              rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" --code-signature-flags runtime "${{ env.appname }}.app/Contents/Frameworks/App.framework"
+            fi
+            
+            echo "2. Signature de l'application principale avec les autorisations..."
+            rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" \
+              --code-signature-flags runtime \
+              --entitlements-xml-path entitlements.plist \
+              "${{ env.appname }}.app"
+            
+            rm certificate.p12 entitlements.plist
 
       - name: Create DMG
         run: |
