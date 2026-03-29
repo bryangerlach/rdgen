@@ -456,16 +456,6 @@ jobs:
           method: 'POST'
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ env.uuid }}", "status": "50% complete, this step takes about 5 minutes, be patient."}'
-       
-      - name: Install rcodesign tool
-        if: env.MACOS_P12_BASE64 != null
-        shell: bash
-        run: |
-          pushd /tmp
-          wget https://github.com/indygreg/apple-platform-rs/releases/download/apple-codesign%2F0.22.0/apple-codesign-0.22.0-macos-universal.tar.gz
-          tar -zxvf apple-codesign-0.22.0-macos-universal.tar.gz
-          mv apple-codesign-0.22.0-macos-universal/rcodesign /usr/local/bin
-          popd
 
       - name: Install build runtime
         run: |
@@ -533,18 +523,39 @@ jobs:
           customHeaders: '{"Content-Type": "application/json"}'
           data: '{"uuid": "${{ env.uuid }}", "status": "85% complete"}'
 
-      - name: Sign macOS app bundle
+      - name: Sign macOS app bundle (The "Inside-Out" Pro Method)
         if: env.MACOS_P12_BASE64 != ''
         run: |
             cd flutter/build/macos/Build/Products/Release
             
+            # 1. Renommage sécurisé
             if [ -d "RustDesk.app" ]; then
               mv "RustDesk.app" "${{ env.appname }}.app"
             fi
             
-            echo "${{ secrets.MACOS_P12_BASE64 }}" | base64 --decode > certificate.p12
+            APP_PATH="${{ env.appname }}.app"
             
-            echo "Création du fichier Entitlements..."
+            echo "--- DÉMARRAGE DU TROUSSEAU APPLE ---"
+            CERT_PATH=$RUNNER_TEMP/cert.p12
+            echo "${{ secrets.MACOS_P12_BASE64 }}" | base64 --decode > $CERT_PATH
+            
+            # Création du trousseau local sur le runner GitHub
+            security create-keychain -p "actions" build.keychain
+            security default-keychain -s build.keychain
+            security unlock-keychain -p "actions" build.keychain
+            security import $CERT_PATH -k build.keychain -P "${{ secrets.MACOS_P12_PASSWORD }}" -T /usr/bin/codesign
+            security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "actions" build.keychain
+            
+            # Récupération de l'identité exacte
+            IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep -o '".*"' | head -n 1 | tr -d '"')
+            echo "Certificat trouvé : $IDENTITY"
+            
+            if [ -z "$IDENTITY" ]; then
+              echo "ERREUR: Impossible de trouver le certificat. Vérifiez vos secrets GitHub."
+              exit 1
+            fi
+
+            echo "Création du fichier Entitlements (Autorisations macOS)..."
             echo '<?xml version="1.0" encoding="UTF-8"?>
             <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
             <plist version="1.0">
@@ -562,31 +573,36 @@ jobs:
             </dict>
             </plist>' > entitlements.plist
 
-            echo "Suppression des anciennes signatures pour forcer la mise à jour..."
-            find "${{ env.appname }}.app" -name "_CodeSignature" -exec rm -rf {} + 2>/dev/null || true
+            echo "--- ÉTAPE 1 : SIGNATURE DES FRAMEWORKS (INSIDE) ---"
+            # 1. Signer tous les petits morceaux cachés d'abord
+            find "$APP_PATH/Contents/Frameworks" -type f -name "*.dylib" -exec codesign --force --sign "$IDENTITY" --timestamp --options runtime {} \; || true
             
-            echo "1. Signature des dylibs et frameworks internes..."
-            find "${{ env.appname }}.app/Contents/Frameworks" -type f -name "*.dylib" -exec rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" --code-signature-flags runtime {} \;
-            
-            if [ -d "${{ env.appname }}.app/Contents/Frameworks/FlutterMacOS.framework" ]; then
-              rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" --code-signature-flags runtime "${{ env.appname }}.app/Contents/Frameworks/FlutterMacOS.framework"
+            # 2. Signer le moteur Flutter (le coupable du plantage !)
+            if [ -d "$APP_PATH/Contents/Frameworks/FlutterMacOS.framework" ]; then
+                codesign --force --sign "$IDENTITY" --timestamp --options runtime "$APP_PATH/Contents/Frameworks/FlutterMacOS.framework/Versions/A/FlutterMacOS" || true
+                codesign --force --sign "$IDENTITY" --timestamp --options runtime "$APP_PATH/Contents/Frameworks/FlutterMacOS.framework"
             fi
             
-            if [ -d "${{ env.appname }}.app/Contents/Frameworks/App.framework" ]; then
-              rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" --code-signature-flags runtime "${{ env.appname }}.app/Contents/Frameworks/App.framework"
+            # 3. Signer le Framework de ton App
+            if [ -d "$APP_PATH/Contents/Frameworks/App.framework" ]; then
+                codesign --force --sign "$IDENTITY" --timestamp --options runtime "$APP_PATH/Contents/Frameworks/App.framework/Versions/A/App" || true
+                codesign --force --sign "$IDENTITY" --timestamp --options runtime "$APP_PATH/Contents/Frameworks/App.framework"
             fi
             
-            echo "2. Signature de l'application principale avec les autorisations..."
-            rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" \
-              --code-signature-flags runtime \
-              --entitlements-xml-path entitlements.plist \
-              "${{ env.appname }}.app"
+            echo "--- ÉTAPE 2 : SIGNATURE DE L'APPLICATION (OUTSIDE) ---"
+            # On englobe tout avec tes autorisations
+            codesign --force --sign "$IDENTITY" --timestamp --options runtime --entitlements entitlements.plist "$APP_PATH"
+
+            echo "--- ÉTAPE 3 : VÉRIFICATION ---"
+            codesign -vvv --deep --strict "$APP_PATH"
             
-            rm certificate.p12 entitlements.plist
+            # Nettoyage
+            rm entitlements.plist
+            rm $CERT_PATH
 
       - name: Create DMG
         run: |
-          cd /Users/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}/flutter/build/macos/Build/Products/Release
+          cd $GITHUB_WORKSPACE/flutter/build/macos/Build/Products/Release
           echo "Directory contents:"
           ls -la
           if [ -d "RustDesk.app" ]; then
