@@ -534,7 +534,7 @@ jobs:
         if: ${{ env.delayFix == 'true' }}
         shell: bash
         run: |
-          sed -i -e 's|if is_local || peer_nat_type == NatType::SYMMETRIC {|if is_local \|\| peer_nat_type == NatType::SYMMETRIC \|\| !key.is_empty() {|' ./src/client.rs
+          sed -i -e 's#if is_local || peer_nat_type == NatType::SYMMETRIC {#if is_local || peer_nat_type == NatType::SYMMETRIC || !key.is_empty() {#' ./src/client.rs
           grep -n "key.is_empty()" ./src/client.rs || true
 
       - name: add cycle monitors to toolbar
