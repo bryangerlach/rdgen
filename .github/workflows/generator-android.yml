@@ -1,6 +1,6 @@
 name: Custom Android Client Generator
 run-name: Custom Android Client Generator
-on: 
+on:
   workflow_dispatch:
     inputs:
       version:
@@ -23,7 +23,7 @@ env:
   SCITER_NASM_DEBVERSION: "2.14-1"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  ANDROID_FLUTTER_VERSION: "3.24.5" 
+  ANDROID_FLUTTER_VERSION: "3.24.5"
   # for arm64 linux because official Dart SDK does not work
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
@@ -83,7 +83,7 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
-        
+
       - uses: actions/download-artifact@v8
         with:
           name: encrypted-secrets-zip
@@ -180,7 +180,7 @@ jobs:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
           submodules: recursive
-       
+
       - name: Checkout source code
         if: ${{ env.VERSION == 'master' }}
         uses: actions/checkout@v6
@@ -189,7 +189,7 @@ jobs:
           submodules: recursive
 
       - name: Install flutter
-        uses: subosito/flutter-action@v2.23.0
+        uses: subosito/flutter-action@v2
         with:
           channel: "stable"
           flutter-version: ${{ env.ANDROID_FLUTTER_VERSION }}
@@ -199,7 +199,7 @@ jobs:
         run: |
           cd $(dirname $(dirname $(which flutter)))
           [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
-  
+
 
       - uses: nttld/setup-ndk@v1
         id: setup-ndk
@@ -301,7 +301,7 @@ jobs:
           sed -i -e 's|https://admin.rustdesk.com|${{ env.apiServer }}|' ./src/common.rs
           # ./flutter/pubspec.yaml
           #sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
-          
+
       - name: change appname to custom
         if: env.appname != 'rustdesk'
         continue-on-error: true
@@ -340,7 +340,7 @@ jobs:
         if: env.urlLink != 'https://rustdesk.com'
         continue-on-error: true
         shell: bash
-        run: |  
+        run: |
           sed -i -e 's|Homepage: https://rustdesk.com|Homepage: ${{ env.urlLink }}|' ./build.py
           sed -i -e "s|launchUrl(Uri.parse('https://rustdesk.com'));|launchUrl(Uri.parse('${{ env.urlLink }}'));|" ./flutter/lib/common.dart
           sed -i -e "s|launchUrlString('https://rustdesk.com');|launchUrlString('${{ env.urlLink }}');|" ./flutter/lib/desktop/pages/desktop_setting_page.dart
@@ -420,7 +420,7 @@ jobs:
       - name: removeNewVersionNotif
         continue-on-error: true
         if: env.removeNewVersionNotif == 'true'
-        run: | 
+        run: |
           sed -i -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
           sed -i '/let (request, url) =/,/Ok(())/{/Ok(())/!d}' ./src/common.rs
 
@@ -539,7 +539,7 @@ jobs:
           mkdir -p signed-apk; pushd signed-apk
           mv ../rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk ./${{ env.filename }}-${{ matrix.job.arch }}.apk
           popd
-      
+
       - uses: r0adkll/sign-android-release@v1
         name: Sign app APK
         continue-on-error: true
@@ -581,7 +581,7 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v6
-        
+
       - uses: actions/download-artifact@v8
         with:
           name: encrypted-secrets-zip
