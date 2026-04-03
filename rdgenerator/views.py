@@ -35,12 +35,15 @@ def generator_view(request):
             hidecm = form.cleaned_data['hidecm']
             removeNewVersionNotif = form.cleaned_data['removeNewVersionNotif']
             server = form.cleaned_data['serverIP']
+            serverPort = form.cleaned_data['serverPort']
             key = form.cleaned_data['key']
             apiServer = form.cleaned_data['apiServer']
             urlLink = form.cleaned_data['urlLink']
             downloadLink = form.cleaned_data['downloadLink']
             if not server:
                 server = 'rs-ny.rustdesk.com' #default rustdesk server
+            if not serverPort:
+                serverPort = 21116 #default rustdesk server port
             if not key:
                 key = 'OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=' #default rustdesk key
             if not apiServer:
@@ -206,7 +209,7 @@ def generator_view(request):
             for line in overrideManual.splitlines():
                 k, value = line.split('=')
                 decodedCustom['override-settings'][k.strip()] = value.strip()
-            
+
             decodedCustomJson = json.dumps(decodedCustom)
 
             string_bytes = decodedCustomJson.encode("ascii")
@@ -246,9 +249,10 @@ def generator_view(request):
                 if selfhosted:
                     url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/sh-generator-windows.yml/dispatches'
 
-            #url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rustdesk/actions/workflows/test.yml/dispatches'  
+            #url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rustdesk/actions/workflows/test.yml/dispatches'
             inputs_raw = {
                 "server":server,
+                "serverPort":serverPort,
                 "key":key,
                 "apiServer":apiServer,
                 "custom":encodedCustom,
@@ -304,7 +308,7 @@ def generator_view(request):
                     "zip_url":zip_url
                 },
                 "return_run_details": True
-            } 
+            }
             #print(data)
             headers = {
                 'Accept':  'application/vnd.github+json',
@@ -355,40 +359,40 @@ def check_for_file(request):
             "Accept": "application/vnd.github+json"
         }
         api_url = f"https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/runs/{gh_run.github_run_id}"
-        
+
         try:
             gh_response = requests.get(api_url, headers=headers)
             if gh_response.status_code == 200:
                 gh_data = gh_response.json()
-                
+
                 if gh_data['status'] == 'completed':
                     gh_run.status = gh_data['conclusion']
                     gh_run.save()
         except Exception as e:
             print(f"Error checking GitHub: {e}")
-    
+
     if gh_run.status == "success":
         return render(request, 'generated.html', {
-            'filename': filename, 
-            'uuid': uuid, 
+            'filename': filename,
+            'uuid': uuid,
             'platform': platform
         })
-        
+
     elif gh_run.status in ['failure', 'cancelled', 'timed_out', 'skipped', 'action_required']:
         return render(request, 'failure.html', {
-            'log_url': github_log_url, 
-            'filename': filename, 
-            'uuid': uuid, 
+            'log_url': github_log_url,
+            'filename': filename,
+            'uuid': uuid,
             'platform': platform,
             'status': gh_run.status
         })
-        
+
     else:
         return render(request, 'waiting.html', {
-            'filename': filename, 
-            'uuid': uuid, 
-            'status': gh_run.status, 
-            'platform': platform, 
+            'filename': filename,
+            'uuid': uuid,
+            'status': gh_run.status,
+            'platform': platform,
             'log_url': github_log_url
         })
 
@@ -470,17 +474,18 @@ def resize_and_encode_icon(imagefile):
     resized64 = base64.b64encode(resized_imagefile.read())
     #print(resized64)
     return resized64
- 
+
 #the following is used when accessed from an external source, like the rustdesk api server
 def startgh(request):
     #print(request)
     data_ = json.loads(request.body)
     ####from here run the github action, we need user, repo, access token.
-    url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-'+data_.get('platform')+'.yml/dispatches'  
+    url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-'+data_.get('platform')+'.yml/dispatches'
     data = {
         "ref": _settings.GHBRANCH,
         "inputs":{
             "server":data_.get('server'),
+            "serverPort":data_.get('serverPort'),
             "key":data_.get('key'),
             "apiServer":data_.get('apiServer'),
             "custom":data_.get('custom'),
@@ -491,7 +496,7 @@ def startgh(request):
             "extras":data_.get('extras'),
             "filename":data_.get('filename')
         }
-    } 
+    }
     headers = {
         'Accept':  'application/vnd.github+json',
         'Content-Type': 'application/json',
@@ -517,7 +522,7 @@ def save_png(file, uuid, domain, name):
         except Exception as e:  # Catch general exceptions during decoding
             print(f"Error decoding base64: {e}")
             return None
-        
+
     with open(file_save_path, "wb+") as f:
         for chunk in file.chunks():
             f.write(chunk)
@@ -543,13 +548,13 @@ def cleanup_secrets(request):
     # Pass the UUID as a query param or in JSON body
     data = json.loads(request.body)
     my_uuid = data.get('uuid')
-    
+
     if not my_uuid:
         return HttpResponse("Missing UUID", status=400)
 
     # 1. Find the files in your temp directory matching the UUID
     temp_dir = os.path.join('temp_zips')
-    
+
     # We look for any file starting with 'secrets_' and containing the uuid
     for filename in os.listdir(temp_dir):
         if my_uuid in filename and filename.endswith('.zip'):

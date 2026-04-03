@@ -1,6 +1,6 @@
 name: Custom Windows Client Generator
 run-name: Custom Windows Client Generator
-on: 
+on:
   workflow_dispatch:
     inputs:
       version:
@@ -23,7 +23,7 @@ env:
   SCITER_NASM_DEBVERSION: "2.15.05-1"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  ANDROID_FLUTTER_VERSION: "3.24.5" 
+  ANDROID_FLUTTER_VERSION: "3.24.5"
   # for arm64 linux because official Dart SDK does not work
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
@@ -84,9 +84,9 @@ jobs:
           # - { target: aarch64-pc-windows-msvc, os: windows-2022, arch: aarch64 }
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
-        
-      - uses: actions/download-artifact@v4
+        uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
         with:
           name: encrypted-secrets-zip
 
@@ -98,7 +98,7 @@ jobs:
       - name: Finalize and Cleanup zip/json
         if: always() # Run even if previous steps fail
         continue-on-error: true
-        uses: fjogeleit/http-request-action@v1
+        uses: fjogeleit/http-request-action@v2
         with:
           url: "${{ secrets.GENURL }}/cleanzip"
           method: 'POST'
@@ -106,12 +106,12 @@ jobs:
           data: '{"uuid": "${{ env.uuid }}"}'
 
       - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v6
+        uses: actions/github-script@v8
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-      
+
       - name: Set rdgen value
         if: ${{ env.rdgen == 'true' }}
         run: |
@@ -124,7 +124,7 @@ jobs:
 
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
@@ -132,13 +132,13 @@ jobs:
 
       - name: Checkout source code
         if: ${{ env.VERSION == 'master' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: rustdesk/rustdesk
           submodules: recursive
 
       - name: Restore bridge files
-        uses: actions/download-artifact@master
+        uses: actions/download-artifact@v8
         with:
           name: bridge-artifact
           path: ./
@@ -153,36 +153,106 @@ jobs:
         run: |
           sed -i -e 's|2ded7f146437a761ffe6981e2f742038f85ca68d|08a471bb8ceccdd50483c81cdfa8b81b07b14b87|' ./flutter/pubspec.lock
           sed -i -e 's|2ded7f146437a761ffe6981e2f742038f85ca68d|08a471bb8ceccdd50483c81cdfa8b81b07b14b87|' ./flutter/pubspec.yaml
-      
+
       - name: change appname to custom
         if: env.appname != 'rustdesk'
         continue-on-error: true
-        shell: bash
+        shell: python
+        env:
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: "utf-8"
+          APP_NAME: ${{ env.appname }}
+          FILE_NAME: ${{ env.filename }}
+          COMP_NAME: ${{ env.compname }}
         run: |
-          # ./Cargo.toml
-          sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ env.appname }}"|' ./Cargo.toml
-          sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ env.appname }}"|' ./Cargo.toml
-          sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ env.appname }}"|' ./Cargo.toml
-          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.appname }}.exe"|' ./Cargo.toml
-          # ./libs/portable/Cargo.toml
-          sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
-          sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
-          sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
-          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.appname }}.exe"|' ./libs/portable/Cargo.toml
-          # ./libs/portable/src/main.rs
-          sed -i -e 's|const APP_PREFIX: \&str = "rustdesk";|const APP_PREFIX: \&str = "${{ env.appname }}";|' ./libs/portable/src/main.rs
-          # ./flutter/windows/runner/Runner.rc
-          sed -i -e 's|"RustDesk Remote Desktop"|"${{ env.appname }}"|' ./flutter/windows/runner/Runner.rc
-          sed -i -e 's|VALUE "InternalName", "rustdesk" "\0"|VALUE "InternalName", "${{ env.appname }}" "\0"|' ./flutter/windows/runner/Runner.rc
-          sed -i -e 's|"rustdesk.exe"|"${{ env.filename }}"|' ./flutter/windows/runner/Runner.rc
-          sed -i -e 's|"RustDesk"|"${{ env.appname }}"|' ./flutter/windows/runner/Runner.rc
-          # ./src/lang/en.rs
-          # change powered by rustdek to powered by compname
-          if [ ! -z "${{ env.compname }}" ]; then
-            find ./src/lang -name "*.rs" -exec sed -i '/powered_by_me/s|RustDesk|${{ env.compname }}|g' {} \;
-          fi
-          find ./src/lang -name "*.rs" -exec sed -i -e 's|RustDesk|${{ env.appname }}|' {} \;
-          sed -i -e 's|RustDesk|${{ env.appname }}|' ./res/msi/Package/License.rtf
+          import sys
+          import io
+          import os
+          import glob
+
+          # UTF-8 обёртка
+          sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+          sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+          app_name = os.environ['APP_NAME']
+          file_name = os.environ.get('FILE_NAME', '')
+          comp_name = os.environ.get('COMP_NAME', '')
+
+          print(f"App name: '{app_name}'")
+          print(f"File name: '{file_name}'")
+          print(f"Comp name: '{comp_name}'")
+
+          def replace_in_file(path, old, new, encoding='utf-8'):
+              try:
+                  with open(path, 'r', encoding=encoding, errors='replace') as f:
+                      content = f.read()
+                  if old in content:
+                      content = content.replace(old, new)
+                      with open(path, 'w', encoding=encoding) as f:
+                          f.write(content)
+                      print(f"✅ Updated: {path} ('{old}' -> '{new}')")
+                  else:
+                      print(f"⚠️ Not found in: {path} ('{old}')")
+              except Exception as e:
+                  print(f"❌ Error in {path}: {e}")
+
+          # 1. Cargo.toml
+          replace_in_file('./Cargo.toml', 'description = "RustDesk Remote Desktop"', f'description = "{app_name}"')
+          replace_in_file('./Cargo.toml', 'ProductName = "RustDesk"', f'ProductName = "{app_name}"')
+          replace_in_file('./Cargo.toml', 'FileDescription = "RustDesk Remote Desktop"', f'FileDescription = "{app_name}"')
+          replace_in_file('./Cargo.toml', 'OriginalFilename = "rustdesk.exe"', f'OriginalFilename = "{app_name}.exe"')
+
+          # 2. libs/portable/Cargo.toml
+          replace_in_file('./libs/portable/Cargo.toml', 'description = "RustDesk Remote Desktop"', f'description = "{app_name}"')
+          replace_in_file('./libs/portable/Cargo.toml', 'ProductName = "RustDesk"', f'ProductName = "{app_name}"')
+          replace_in_file('./libs/portable/Cargo.toml', 'FileDescription = "RustDesk Remote Desktop"', f'FileDescription = "{app_name}"')
+          replace_in_file('./libs/portable/Cargo.toml', 'OriginalFilename = "rustdesk.exe"', f'OriginalFilename = "{app_name}.exe"')
+
+          # 3. libs/portable/src/main.rs
+          replace_in_file('./libs/portable/src/main.rs', 'const APP_PREFIX: &str = "rustdesk";', f'const APP_PREFIX: &str = "{app_name}";')
+
+          # 4. flutter/windows/runner/Runner.rc
+          replace_in_file('./flutter/windows/runner/Runner.rc', '"RustDesk Remote Desktop"', f'"{app_name}"')
+          replace_in_file('./flutter/windows/runner/Runner.rc', 'VALUE "InternalName", "rustdesk" "\0"', f'VALUE "InternalName", "{app_name}" "\0"')
+          if file_name:
+              replace_in_file('./flutter/windows/runner/Runner.rc', '"rustdesk.exe"', f'"{file_name}"')
+          replace_in_file('./flutter/windows/runner/Runner.rc', '"RustDesk"', f'"{app_name}"')
+
+          # 5. src/lang/*.rs
+          # сначала powered_by_me — меняем RustDesk на compname если задан
+          lang_files = glob.glob('./src/lang/*.rs')
+          for lang_file in lang_files:
+              try:
+                  with open(lang_file, 'r', encoding='utf-8', errors='replace') as f:
+                      content = f.read()
+                  modified = False
+                  # powered_by_me строки — меняем на compname если задан
+                  if comp_name:
+                      lines = content.split('\n')
+                      new_lines = []
+                      for line in lines:
+                          if 'powered_by_me' in line:
+                              line = line.replace('RustDesk', comp_name)
+                              modified = True
+                          new_lines.append(line)
+                      content = '\n'.join(new_lines)
+                  # остальные строки — меняем на appname
+                  if 'RustDesk' in content:
+                      content = content.replace('RustDesk', app_name)
+                      modified = True
+                  if modified:
+                      with open(lang_file, 'w', encoding='utf-8') as f:
+                          f.write(content)
+                      print(f"✅ Updated: {lang_file}")
+                  else:
+                      print(f"⚠️ Not found in: {lang_file}")
+              except Exception as e:
+                  print(f"❌ Error in {lang_file}: {e}")
+
+          # 6. res/msi/Package/License.rtf
+          replace_in_file('./res/msi/Package/License.rtf', 'RustDesk', app_name)
+
+          print("Done!")
 
       - name: fix registry if appname has a space
         if: contains(env.appname, ' ')
@@ -203,21 +273,69 @@ jobs:
           sed -i -e 's|{subkey}|\\\"{subkey}\\\"|' ./src/platform/windows.rs
           sed -i -e 's|reg delete HKEY_CLASSES_ROOT\\\\.{ext} /f|reg delete \\\"HKEY_CLASSES_ROOT\\\\.{ext}\\\" /f|' ./src/platform/windows.rs
           sed -i -e 's|reg delete HKEY_CLASSES_ROOT\\\\{ext} /f|reg delete \\\"HKEY_CLASSES_ROOT\\\\{ext}\\\" /f|' ./src/platform/windows.rs
-          
+
       - name: change company name
         if: env.compname != 'Purslane Ltd'
         continue-on-error: true
-        shell: bash
+        shell: python
+        env:
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: "utf-8"
+          COMP_NAME: ${{ env.compname }}
         run: |
-          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./flutter/lib/desktop/pages/desktop_setting_page.dart
-          sed -i -e 's|PURSLANE|${{ env.compname }}|' ./res/msi/preprocess.py
-          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./res/msi/preprocess.py
-          sed -i -e 's|"Copyright © 2025 Purslane Ltd. All rights reserved."|"Copyright © 2025 ${{ env.compname }}. All rights reserved."|' ./flutter/windows/runner/Runner.rc
-          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./flutter/windows/runner/Runner.rc
-          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./Cargo.toml
-          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./libs/portable/Cargo.toml
-          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./res/msi/Package/License.rtf
-             
+          import sys
+          import io
+          import os
+
+          # UTF-8 обёртка
+          sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+          sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+          comp_name = os.environ['COMP_NAME']
+          old_name = 'Purslane Ltd'
+
+          print(f"Replacing '{old_name}' with '{comp_name}'")
+
+          def replace_in_file(path, old, new, encoding='utf-8'):
+              try:
+                  with open(path, 'r', encoding=encoding, errors='replace') as f:
+                      content = f.read()
+                  if old in content:
+                      content = content.replace(old, new)
+                      with open(path, 'w', encoding=encoding) as f:
+                          f.write(content)
+                      print(f"✅ Updated: {path}")
+                  else:
+                      print(f"⚠️ Not found in: {path}")
+              except Exception as e:
+                  print(f"❌ Error in {path}: {e}")
+
+          # 1. desktop_setting_page.dart
+          replace_in_file('./flutter/lib/desktop/pages/desktop_setting_page.dart', old_name, comp_name)
+
+          # 2. preprocess.py — два замены
+          replace_in_file('./res/msi/preprocess.py', 'PURSLANE', comp_name)
+          replace_in_file('./res/msi/preprocess.py', old_name, comp_name)
+
+          # 3. Runner.rc — сначала Copyright строку, потом просто название
+          replace_in_file(
+              './flutter/windows/runner/Runner.rc',
+              f'"Copyright © 2025 {old_name}. All rights reserved."',
+              f'"Copyright © 2025 {comp_name}. All rights reserved."'
+          )
+          replace_in_file('./flutter/windows/runner/Runner.rc', old_name, comp_name)
+
+          # 4. Cargo.toml
+          replace_in_file('./Cargo.toml', old_name, comp_name)
+
+          # 5. libs/portable/Cargo.toml
+          replace_in_file('./libs/portable/Cargo.toml', old_name, comp_name)
+
+          # 6. License.rtf — правильный путь с Package
+          replace_in_file('./res/msi/Package/License.rtf', old_name, comp_name)
+
+          print("Done!")
+
       - name: change url to custom
         if: env.urlLink != 'https://rustdesk.com'
         continue-on-error: true
@@ -241,18 +359,65 @@ jobs:
           sed -i -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./flutter/lib/mobile/pages/connection_page.dart
           sed -i -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./src/ui/index.tis
 
-      - name: set server, key, and apiserver
+      - name: set server, serverPort, key, and apiserver
         continue-on-error: true
         shell: bash
+        env:
+          SERVER_DOMAIN: ${{ env.server }}
+          SERVER_PORT_INPUT: ${{ env.serverPort }}
+          SERVER_KEY: ${{ env.key }}
+          API_SERVER: ${{ env.apiServer }}
         run: |
-          sed -i -e 's|rs-ny.rustdesk.com|${{ env.server }}|' ./libs/hbb_common/src/config.rs
-          sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.key }}|' ./libs/hbb_common/src/config.rs
-          sed -i -e 's|https://admin.rustdesk.com|${{ env.apiServer }}|' ./src/common.rs
+          # Проверка наличия файлов
+          if [ ! -f "./libs/hbb_common/src/config.rs" ]; then
+            echo "Error: config.rs not found!"
+            exit 1
+          fi
+          if [ ! -f "./src/common.rs" ]; then
+            echo "Error: common.rs not found!"
+            exit 1
+          fi
+
+          # Проверка что порт — число
+          if ! [[ "$SERVER_PORT_INPUT" =~ ^[0-9]+$ ]]; then
+            echo "Error: serverPort must be a number, got: '$SERVER_PORT_INPUT'"
+            exit 1
+          fi
+
+          # Вычисляем порты
+          SERVER_PORT=$SERVER_PORT_INPUT
+          RELAY_PORT=$((SERVER_PORT + 1))
+          WS_RENDEZVOUS_PORT=$((RELAY_PORT + 1))
+          WS_RELAY_PORT=$((WS_RENDEZVOUS_PORT + 1))
+
+          echo "Setting server: $SERVER_DOMAIN"
+          echo "Setting ports: $SERVER_PORT, $RELAY_PORT, $WS_RENDEZVOUS_PORT, $WS_RELAY_PORT"
+
+          # Замена домена сервера
+          sed -i -e "s|rs-ny.rustdesk.com|$SERVER_DOMAIN|" ./libs/hbb_common/src/config.rs
+
+          # Замена портов
+          sed -i -e "s|pub const RENDEZVOUS_PORT: i32 = [0-9]\+;|pub const RENDEZVOUS_PORT: i32 = $SERVER_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const RELAY_PORT: i32 = [0-9]\+;|pub const RELAY_PORT: i32 = $RELAY_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const WS_RENDEZVOUS_PORT: i32 = [0-9]\+;|pub const WS_RENDEZVOUS_PORT: i32 = $WS_RENDEZVOUS_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const WS_RELAY_PORT: i32 = [0-9]\+;|pub const WS_RELAY_PORT: i32 = $WS_RELAY_PORT;|" ./libs/hbb_common/src/config.rs
+
+          # Замена ключа
+          sed -i -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|$SERVER_KEY|" ./libs/hbb_common/src/config.rs
+
+          # Замена API сервера
+          sed -i -e "s|https://admin.rustdesk.com|$API_SERVER|" ./src/common.rs
+
           # ./flutter/pubspec.yaml
           #sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
 
+          # Проверка результата
+          echo "=== Verification ==="
+          grep -n "RENDEZVOUS_PORT\|RELAY_PORT\|WS_" ./libs/hbb_common/src/config.rs
+          grep -n "rustdesk\|admin\." ./src/common.rs || true
+
       - name: allow custom.txt
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 1
           max_attempts: 3
@@ -265,12 +430,12 @@ jobs:
             git apply removeSetupServerTip.diff
 
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v1
+        uses: KyleMayes/install-llvm-action@v2
         with:
           version: ${{ env.LLVM_VERSION }}
 
       - name: Install flutter
-        uses: subosito/flutter-action@v2.12.0 #https://github.com/subosito/flutter-action/issues/277
+        uses: subosito/flutter-action@v2.23.0 #https://github.com/subosito/flutter-action/issues/277
         with:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -328,16 +493,16 @@ jobs:
           fi
           head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-${{ matrix.job.vcpkg-triplet }}-rel-out.log" || true
         shell: bash
-          
+
       - name: magick stuff
         if: ${{ env.iconlink_url != 'false' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 1
           max_attempts: 3
           shell: pwsh
           command: |
-            Invoke-WebRequest -Uri ${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}"&"uuid=${{ env.iconlink_uuid }} -OutFile ./res/iconx.png 
+            Invoke-WebRequest -Uri ${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}"&"uuid=${{ env.iconlink_uuid }} -OutFile ./res/iconx.png
             mv ./res/icon.ico ./res/icon.ico.bak
             mv ./res/icon.png ./res/icon.png.bak
             mv ./res/tray-icon.ico ./res/tray-icon.ico.bak
@@ -369,11 +534,12 @@ jobs:
         if: ${{ env.delayFix == 'true' }}
         shell: bash
         run: |
-          sed -i -e 's|!key.is_empty()|false|' ./src/client.rs
+          sed -i -e 's|if is_local || peer_nat_type == NatType::SYMMETRIC {|if is_local \|\| peer_nat_type == NatType::SYMMETRIC \|\| !key.is_empty() {|' ./src/client.rs
+          grep -n "key.is_empty()" ./src/client.rs || true
 
       - name: add cycle monitors to toolbar
         if: env.cycleMonitor == 'true'
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 1
           max_attempts: 3
@@ -385,7 +551,7 @@ jobs:
 
       - name: use X for offline display instead of orange circle
         if: env.xOffline == 'true'
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 1
           max_attempts: 3
@@ -399,7 +565,7 @@ jobs:
         continue-on-error: true
         if: env.removeNewVersionNotif == 'true'
         shell: bash
-        run: | 
+        run: |
           sed -i -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
           sed -i '/let (request, url) =/,/Ok(())/{/Ok(())/!d}' ./src/common.rs
 
@@ -428,13 +594,13 @@ jobs:
           # Windows: build RustDesk
           python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
- 
+
           # Download usbmmidd_v2.zip and extract it to ./rustdesk
           Invoke-WebRequest -Uri https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip -OutFile usbmmidd_v2.zip
           Expand-Archive usbmmidd_v2.zip -DestinationPath . -Force
           Remove-Item -Path usbmmidd_v2\Win32 -Recurse
           Remove-Item -Path "usbmmidd_v2\deviceinstaller64.exe", "usbmmidd_v2\deviceinstaller.exe", "usbmmidd_v2\usbmmidd.bat"
-          mv -Force .\usbmmidd_v2 ./rustdesk   
+          mv -Force .\usbmmidd_v2 ./rustdesk
 
           # Download printer driver files and extract them to ./rustdesk
           try {
@@ -472,7 +638,7 @@ jobs:
 
       - name: logo stuff
         if: ${{ env.logolink_url != 'false' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 1
           max_attempts: 3
@@ -498,12 +664,12 @@ jobs:
           fi
 
       - name: Download RustDeskTempTopMostWindow artifacts
-        uses: actions/download-artifact@master
+        uses: actions/download-artifact@v8
         if: env.UPLOAD_ARTIFACT == 'true'
         with:
           name: topmostwindow-artifacts
           path: "./rustdesk"
-      
+
       - name: zip dlls
         continue-on-error: true
         shell: pwsh
@@ -551,7 +717,7 @@ jobs:
           mv ./target/release/rustdesk-portable-packer.exe "./SignOutput/rustdesk.exe"
 
       - name: Add MSBuild to PATH
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Build msi
         continue-on-error: true
@@ -606,25 +772,47 @@ jobs:
 
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
-          timeout_minutes: 1
+          timeout_minutes: 10
           max_attempts: 3
           shell: bash
           command: |
-            curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.exe" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client
-            curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.msi" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client || true
+            curl -i -X POST \
+              --max-time 540 \
+              -H "Content-Type: multipart/form-data" \
+              -H "Authorization: Bearer ${{ env.token }}" \
+              -F "file=@./SignOutput/${{ env.filename }}.exe" \
+              -F "uuid=${{ env.uuid }}" \
+              ${{ secrets.GENURL }}/save_custom_client
+            curl -i -X POST \
+              --max-time 540 \
+              -H "Content-Type: multipart/form-data" \
+              -H "Authorization: Bearer ${{ env.token }}" \
+              -F "file=@./SignOutput/${{ env.filename }}.msi" \
+              -F "uuid=${{ env.uuid }}" \
+              ${{ secrets.GENURL }}/save_custom_client || true
 
       - name: send file to api server
         if: ${{ env.rdgen == 'false' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
-          timeout_minutes: 1
+          timeout_minutes: 10
           max_attempts: 3
           shell: bash
           command: |
-            curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.exe" ${{ env.apiServer }}/api/save_custom_client
-            curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.msi" ${{ env.apiServer }}/api/save_custom_client || true
+            curl -i -X POST \
+              --max-time 540 \
+              -H "Content-Type: multipart/form-data" \
+              -H "Authorization: Bearer ${{ env.token }}" \
+              -F "file=@./SignOutput/${{ env.filename }}.exe" \
+              ${{ env.apiServer }}/api/save_custom_client
+            curl -i -X POST \
+              --max-time 540 \
+              -H "Content-Type: multipart/form-data" \
+              -H "Authorization: Bearer ${{ env.token }}" \
+              -F "file=@./SignOutput/${{ env.filename }}.msi" \
+              ${{ env.apiServer }}/api/save_custom_client || true
 
   cleanup:
     needs: [build-for-windows-flutter]
@@ -633,6 +821,6 @@ jobs:
     if: always()
     steps:
       - name: Delete secrets artifact
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
           name: encrypted-secrets-zip

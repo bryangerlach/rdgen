@@ -32,7 +32,7 @@ jobs:
     steps:
       - name: Checkout source code
         if: ${{ inputs.version != 'master' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ inputs.version }}
@@ -40,7 +40,7 @@ jobs:
         
       - name: Checkout source code
         if: ${{ inputs.version == 'master' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: rustdesk/rustdesk
           submodules: recursive
@@ -77,13 +77,13 @@ jobs:
 
       - name: Cache Bridge
         id: cache-bridge
-        uses: actions/cache@v3
+        uses: actions/cache@v5
         with:
           path: /tmp/flutter_rust_bridge
           key: vcpkg-${{ matrix.job.arch }}
 
       - name: Install flutter
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@v2.23.0
         with:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
@@ -102,7 +102,7 @@ jobs:
           cp ./flutter/macos/Runner/bridge_generated.h ./flutter/ios/Runner/bridge_generated.h
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@v7
         with:
           name: bridge-artifact
           path: |
