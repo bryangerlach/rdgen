@@ -438,6 +438,45 @@ jobs:
 
           print("Done!")
 
+      - name: change company name
+        if: env.compname != 'Purslane Ltd'
+        continue-on-error: true
+        shell: python
+        env:
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: "utf-8"
+          COMP_NAME: ${{ env.compname }}
+        run: |
+          import sys
+          import io
+          import os
+
+          sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+          sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+          comp_name = os.environ['COMP_NAME']
+          old_name = 'Purslane Ltd'
+
+          def replace_in_file(path, old, new, encoding='utf-8'):
+              try:
+                  with open(path, 'r', encoding=encoding, errors='replace') as f:
+                      content = f.read()
+                  if old in content:
+                      content = content.replace(old, new)
+                      with open(path, 'w', encoding=encoding) as f:
+                          f.write(content)
+                      print(f"✅ Updated: {path}")
+                  else:
+                      print(f"⚠️ Not found in: {path}")
+              except Exception as e:
+                  print(f"❌ Error in {path}: {e}")
+
+          replace_in_file('./flutter/lib/desktop/pages/desktop_setting_page.dart', old_name, comp_name)
+          replace_in_file('./Cargo.toml', old_name, comp_name)
+          replace_in_file('./libs/portable/Cargo.toml', old_name, comp_name)
+
+          print("Done!")
+
       - name: change url to custom
         if: env.urlLink != 'https://rustdesk.com'
         continue-on-error: true
