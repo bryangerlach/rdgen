@@ -395,14 +395,13 @@ def check_for_file(request):
 def download(request):
     filename = request.GET['filename']
     uuid = request.GET['uuid']
-    #filename = filename+".exe"
-    file_path = os.path.join('exe',uuid,filename)
+    file_path = os.path.join('exe', uuid, filename)
     with open(file_path, 'rb') as file:
-        response = HttpResponse(file, headers={
-            'Content-Type': 'application/vnd.microsoft.portable-executable',
-            'Content-Disposition': f'attachment; filename="{filename}"'
-        })
-
+        content = file.read()
+    response = HttpResponse(content, headers={
+        'Content-Type': 'application/vnd.microsoft.portable-executable',
+        'Content-Disposition': f'attachment; filename="{filename}"'
+    })
     return response
 
 def get_png(request):
