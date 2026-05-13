@@ -374,6 +374,11 @@ jobs:
           sed -i -e '/let Ok(data) = sign::verify(&data, &pk)/,/};/d' ./src/common.rs
           # sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
 
+      - name: Remove scam alert on Android
+        shell: bash
+        run: |
+          sed -i 's/bind.mainGetLocalOption(key:\s*"show-scam-warning")/"N"/g' ./flutter/lib/mobile/pages/server_page.dart
+
       - name: fix connection delay
         continue-on-error: true
         if: ${{ env.delayFix == 'true' }}
