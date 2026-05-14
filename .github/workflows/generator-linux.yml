@@ -526,6 +526,19 @@ jobs:
             for FILE in $(echo $FILES | sed "s/\n/ /g"); do
               sed -ie "s|rustdesk|${{ env.filename }}|g" $FILE
             done
+            for file in "./res/rpm-flutter.spec" "./res/rpm-flutter-suse.spec"; do
+              sed -ie "s|^\(URL:\s*\).*|\1${{ env.downloadLink }}|g" "$file"
+              sed -ie "s|^\(Vendor:\s*\).*|\1${{ env.compname }}|g" "$file"
+              sed -ie '/\${\?HBB}\?/!{/\(^Name:\|\/usr\|\/etc\|systemctl\)/s|rustdesk|${{ env.filename }}|g}' "$file"
+              sed -ie '/\${\?HBB}\?/{/^install/s|\(\/usr\/.*\/\)rustdesk|\1${{ env.filename }}|g}' "$file"
+              sed -ie '/\${\?HBB}\?/{/^mkdir/s|rustdesk|${{ env.filename }}|g}' "$file"
+              for extension in ".desktop" "-link.desktop" ".service"; do
+                sed -ie "/^%files$/i\mv %{buildroot}/usr/share/${{ env.filename }}/files/rustdesk$extension %{buildroot}/usr/share/${{ env.filename }}/files/${{ env.filename }}$extension" "$file"
+                sed -ie "/^%files$/i\sed -ie 's|RustDesk|${{ env.filename }}|g' %{buildroot}/usr/share/${{ env.filename }}/files/${{ env.filename }}$extension" "$file"
+                sed -ie "/^%files$/i\sed -ie 's|rustdesk|${{ env.filename }}|g' %{buildroot}/usr/share/${{ env.filename }}/files/${{ env.filename }}$extension" "$file"
+              done
+              sed -ie '/^%files$/i\\n' "$file"
+            done
 
             python3 ./build.py --flutter --skip-cargo
             for name in rustdesk*??.deb; do
@@ -542,7 +555,7 @@ jobs:
             esac
             HBB=`pwd` rpmbuild ./res/rpm-flutter.spec -bb
             pushd ~/rpmbuild/RPMS/${{ matrix.job.arch }}
-            for name in rustdesk*??.rpm; do
+            for name in ${{ env.filename }}*??.rpm; do
                 mv "$name" /workspace/output/"${{ env.filename }}-${{ matrix.job.arch }}.rpm"
             done
 
@@ -556,7 +569,7 @@ jobs:
             esac
             HBB=`pwd` rpmbuild ./res/rpm-flutter-suse.spec -bb
             pushd ~/rpmbuild/RPMS/${{ matrix.job.arch }}
-            for name in rustdesk*??.rpm; do
+            for name in ${{ env.filename }}*??.rpm; do
                 mv "$name" /workspace/output/"${{ env.filename }}-suse-${{ matrix.job.arch }}.rpm"
             done
 
