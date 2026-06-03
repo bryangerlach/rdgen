@@ -15,10 +15,12 @@ runs:
     - name: install python deps
       shell: cmd
       run: |
-        pip install pyzipper
+        python -m pip install pyzipper
+
     - name: Decrypt and Mask
-      shell: python
+      shell: cmd
       run: |
+        python -c "
         import pyzipper
         import json
         import os
