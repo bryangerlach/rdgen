@@ -15,12 +15,11 @@ runs:
     - name: install python deps
       shell: cmd
       run: |
-        "C:\Program Files\Python312\python.exe" -m pip install pyzipper
+        "C:\Users\tomanek\AppData\Local\Programs\Python\Python311\python.exe" -m pip install pyzipper
 
     - name: Decrypt and Mask
-      shell: cmd
+      shell: "C:\Users\tomanek\AppData\Local\Programs\Python\Python311\python.exe"
       run: |
-        "C:\Program Files\Python312\python.exe" -c "
         import pyzipper
         import json
         import os
