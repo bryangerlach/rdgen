@@ -1,8 +1,16 @@
 diff --git a/flutter/lib/desktop/widgets/remote_toolbar.dart b/flutter/lib/desktop/widgets/remote_toolbar.dart
-index 210cc8571..544a0289e 100644
+index 210cc8571..267e992c4 100644
 --- a/flutter/lib/desktop/widgets/remote_toolbar.dart
 +++ b/flutter/lib/desktop/widgets/remote_toolbar.dart
-@@ -2970,6 +2970,7 @@ class RdoMenuButton<T> extends StatelessWidget {
+@@ -779,6 +779,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
+           borderRadius: borderRadius,
+           child: _DraggableShowHide(
+             id: widget.id,
++            ffi: widget.ffi
+             sessionId: widget.ffi.sessionId,
+             dragging: _dragging,
+             fraction: _fraction,
+@@ -2970,6 +2971,7 @@ class RdoMenuButton<T> extends StatelessWidget {
  
  class _DraggableShowHide extends StatefulWidget {
    final String id;
@@ -10,7 +18,7 @@ index 210cc8571..544a0289e 100644
    final SessionID sessionId;
    final RxDouble fraction;
    final Rx<_ToolbarEdge> edge;
-@@ -2993,6 +2994,7 @@ class _DraggableShowHide extends StatefulWidget {
+@@ -2993,6 +2995,7 @@ class _DraggableShowHide extends StatefulWidget {
    const _DraggableShowHide({
      Key? key,
      required this.id,
@@ -18,7 +26,7 @@ index 210cc8571..544a0289e 100644
      required this.sessionId,
      required this.fraction,
      required this.edge,
-@@ -3249,6 +3251,7 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
+@@ -3249,6 +3252,7 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
        mainAxisSize: MainAxisSize.min,
        children: [
          _buildDraggable(context),
@@ -26,7 +34,7 @@ index 210cc8571..544a0289e 100644
          Obx(() => buttonWrapper(
                () {
                  widget.setFullscreen(!isFullscreen.value);
-@@ -3409,3 +3412,50 @@ class EdgeThicknessControl extends StatelessWidget {
+@@ -3409,3 +3413,50 @@ class EdgeThicknessControl extends StatelessWidget {
      return slider;
    }
  }
