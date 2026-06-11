@@ -516,26 +516,26 @@ jobs:
             fi
 
             # Change files names in the output .deb
-            sed -ie "s|\(cp .* \)tmpdeb/usr/share/rustdesk/files/systemd/|\1tmpdeb/usr/share/rustdesk/files/systemd/${{ env.filename }}.service|g" build.py
-            sed -ie "s|cp -r \(.\+\)\* \([^ ]\+\)/rustdesk|mv \1rustdesk \1${{ env.filename }}; cp -r \1\* \2/${{ env.filename }}|g" build.py
-            sed -ie "s|\(tmpdeb/[^ ]*\)rustdesk|\1${{ env.filename }}|g" build.py
-            sed -ie "s|Package: rustdesk|Package: ${{ env.filename }}|g" build.py
+            sed -ie "s|\(cp .* \)tmpdeb/usr/share/rustdesk/files/systemd/|\1tmpdeb/usr/share/rustdesk/files/systemd/${{ env.appname }}.service|g" build.py
+            sed -ie "s|cp -r \(.\+\)\* \([^ ]\+\)/rustdesk|mv \1rustdesk \1${{ env.appname }}; cp -r \1\* \2/${{ env.appname }}|g" build.py
+            sed -ie "s|\(tmpdeb/[^ ]*\)rustdesk|\1${{ env.appname }}|g" build.py
+            sed -ie "s|Package: rustdesk|Package: ${{ env.appname }}|g" build.py
             sed -ie "s|RustDesk|${{ env.appname }}|g" res/rustdesk.desktop
             FILES=$(sed -ne "s~.*cp\s\(../\)\?\+\(.\+\.\(desktop\|service\)\)\s\+tmpdeb/.*~\2~p" build.py | sort | uniq)
             FILES=$(echo -e "$FILES\n$(ls --color=never res/DEBIAN/*)")
             for FILE in $(echo $FILES | sed "s/\n/ /g"); do
-              sed -ie "s|rustdesk|${{ env.filename }}|g" $FILE
+              sed -ie "s|rustdesk|${{ env.appname }}|g" $FILE
             done
             for file in "./res/rpm-flutter.spec" "./res/rpm-flutter-suse.spec"; do
               sed -ie "s|^\(URL:\s*\).*|\1${{ env.downloadLink }}|g" "$file"
               sed -ie "s|^\(Vendor:\s*\).*|\1${{ env.compname }}|g" "$file"
-              sed -ie '/\${\?HBB}\?/!{/\(^Name:\|\/usr\|\/etc\|systemctl\)/s|rustdesk|${{ env.filename }}|g}' "$file"
-              sed -ie '/\${\?HBB}\?/{/^install/s|\(\/usr\/.*\/\)rustdesk|\1${{ env.filename }}|g}' "$file"
-              sed -ie '/\${\?HBB}\?/{/^mkdir/s|rustdesk|${{ env.filename }}|g}' "$file"
+              sed -ie '/\${\?HBB}\?/!{/\(^Name:\|\/usr\|\/etc\|systemctl\)/s|rustdesk|${{ env.appname }}|g}' "$file"
+              sed -ie '/\${\?HBB}\?/{/^install/s|\(\/usr\/.*\/\)rustdesk|\1${{ env.appname }}|g}' "$file"
+              sed -ie '/\${\?HBB}\?/{/^mkdir/s|rustdesk|${{ env.appname }}|g}' "$file"
               for extension in ".desktop" "-link.desktop" ".service"; do
-                sed -ie "/^%files$/i\mv %{buildroot}/usr/share/${{ env.filename }}/files/rustdesk$extension %{buildroot}/usr/share/${{ env.filename }}/files/${{ env.filename }}$extension" "$file"
-                sed -ie "/^%files$/i\sed -ie 's|RustDesk|${{ env.filename }}|g' %{buildroot}/usr/share/${{ env.filename }}/files/${{ env.filename }}$extension" "$file"
-                sed -ie "/^%files$/i\sed -ie 's|rustdesk|${{ env.filename }}|g' %{buildroot}/usr/share/${{ env.filename }}/files/${{ env.filename }}$extension" "$file"
+                sed -ie "/^%files$/i\mv %{buildroot}/usr/share/${{ env.appname }}/files/rustdesk$extension %{buildroot}/usr/share/${{ env.appname }}/files/${{ env.appname }}$extension" "$file"
+                sed -ie "/^%files$/i\sed -ie 's|RustDesk|${{ env.appname }}|g' %{buildroot}/usr/share/${{ env.appname }}/files/${{ env.appname }}$extension" "$file"
+                sed -ie "/^%files$/i\sed -ie 's|rustdesk|${{ env.appname }}|g' %{buildroot}/usr/share/${{ env.appname }}/files/${{ env.appname }}$extension" "$file"
               done
               sed -ie '/^%files$/i\\n' "$file"
             done
