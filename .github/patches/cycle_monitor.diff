@@ -1,12 +1,12 @@
 diff --git a/flutter/lib/desktop/widgets/remote_toolbar.dart b/flutter/lib/desktop/widgets/remote_toolbar.dart
-index 210cc8571..267e992c4 100644
+index 210cc8571..7c7bd5b44 100644
 --- a/flutter/lib/desktop/widgets/remote_toolbar.dart
 +++ b/flutter/lib/desktop/widgets/remote_toolbar.dart
 @@ -779,6 +779,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
            borderRadius: borderRadius,
            child: _DraggableShowHide(
              id: widget.id,
-+            ffi: widget.ffi
++            ffi: widget.ffi,
              sessionId: widget.ffi.sessionId,
              dragging: _dragging,
              fraction: _fraction,
