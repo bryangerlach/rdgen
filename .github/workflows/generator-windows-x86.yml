@@ -1,6 +1,6 @@
 name: Custom Windows x86 Client Generator
 run-name: Custom Windows x86 Client Generator
-on: 
+on:
   workflow_dispatch:
     inputs:
       version:
@@ -31,7 +31,7 @@ env:
   # vcpkg version: 2025.08.27
   # If we change the `VCPKG COMMIT_ID`, please remember:
   # 1. Call `$VCPKG_ROOT/vcpkg x-update-baseline` to update the baseline in `vcpkg.json`.
-  #  Or we may face build issue like 
+  #  Or we may face build issue like
   #  https://github.com/rustdesk/rustdesk/actions/runs/14414119794/job/40427970174
   # 2. Update the `VCPKG_COMMIT_ID` in `ci.yml` and `playground.yml`.
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
@@ -72,9 +72,9 @@ jobs:
           # - { target: aarch64-pc-windows-msvc, os: windows-2022 }
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
-        
-      - uses: actions/download-artifact@v4
+        uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
         with:
           name: encrypted-secrets-zip
 
@@ -86,7 +86,7 @@ jobs:
       - name: Finalize and Cleanup zip/json
         if: always() # Run even if previous steps fail
         continue-on-error: true
-        uses: fjogeleit/http-request-action@v1
+        uses: fjogeleit/http-request-action@v2
         with:
           url: "${{ secrets.GENURL }}/cleanzip"
           method: 'POST'
@@ -94,7 +94,7 @@ jobs:
           data: '{"uuid": "${{ env.uuid }}"}'
 
       - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v6
+        uses: actions/github-script@v8
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
@@ -112,7 +112,7 @@ jobs:
 
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
@@ -120,7 +120,7 @@ jobs:
 
       - name: Checkout source code
         if: ${{ env.VERSION == 'master' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: rustdesk/rustdesk
           submodules: recursive
@@ -133,22 +133,82 @@ jobs:
       - name: change appname to custom
         if: env.appname != 'rustdesk'
         continue-on-error: true
-        shell: bash
+        shell: python
+        env:
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: "utf-8"
+          APP_NAME: ${{ env.appname }}
+          FILE_NAME: ${{ env.filename }}
+          COMP_NAME: ${{ env.compname }}
         run: |
-          # ./Cargo.toml
-          sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ env.appname }}"|' ./Cargo.toml
-          sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ env.appname }}"|' ./Cargo.toml
-          sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ env.appname }}"|' ./Cargo.toml
-          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.appname }}.exe"|' ./Cargo.toml
-          # ./libs/portable/Cargo.toml
-          sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
-          sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
-          sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
-          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.appname }}.exe"|' ./libs/portable/Cargo.toml
-          # ./libs/portable/src/main.rs
-          sed -i -e 's|const APP_PREFIX: \&str = "rustdesk";|const APP_PREFIX: \&str = "${{ env.appname }}";|' ./libs/portable/src/main.rs
-          # ./src/lang/en.rs
-          find ./src/lang -name "*.rs" -exec sed -i -e 's|RustDesk|${{ env.appname }}|' {} \;
+          import sys
+          import io
+          import os
+          import glob
+
+          sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+          sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+          app_name = os.environ['APP_NAME']
+          file_name = os.environ.get('FILE_NAME', '')
+          comp_name = os.environ.get('COMP_NAME', '')
+
+          def replace_in_file(path, old, new, encoding='utf-8'):
+              try:
+                  with open(path, 'r', encoding=encoding, errors='replace') as f:
+                      content = f.read()
+                  if old in content:
+                      content = content.replace(old, new)
+                      with open(path, 'w', encoding=encoding) as f:
+                          f.write(content)
+                      print(f"✅ Updated: {path} ('{old}' -> '{new}')")
+                  else:
+                      print(f"⚠️ Not found in: {path} ('{old}')")
+              except Exception as e:
+                  print(f"❌ Error in {path}: {e}")
+
+          # Cargo.toml
+          replace_in_file('./Cargo.toml', 'description = "RustDesk Remote Desktop"', f'description = "{app_name}"')
+          replace_in_file('./Cargo.toml', 'ProductName = "RustDesk"', f'ProductName = "{app_name}"')
+          replace_in_file('./Cargo.toml', 'FileDescription = "RustDesk Remote Desktop"', f'FileDescription = "{app_name}"')
+          replace_in_file('./Cargo.toml', 'OriginalFilename = "rustdesk.exe"', f'OriginalFilename = "{app_name}.exe"')
+
+          # libs/portable/Cargo.toml
+          replace_in_file('./libs/portable/Cargo.toml', 'description = "RustDesk Remote Desktop"', f'description = "{app_name}"')
+          replace_in_file('./libs/portable/Cargo.toml', 'ProductName = "RustDesk"', f'ProductName = "{app_name}"')
+          replace_in_file('./libs/portable/Cargo.toml', 'FileDescription = "RustDesk Remote Desktop"', f'FileDescription = "{app_name}"')
+          replace_in_file('./libs/portable/Cargo.toml', 'OriginalFilename = "rustdesk.exe"', f'OriginalFilename = "{app_name}.exe"')
+
+          # libs/portable/src/main.rs
+          replace_in_file('./libs/portable/src/main.rs', 'const APP_PREFIX: &str = "rustdesk";', f'const APP_PREFIX: &str = "{app_name}";')
+
+          # src/lang/*.rs
+          lang_files = glob.glob('./src/lang/*.rs')
+          for lang_file in lang_files:
+              try:
+                  with open(lang_file, 'r', encoding='utf-8', errors='replace') as f:
+                      content = f.read()
+                  modified = False
+                  if comp_name:
+                      lines = content.split('\n')
+                      new_lines = []
+                      for line in lines:
+                          if 'powered_by_me' in line:
+                              line = line.replace('RustDesk', comp_name)
+                              modified = True
+                          new_lines.append(line)
+                      content = '\n'.join(new_lines)
+                  if 'RustDesk' in content:
+                      content = content.replace('RustDesk', app_name)
+                      modified = True
+                  if modified:
+                      with open(lang_file, 'w', encoding='utf-8') as f:
+                          f.write(content)
+                      print(f"✅ Updated: {lang_file}")
+              except Exception as e:
+                  print(f"❌ Error in {lang_file}: {e}")
+
+          print("Done!")
 
       - name: fix registry if appname has a space
         if: contains(env.appname, ' ')
@@ -169,19 +229,50 @@ jobs:
           sed -i -e 's|{subkey}|\\\"{subkey}\\\"|' ./src/platform/windows.rs
           sed -i -e 's|reg delete HKEY_CLASSES_ROOT\\\\.{ext} /f|reg delete \\\"HKEY_CLASSES_ROOT\\\\.{ext}\\\" /f|' ./src/platform/windows.rs
           sed -i -e 's|reg delete HKEY_CLASSES_ROOT\\\\{ext} /f|reg delete \\\"HKEY_CLASSES_ROOT\\\\{ext}\\\" /f|' ./src/platform/windows.rs
-          
+
       - name: change company name
         if: env.compname != 'Purslane Ltd'
         continue-on-error: true
-        shell: bash
+        shell: python
+        env:
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: "utf-8"
+          COMP_NAME: ${{ env.compname }}
         run: |
-          sed -i -e 's|PURSLANE|${{ env.compname }}|' ./res/msi/preprocess.py
-          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./res/msi/preprocess.py
-          sed -i -e 's|Copyright &copy; 2025 Purslane Ltd.|Copyright \&copy; 2025 ${{ env.compname }}|' ./src/ui/index.tis
-          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./Cargo.toml
-          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./libs/portable/Cargo.toml
-          sed -i -e 's|Purslane Ltd.|${{ env.compname }}|' ./res/setup.nsi
-             
+          import sys
+          import io
+          import os
+
+          sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+          sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+          comp_name = os.environ['COMP_NAME']
+          old_name = 'Purslane Ltd'
+
+          def replace_in_file(path, old, new, encoding='utf-8'):
+              try:
+                  with open(path, 'r', encoding=encoding, errors='replace') as f:
+                      content = f.read()
+                  if old in content:
+                      content = content.replace(old, new)
+                      with open(path, 'w', encoding=encoding) as f:
+                          f.write(content)
+                      print(f"✅ Updated: {path}")
+                  else:
+                      print(f"⚠️ Not found in: {path}")
+              except Exception as e:
+                  print(f"❌ Error in {path}: {e}")
+
+          replace_in_file('./res/msi/preprocess.py', 'PURSLANE', comp_name)
+          replace_in_file('./res/msi/preprocess.py', old_name, comp_name)
+          # Sciter UI — специфично для x86
+          replace_in_file('./src/ui/index.tis', f'Copyright &copy; 2025 {old_name}.', f'Copyright &copy; 2025 {comp_name}')
+          replace_in_file('./Cargo.toml', old_name, comp_name)
+          replace_in_file('./libs/portable/Cargo.toml', old_name, comp_name)
+          replace_in_file('./res/setup.nsi', old_name, comp_name)
+
+          print("Done!")
+
       - name: change url to custom
         if: env.urlLink != 'https://rustdesk.com'
         continue-on-error: true
@@ -199,17 +290,53 @@ jobs:
         run: |
           sed -i -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./src/ui/index.tis
 
-      - name: set server, key, and apiserver
+      - name: set server, serverPort, key, and apiserver
         continue-on-error: true
         shell: bash
+        env:
+          SERVER_DOMAIN: ${{ env.server }}
+          SERVER_PORT_INPUT: ${{ env.serverPort }}
+          SERVER_KEY: ${{ env.key }}
+          API_SERVER: ${{ env.apiServer }}
         run: |
-          sed -i -e 's|rs-ny.rustdesk.com|${{ env.server }}|' ./libs/hbb_common/src/config.rs
-          sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.key }}|' ./libs/hbb_common/src/config.rs
-          sed -i -e 's|https://admin.rustdesk.com|${{ env.apiServer }}|' ./src/common.rs
+          if [ ! -f "./libs/hbb_common/src/config.rs" ]; then
+            echo "Error: config.rs not found!"
+            exit 1
+          fi
+          if [ ! -f "./src/common.rs" ]; then
+            echo "Error: common.rs not found!"
+            exit 1
+          fi
+
+          if ! [[ "$SERVER_PORT_INPUT" =~ ^[0-9]+$ ]]; then
+            echo "Error: serverPort must be a number, got: '$SERVER_PORT_INPUT'"
+            exit 1
+          fi
+
+          SERVER_PORT=$SERVER_PORT_INPUT
+          RELAY_PORT=$((SERVER_PORT + 1))
+          WS_RENDEZVOUS_PORT=$((RELAY_PORT + 1))
+          WS_RELAY_PORT=$((WS_RENDEZVOUS_PORT + 1))
+
+          echo "Setting server: $SERVER_DOMAIN"
+          echo "Setting ports: $SERVER_PORT, $RELAY_PORT, $WS_RENDEZVOUS_PORT, $WS_RELAY_PORT"
+
+          sed -i -e "s|rs-ny.rustdesk.com|$SERVER_DOMAIN|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const RENDEZVOUS_PORT: i32 = [0-9]\+;|pub const RENDEZVOUS_PORT: i32 = $SERVER_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const RELAY_PORT: i32 = [0-9]\+;|pub const RELAY_PORT: i32 = $RELAY_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const WS_RENDEZVOUS_PORT: i32 = [0-9]\+;|pub const WS_RENDEZVOUS_PORT: i32 = $WS_RENDEZVOUS_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const WS_RELAY_PORT: i32 = [0-9]\+;|pub const WS_RELAY_PORT: i32 = $WS_RELAY_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|$SERVER_KEY|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|https://admin.rustdesk.com|$API_SERVER|" ./src/common.rs
+          # Sciter UI
           sed -i -e 's|<span>{translate("Ready")}, <span .link #setup-server>{translate("setup_server_tip")}</span></span>|translate("Ready")|' ./src/ui/index.tis
 
+          echo "=== Verification ==="
+          grep -n "RENDEZVOUS_PORT\|RELAY_PORT\|WS_" ./libs/hbb_common/src/config.rs
+          grep -n "rustdesk\|admin\." ./src/common.rs || true
+
       - name: allow custom.txt
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 1
           max_attempts: 3
@@ -273,13 +400,13 @@ jobs:
 
       - name: magick stuff
         if: ${{ env.iconlink_url != 'false' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 1
           max_attempts: 3
           shell: pwsh
           command: |
-            Invoke-WebRequest -Uri ${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}"&"uuid=${{ env.iconlink_uuid }} -OutFile ./res/icon.png 
+            Invoke-WebRequest -Uri ${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}"&"uuid=${{ env.iconlink_uuid }} -OutFile ./res/icon.png
             mv ./res/32x32.png ./res/32x32.png.bak
             mv ./res/64x64.png ./res/64x64.png.bak
             mv ./res/128x128.png ./res/128x128.png.bak
@@ -307,13 +434,14 @@ jobs:
         if: ${{ env.delayFix == 'true' }}
         shell: bash
         run: |
-          sed -i -e 's|!key.is_empty()|false|' ./src/client.rs
+          sed -i -e 's#if is_local || peer_nat_type == NatType::SYMMETRIC {#if is_local || peer_nat_type == NatType::SYMMETRIC || !key.is_empty() {#' ./src/client.rs
+          grep -n "key.is_empty()" ./src/client.rs || true
 
       - name: removeNewVersionNotif
         continue-on-error: true
         if: env.removeNewVersionNotif == 'true'
         shell: bash
-        run: | 
+        run: |
           sed -i -e 's|{software_update_url ? <UpdateMe /> : ""}||' ./src/ui/index.tis
           sed -i '/let (request, url) =/,/Ok(())/{/Ok(())/!d}' ./src/common.rs
 
@@ -352,7 +480,7 @@ jobs:
             echo "list ./libs/portable/Runner.res";
             ls -l ./libs/portable/Runner.res;
           fi
-      
+
       - name: zip dlls
         continue-on-error: true
         shell: pwsh
@@ -432,15 +560,34 @@ jobs:
 
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
-        shell: bash
-        run: |
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.exe" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          shell: bash
+          command: |
+            curl -i -X POST \
+              --max-time 540 \
+              -H "Content-Type: multipart/form-data" \
+              -H "Authorization: Bearer ${{ env.token }}" \
+              -F "file=@./SignOutput/${{ env.filename }}.exe" \
+              -F "uuid=${{ env.uuid }}" \
+              ${{ secrets.GENURL }}/save_custom_client
 
       - name: send file to api server
         if: ${{ env.rdgen == 'false' }}
-        shell: bash
-        run: |
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.exe" ${{ env.apiServer }}/api/save_custom_client
+        uses: nick-fields/retry@v4
+        with:
+          timeout_minutes: 10
+          max_attempts: 3
+          shell: bash
+          command: |
+            curl -i -X POST \
+              --max-time 540 \
+              -H "Content-Type: multipart/form-data" \
+              -H "Authorization: Bearer ${{ env.token }}" \
+              -F "file=@./SignOutput/${{ env.filename }}.exe" \
+              ${{ env.apiServer }}/api/save_custom_client
 
   cleanup:
     needs: [build-for-windows-sciter]
@@ -449,6 +596,6 @@ jobs:
     if: always()
     steps:
       - name: Delete secrets artifact
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
           name: encrypted-secrets-zip

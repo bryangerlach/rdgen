@@ -1,6 +1,6 @@
 name: Custom Android Client Generator
 run-name: Custom Android Client Generator
-on: 
+on:
   workflow_dispatch:
     inputs:
       version:
@@ -23,7 +23,7 @@ env:
   SCITER_NASM_DEBVERSION: "2.14-1"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  ANDROID_FLUTTER_VERSION: "3.24.5" 
+  ANDROID_FLUTTER_VERSION: "3.24.5"
   # for arm64 linux because official Dart SDK does not work
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
@@ -82,9 +82,9 @@ jobs:
             }
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
-        
-      - uses: actions/download-artifact@v4
+        uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
         with:
           name: encrypted-secrets-zip
 
@@ -96,7 +96,7 @@ jobs:
       - name: Finalize and Cleanup zip/json
         if: always() # Run even if previous steps fail
         continue-on-error: true
-        uses: fjogeleit/http-request-action@v1
+        uses: fjogeleit/http-request-action@v2
         with:
           url: "${{ secrets.GENURL }}/cleanzip"
           method: 'POST'
@@ -104,7 +104,7 @@ jobs:
           data: '{"uuid": "${{ env.uuid }}"}'
 
       - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
+        uses: jlumbroso/free-disk-space@v1.3.1
         with:
           tool-cache: false
           android: false
@@ -115,7 +115,7 @@ jobs:
           swap-storage: false
 
       - name: Export GitHub Actions cache environment variables
-        uses: actions/github-script@v6
+        uses: actions/github-script@v8
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
@@ -175,15 +175,15 @@ jobs:
 
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
           submodules: recursive
-       
+
       - name: Checkout source code
         if: ${{ env.VERSION == 'master' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           repository: rustdesk/rustdesk
           submodules: recursive
@@ -199,7 +199,7 @@ jobs:
         run: |
           cd $(dirname $(dirname $(which flutter)))
           [[ "3.24.5" == ${{env.ANDROID_FLUTTER_VERSION}} ]] && git apply ${{ github.workspace }}/.github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff
-  
+
 
       - uses: nttld/setup-ndk@v1
         id: setup-ndk
@@ -243,7 +243,7 @@ jobs:
         shell: bash
 
       - name: Restore bridge files
-        uses: actions/download-artifact@master
+        uses: actions/download-artifact@v8
         with:
           name: bridge-artifact
           path: ./
@@ -262,7 +262,7 @@ jobs:
       ###########################################################echo "${{ env.iconbase64 }}" | base64 -d > ./res/icon.png
       - name: icon stuff
         if: ${{ env.iconlink_url != 'false' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 1
           max_attempts: 3
@@ -292,55 +292,196 @@ jobs:
             sed -i '/adaptive_icon_foreground:/a \ \ adaptive_icon_foreground_inset: 32' ./flutter/pubspec.yaml
             sed -i '/ic_launcher_background/d' ./flutter/android/app/src/main/res/values/colors.xml
 
-      - name: set server, key, and apiserver
+      - name: set server, serverPort, key, and apiserver
         continue-on-error: true
         shell: bash
+        env:
+          SERVER_DOMAIN: ${{ env.server }}
+          SERVER_PORT_INPUT: ${{ env.serverPort }}
+          SERVER_KEY: ${{ env.key }}
+          API_SERVER: ${{ env.apiServer }}
         run: |
-          sed -i -e 's|rs-ny.rustdesk.com|${{ env.server }}|' ./libs/hbb_common/src/config.rs
-          sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.key }}|' ./libs/hbb_common/src/config.rs
-          sed -i -e 's|https://admin.rustdesk.com|${{ env.apiServer }}|' ./src/common.rs
-          # ./flutter/pubspec.yaml
-          #sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
-          
+          if [ ! -f "./libs/hbb_common/src/config.rs" ]; then
+            echo "Error: config.rs not found!"
+            exit 1
+          fi
+          if [ ! -f "./src/common.rs" ]; then
+            echo "Error: common.rs not found!"
+            exit 1
+          fi
+
+          if ! [[ "$SERVER_PORT_INPUT" =~ ^[0-9]+$ ]]; then
+            echo "Error: serverPort must be a number, got: '$SERVER_PORT_INPUT'"
+            exit 1
+          fi
+
+          SERVER_PORT=$SERVER_PORT_INPUT
+          RELAY_PORT=$((SERVER_PORT + 1))
+          WS_RENDEZVOUS_PORT=$((RELAY_PORT + 1))
+          WS_RELAY_PORT=$((WS_RENDEZVOUS_PORT + 1))
+
+          echo "Setting server: $SERVER_DOMAIN"
+          echo "Setting ports: $SERVER_PORT, $RELAY_PORT, $WS_RENDEZVOUS_PORT, $WS_RELAY_PORT"
+
+          sed -i -e "s|rs-ny.rustdesk.com|$SERVER_DOMAIN|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const RENDEZVOUS_PORT: i32 = [0-9]\+;|pub const RENDEZVOUS_PORT: i32 = $SERVER_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const RELAY_PORT: i32 = [0-9]\+;|pub const RELAY_PORT: i32 = $RELAY_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const WS_RENDEZVOUS_PORT: i32 = [0-9]\+;|pub const WS_RENDEZVOUS_PORT: i32 = $WS_RENDEZVOUS_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const WS_RELAY_PORT: i32 = [0-9]\+;|pub const WS_RELAY_PORT: i32 = $WS_RELAY_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|$SERVER_KEY|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|https://admin.rustdesk.com|$API_SERVER|" ./src/common.rs
+
+          echo "=== Verification ==="
+          grep -n "RENDEZVOUS_PORT\|RELAY_PORT\|WS_" ./libs/hbb_common/src/config.rs
+          grep -n "rustdesk\|admin\." ./src/common.rs || true
+
       - name: change appname to custom
         if: env.appname != 'rustdesk'
         continue-on-error: true
-        shell: bash
+        shell: python
+        env:
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: "utf-8"
+          APP_NAME: ${{ env.appname }}
+          FILE_NAME: ${{ env.filename }}
+          COMP_NAME: ${{ env.compname }}
         run: |
-          sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ env.appname }}"|' ./Cargo.toml
-          sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ env.appname }}"|' ./Cargo.toml
-          sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ env.appname }}"|' ./Cargo.toml
-          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.appname }}.exe"|' ./Cargo.toml
-          sed -i 's|name = "RustDesk"|name = "${{ env.appname }}"|' ./Cargo.toml
-          sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
-          sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
-          sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
-          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.appname }}.exe"|' ./libs/portable/Cargo.toml
-          sed -i -e 's|const APP_PREFIX: \&str = "rustdesk";|const APP_PREFIX: \&str = "${{ env.appname }}";|' ./libs/portable/src/main.rs
-          sed -i -e 's|"RustDesk Remote Desktop"|"${{ env.appname }}"|' ./flutter/windows/runner/Runner.rc
-          sed -i -e 's|VALUE "InternalName", "rustdesk" "\0"|VALUE "InternalName", "${{ env.appname }}" "\0"|' ./flutter/windows/runner/Runner.rc
-          sed -i -e 's|"Copyright © 2025 Purslane Ltd. All rights reserved."|"Copyright © 2025"|' ./flutter/windows/runner/Runner.rc
-          sed -i -e 's|"rustdesk.exe"|"${{ env.filename }}"|' ./flutter/windows/runner/Runner.rc
-          sed -i -e 's|"RustDesk"|"${{ env.appname }}"|' ./flutter/windows/runner/Runner.rc
-          find ./src/lang -name "*.rs" -exec sed -i -e 's|RustDesk|${{ env.appname }}|' {} \;
-          sed -i -e 's|RustDesk|${{ env.appname }}|' ./flutter/android/app/src/main/res/values/strings.xml
-          sed -i -e "s|title: 'RustDesk'|title: '${{ env.appname }}'|" ./flutter/lib/main.dart
-          sed -i -e "s|return 'RustDesk';|return '${{ env.appname }}';|" ./flutter/lib/web/bridge.dart
-          sed -i 's|android:label="RustDesk"|android:label="${{ env.appname }}"|' ./flutter/android/app/src/main/AndroidManifest.xml
-          sed -i 's|android:label="RustDesk Input"|android:label="${{ env.appname }} Input"|' ./flutter/android/app/src/main/AndroidManifest.xml
-          sed -i 's|RustDesk is Open|${{ env.appname }} is Open|' ./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/BootReceiver.kt
-          sed -i 's|Show Rustdesk|Show ${{ env.appname }}|' ./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/FloatingWindowService.kt
-          sed -i 's|"RustDesk"|"${{ env.appname }}"|' ./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/MainService.kt
-          sed -i 's|"RustDesk Service|"${{ env.appname }} Service|' ./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/MainService.kt
-          sed -i 's|RustDesk|${{ env.appname }}|' ./flutter/lib/main.dart
-          sed -i 's|"RustDesk"|"${{ env.appname }}"|' ./flutter/lib/desktop/widgets/tabbar_widget.dart
-          sed -i 's|"RustDesk"|"${{ env.appname }}"|' ./libs/hbb_common/src/config.rs
+          import sys
+          import io
+          import os
+          import glob
+
+          sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+          sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+          app_name = os.environ['APP_NAME']
+          file_name = os.environ.get('FILE_NAME', '')
+          comp_name = os.environ.get('COMP_NAME', '')
+
+          def replace_in_file(path, old, new, encoding='utf-8'):
+              try:
+                  with open(path, 'r', encoding=encoding, errors='replace') as f:
+                      content = f.read()
+                  if old in content:
+                      content = content.replace(old, new)
+                      with open(path, 'w', encoding=encoding) as f:
+                          f.write(content)
+                      print(f"✅ Updated: {path} ('{old}' -> '{new}')")
+                  else:
+                      print(f"⚠️ Not found in: {path} ('{old}')")
+              except Exception as e:
+                  print(f"❌ Error in {path}: {e}")
+
+          # Cargo.toml
+          replace_in_file('./Cargo.toml', 'description = "RustDesk Remote Desktop"', f'description = "{app_name}"')
+          replace_in_file('./Cargo.toml', 'ProductName = "RustDesk"', f'ProductName = "{app_name}"')
+          replace_in_file('./Cargo.toml', 'FileDescription = "RustDesk Remote Desktop"', f'FileDescription = "{app_name}"')
+          replace_in_file('./Cargo.toml', 'OriginalFilename = "rustdesk.exe"', f'OriginalFilename = "{app_name}.exe"')
+          replace_in_file('./Cargo.toml', 'name = "RustDesk"', f'name = "{app_name}"')
+
+          # libs/portable/Cargo.toml
+          replace_in_file('./libs/portable/Cargo.toml', 'description = "RustDesk Remote Desktop"', f'description = "{app_name}"')
+          replace_in_file('./libs/portable/Cargo.toml', 'ProductName = "RustDesk"', f'ProductName = "{app_name}"')
+          replace_in_file('./libs/portable/Cargo.toml', 'FileDescription = "RustDesk Remote Desktop"', f'FileDescription = "{app_name}"')
+          replace_in_file('./libs/portable/Cargo.toml', 'OriginalFilename = "rustdesk.exe"', f'OriginalFilename = "{app_name}.exe"')
+
+          # libs/portable/src/main.rs
+          replace_in_file('./libs/portable/src/main.rs', 'const APP_PREFIX: &str = "rustdesk";', f'const APP_PREFIX: &str = "{app_name}";')
+
+          # flutter/windows/runner/Runner.rc
+          replace_in_file('./flutter/windows/runner/Runner.rc', '"RustDesk Remote Desktop"', f'"{app_name}"')
+          replace_in_file('./flutter/windows/runner/Runner.rc', 'VALUE "InternalName", "rustdesk" "\0"', f'VALUE "InternalName", "{app_name}" "\0"')
+          replace_in_file('./flutter/windows/runner/Runner.rc', '"Copyright © 2025 Purslane Ltd. All rights reserved."', '"Copyright © 2025"')
+          if file_name:
+              replace_in_file('./flutter/windows/runner/Runner.rc', '"rustdesk.exe"', f'"{file_name}"')
+          replace_in_file('./flutter/windows/runner/Runner.rc', '"RustDesk"', f'"{app_name}"')
+
+          # src/lang/*.rs
+          lang_files = glob.glob('./src/lang/*.rs')
+          for lang_file in lang_files:
+              try:
+                  with open(lang_file, 'r', encoding='utf-8', errors='replace') as f:
+                      content = f.read()
+                  modified = False
+                  if comp_name:
+                      lines = content.split('\n')
+                      new_lines = []
+                      for line in lines:
+                          if 'powered_by_me' in line:
+                              line = line.replace('RustDesk', comp_name)
+                              modified = True
+                          new_lines.append(line)
+                      content = '\n'.join(new_lines)
+                  if 'RustDesk' in content:
+                      content = content.replace('RustDesk', app_name)
+                      modified = True
+                  if modified:
+                      with open(lang_file, 'w', encoding='utf-8') as f:
+                          f.write(content)
+                      print(f"✅ Updated: {lang_file}")
+              except Exception as e:
+                  print(f"❌ Error in {lang_file}: {e}")
+
+          # Android специфичные файлы
+          replace_in_file('./flutter/android/app/src/main/res/values/strings.xml', 'RustDesk', app_name)
+          replace_in_file('./flutter/lib/main.dart', "title: 'RustDesk'", f"title: '{app_name}'")
+          replace_in_file('./flutter/lib/main.dart', 'RustDesk', app_name)
+          replace_in_file('./flutter/lib/web/bridge.dart', "return 'RustDesk';", f"return '{app_name}';")
+          replace_in_file('./flutter/android/app/src/main/AndroidManifest.xml', 'android:label="RustDesk"', f'android:label="{app_name}"')
+          replace_in_file('./flutter/android/app/src/main/AndroidManifest.xml', 'android:label="RustDesk Input"', f'android:label="{app_name} Input"')
+          replace_in_file('./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/BootReceiver.kt', 'RustDesk is Open', f'{app_name} is Open')
+          replace_in_file('./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/FloatingWindowService.kt', 'Show Rustdesk', f'Show {app_name}')
+          replace_in_file('./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/MainService.kt', '"RustDesk"', f'"{app_name}"')
+          replace_in_file('./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/MainService.kt', '"RustDesk Service', f'"{app_name} Service')
+          replace_in_file('./flutter/lib/desktop/widgets/tabbar_widget.dart', '"RustDesk"', f'"{app_name}"')
+          replace_in_file('./libs/hbb_common/src/config.rs', '"RustDesk"', f'"{app_name}"')
+
+          print("Done!")
+
+      - name: change company name
+        if: env.compname != 'Purslane Ltd'
+        continue-on-error: true
+        shell: python
+        env:
+          PYTHONUTF8: "1"
+          PYTHONIOENCODING: "utf-8"
+          COMP_NAME: ${{ env.compname }}
+        run: |
+          import sys
+          import io
+          import os
+
+          sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+          sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
+
+          comp_name = os.environ['COMP_NAME']
+          old_name = 'Purslane Ltd'
+
+          def replace_in_file(path, old, new, encoding='utf-8'):
+              try:
+                  with open(path, 'r', encoding=encoding, errors='replace') as f:
+                      content = f.read()
+                  if old in content:
+                      content = content.replace(old, new)
+                      with open(path, 'w', encoding=encoding) as f:
+                          f.write(content)
+                      print(f"✅ Updated: {path}")
+                  else:
+                      print(f"⚠️ Not found in: {path}")
+              except Exception as e:
+                  print(f"❌ Error in {path}: {e}")
+
+          replace_in_file('./flutter/lib/desktop/pages/desktop_setting_page.dart', old_name, comp_name)
+          replace_in_file('./Cargo.toml', old_name, comp_name)
+          replace_in_file('./libs/portable/Cargo.toml', old_name, comp_name)
+
+          print("Done!")
 
       - name: change url to custom
         if: env.urlLink != 'https://rustdesk.com'
         continue-on-error: true
         shell: bash
-        run: |  
+        run: |
           sed -i -e 's|Homepage: https://rustdesk.com|Homepage: ${{ env.urlLink }}|' ./build.py
           sed -i -e "s|launchUrl(Uri.parse('https://rustdesk.com'));|launchUrl(Uri.parse('${{ env.urlLink }}'));|" ./flutter/lib/common.dart
           sed -i -e "s|launchUrlString('https://rustdesk.com');|launchUrlString('${{ env.urlLink }}');|" ./flutter/lib/desktop/pages/desktop_setting_page.dart
@@ -384,11 +525,12 @@ jobs:
         if: ${{ env.delayFix == 'true' }}
         shell: bash
         run: |
-          sed -i -e 's|!key.is_empty()|false|' ./src/client.rs
+          sed -i -e 's#if is_local || peer_nat_type == NatType::SYMMETRIC {#if is_local || peer_nat_type == NatType::SYMMETRIC || !key.is_empty() {#' ./src/client.rs
+          grep -n "key.is_empty()" ./src/client.rs || true
 
       - name: add cycle monitors to toolbar
         if: env.cycleMonitor == 'true'
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 1
           max_attempts: 3
@@ -400,7 +542,7 @@ jobs:
 
       - name: use X for offline display instead of orange circle
         if: env.xOffline == 'true'
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 1
           max_attempts: 3
@@ -412,7 +554,7 @@ jobs:
 
       - name: hide-cm
         if: env.hidecm == 'true'
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 1
           max_attempts: 3
@@ -425,7 +567,7 @@ jobs:
       - name: removeNewVersionNotif
         continue-on-error: true
         if: env.removeNewVersionNotif == 'true'
-        run: | 
+        run: |
           sed -i -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
           sed -i '/let (request, url) =/,/Ok(())/{/Ok(())/!d}' ./src/common.rs
 
@@ -470,7 +612,7 @@ jobs:
           esac
 
       - name: Upload Rustdesk library to Artifacts
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@v7
         with:
           name: librustdesk.so.${{ matrix.job.target }}
           path: ./target/${{ matrix.job.target }}/release/liblibrustdesk.so
@@ -544,7 +686,7 @@ jobs:
           mkdir -p signed-apk; pushd signed-apk
           mv ../rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk ./${{ env.filename }}-${{ matrix.job.arch }}.apk
           popd
-      
+
       - uses: r0adkll/sign-android-release@v1
         name: Sign app APK
         continue-on-error: true
@@ -562,32 +704,43 @@ jobs:
 
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
-          timeout_minutes: 1
+          timeout_minutes: 10
           max_attempts: 3
           shell: bash
           command: |
-            curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./signed-apk/${{ env.filename }}-${{ matrix.job.arch }}.apk" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client
+            curl -i -X POST \
+              --max-time 540 \
+              -H "Content-Type: multipart/form-data" \
+              -H "Authorization: Bearer ${{ env.token }}" \
+              -F "file=@./signed-apk/${{ env.filename }}-${{ matrix.job.arch }}.apk" \
+              -F "uuid=${{ env.uuid }}" \
+              ${{ secrets.GENURL }}/save_custom_client
 
       - name: send file to api server
         if: ${{ env.rdgen == 'false' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
-          timeout_minutes: 1
+          timeout_minutes: 10
           max_attempts: 3
           shell: bash
           command: |
-            curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./signed-apk/${{ env.filename }}-${{ matrix.job.arch }}.apk" ${{ env.apiServer }}/api/save_custom_client
+            curl -i -X POST \
+              --max-time 540 \
+              -H "Content-Type: multipart/form-data" \
+              -H "Authorization: Bearer ${{ env.token }}" \
+              -F "file=@./signed-apk/${{ env.filename }}-${{ matrix.job.arch }}.apk" \
+              ${{ env.apiServer }}/api/save_custom_client
 
   deploy:
     needs: [build-rustdesk-android]
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
-        
-      - uses: actions/download-artifact@v4
+        uses: actions/checkout@v6
+
+      - uses: actions/download-artifact@v8
         with:
           name: encrypted-secrets-zip
 
@@ -599,7 +752,7 @@ jobs:
       - name: Finalize and Cleanup zip/json
         if: always() # Run even if previous steps fail
         continue-on-error: true
-        uses: fjogeleit/http-request-action@v1
+        uses: fjogeleit/http-request-action@v2
         with:
           url: "${{ secrets.GENURL }}/cleanzip"
           method: 'POST'
@@ -616,7 +769,7 @@ jobs:
         run: |
           echo "STATUS_URL=${{ env.apiServer }}/api/updategh" >> $GITHUB_ENV
 
-      - uses: geekyeggo/delete-artifact@v5
+      - uses: geekyeggo/delete-artifact@v6
         continue-on-error: true
         with:
             name: ${{ env.filename }}-*.deb
@@ -628,6 +781,6 @@ jobs:
     if: always()
     steps:
       - name: Delete secrets artifact
-        uses: geekyeggo/delete-artifact@v5
+        uses: geekyeggo/delete-artifact@v6
         with:
           name: encrypted-secrets-zip

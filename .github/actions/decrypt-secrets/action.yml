@@ -16,22 +16,32 @@ runs:
       shell: bash
       run: |
         pip install pyzipper
+
     - name: Decrypt and Mask
       shell: python
+      env:
+        PYTHONUTF8: "1"
+        PYTHONIOENCODING: "utf-8"
       run: |
+        import sys
+        import io
         import pyzipper
         import json
         import os
+
+        # Полная замена стандартного вывода на UTF-8 с игнорированием ошибок кодировки
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', errors='replace')
 
         with pyzipper.AESZipFile('${{ inputs.zip_path }}') as zf:
             zf.setpassword('${{ inputs.zip_password }}'.encode())
             with zf.open('secrets.json') as f:
                 secrets = json.load(f)
 
-        with open(os.environ['GITHUB_ENV'], 'a') as env_file:
+        with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as env_file:
             for key, value in secrets.items():
                 if value:
                     print(f"::add-mask::{value}")
                     env_file.write(f"{key}={value}\n")
-        
+
         print(f"Successfully masked {len(secrets)} secrets.")
