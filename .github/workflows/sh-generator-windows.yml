@@ -532,7 +532,7 @@ jobs:
         if: ${{ env.rdgen == 'true' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 100
           max_attempts: 3
           shell: bash
           command: |
@@ -543,7 +543,7 @@ jobs:
         if: ${{ env.rdgen == 'false' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 100
           max_attempts: 3
           shell: bash
           command: |
