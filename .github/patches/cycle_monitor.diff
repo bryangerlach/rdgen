@@ -1,32 +1,32 @@
 diff --git a/flutter/lib/desktop/widgets/remote_toolbar.dart b/flutter/lib/desktop/widgets/remote_toolbar.dart
-index bc3757f1e..ba6509802 100644
+index 210cc8571..7c7bd5b44 100644
 --- a/flutter/lib/desktop/widgets/remote_toolbar.dart
 +++ b/flutter/lib/desktop/widgets/remote_toolbar.dart
-@@ -317,6 +317,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
-             borderRadius: borderRadius,
-             child: _DraggableShowHide(
-               id: widget.id,
-+              ffi: widget.ffi,
-               sessionId: widget.ffi.sessionId,
-               dragging: _dragging,
-               fractionX: _fractionX,
-@@ -2460,6 +2461,7 @@ class RdoMenuButton<T> extends StatelessWidget {
+@@ -779,6 +779,7 @@ class _RemoteToolbarState extends State<RemoteToolbar> {
+           borderRadius: borderRadius,
+           child: _DraggableShowHide(
+             id: widget.id,
++            ffi: widget.ffi,
+             sessionId: widget.ffi.sessionId,
+             dragging: _dragging,
+             fraction: _fraction,
+@@ -2970,6 +2971,7 @@ class RdoMenuButton<T> extends StatelessWidget {
  
  class _DraggableShowHide extends StatefulWidget {
    final String id;
 +  final FFI ffi;
    final SessionID sessionId;
-   final RxDouble fractionX;
-   final RxBool dragging;
-@@ -2472,6 +2474,7 @@ class _DraggableShowHide extends StatefulWidget {
+   final RxDouble fraction;
+   final Rx<_ToolbarEdge> edge;
+@@ -2993,6 +2995,7 @@ class _DraggableShowHide extends StatefulWidget {
    const _DraggableShowHide({
      Key? key,
      required this.id,
 +    required this.ffi,
      required this.sessionId,
-     required this.fractionX,
-     required this.dragging,
-@@ -2583,6 +2586,7 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
+     required this.fraction,
+     required this.edge,
+@@ -3249,6 +3252,7 @@ class _DraggableShowHideState extends State<_DraggableShowHide> {
        mainAxisSize: MainAxisSize.min,
        children: [
          _buildDraggable(context),
@@ -34,7 +34,7 @@ index bc3757f1e..ba6509802 100644
          Obx(() => buttonWrapper(
                () {
                  widget.setFullscreen(!isFullscreen.value);
-@@ -2742,3 +2746,50 @@ class EdgeThicknessControl extends StatelessWidget {
+@@ -3409,3 +3413,50 @@ class EdgeThicknessControl extends StatelessWidget {
      return slider;
    }
  }
