@@ -93,11 +93,11 @@
             color: #2e52f7;
         }
         .text-64 {
-            font-size: 0.5em; 
+            font-size: 0.5em;
             font-weight: bold;
-            bottom: -0.2em; 
+            bottom: -0.2em;
             right: -0.2em;
-            position: absolute; 
+            position: absolute;
             color: white;
             transform: translate(-50%, -50%);
         }
@@ -228,8 +228,8 @@
     <form id="myForm" action="/generator" method="post" enctype="multipart/form-data">
         <div class="save-load-section-container">
             <div class="section">
-                <h2 id="saveLoadTitle">Save/Load Configuration <i class="fas fa-chevron-down"></i></h2>  
-                <div class="save-load-section">  
+                <h2 id="saveLoadTitle">Save/Load Configuration <i class="fas fa-chevron-down"></i></h2>
+                <div class="save-load-section">
                     <button type="button" onclick="saveFormData()">Save Configuration</button>
                     <input type="file" id="fileInput" style="display:none;" accept=".json">
                     <button type="button" onclick="loadFormData()">Load Configuration</button>
@@ -274,7 +274,7 @@
                 <label for="{{ form.delayFix.id_for_label }}">{{ form.delayFix }} Fix connection delay when using third-party API</label>
             </div>
         </div>
-        <div class="container">   
+        <div class="container">
             <div class="section">
                 <h2><i class="fas fa-sliders-h"></i> General</h2>
                     <label for="{{ form.exename.id_for_label }}">Name of the configuration (no spaces or special characters, English characters only):</label>
@@ -295,6 +295,8 @@
                 <h2><i class="fas fa-server"></i> Custom Server</h2>
                     <label for="{{ form.serverIP.id_for_label }}">Host:</label>
                     {{ form.serverIP }}<br><br>
+                    <label for="{{ form.serverPort.id_for_label }}">Port:</label>
+                    {{ form.serverPort }}<br><br>
                     <label for="{{ form.key.id_for_label }}">Key:</label>
                     {{ form.key }}<br><br>
                     <label for="{{ form.apiServer.id_for_label }}">API:</label>
@@ -315,17 +317,17 @@
                     <div id="passwordRequirement" class="password-requirement">To use the hide connection window feature, please set a permanent password.</div>
                     <label for="{{ form.permanentPassword.id_for_label }}">Set Permanent Password:</label>
                     {{ form.permanentPassword }} *The password is used as default, but can be changed by the client<br><br>
-                    
-                    
+
+
                     <label for="{{ form.denyLan.id_for_label }}">{{ form.denyLan }} Deny LAN discovery</label><br>
-                    
+
                     <label for="{{ form.enableDirectIP.id_for_label }}">{{ form.enableDirectIP }} Enable direct IP access</label><br>
-                    
+
                     <label for="{{ form.autoClose.id_for_label }}">{{ form.autoClose }} Automatically close incoming sessions on user inactivity</label><br>
 
                     <label for="{{ form.hidecm.id_for_label }}">{{ form.hidecm }} Allow hiding the connection window from remote screen.</label><br>
             </div>
-        
+
             <div class="section">
                 <h2><i class="fas fa-paint-brush"></i> Visual</h2>
                     {{ form.iconbase64.as_hidden }}
@@ -390,8 +392,8 @@
             </div>
         </div>
         <div style="text-align: center; margin: 30px 0;">
-            <a href="https://github.com/bryangerlach/rdgen" 
-            target="_blank" 
+            <a href="https://github.com/bryangerlach/rdgen"
+            target="_blank"
             class="sponsor-button">
                 <i class="fab fa-github"></i>
                 Source Code on Github
@@ -399,7 +401,7 @@
         </div>
         <div style="text-align: center; margin: 30px 0;">
             <a href="https://github.com/sponsors/bryangerlach?o=esb"
-            target="_blank" 
+            target="_blank"
             class="sponsor-button">
                 <i class="fab fa-github"></i>
                 Donate
@@ -520,7 +522,7 @@
                 var reader = new FileReader();
                 reader.onload = function(e) {
                     var img = document.createElement('img');
-                    img.src = e.target.result;   
+                    img.src = e.target.result;  
                     img.style.maxWidth = '300px';
                     img.style.maxHeight = '60px';
                     document.getElementById(previewContainerId).innerHTML = '';
@@ -665,15 +667,15 @@
                                         }
 
                                         // Handle image previews (as before)
-                                        if (key === 'iconfile' && formData[key]) {
+                                        if (key === 'iconfile' && formData[key] && typeof formData[key] === 'string' && formData[key].trim() !== '') {
                                             document.getElementById('id_iconbase64').value = formData[key];
                                             document.getElementById('icon-preview').innerHTML = `<img src="${formData[key]}" style="max-width: 300px; max-height: 60px;">`;
                                         }
-                                        if (key === 'logofile' && formData[key]) {
+                                        if (key === 'logofile' && formData[key] && typeof formData[key] === 'string' && formData[key].trim() !== '') {
                                             document.getElementById('id_logobase64').value = formData[key];
                                             document.getElementById('logo-preview').innerHTML = `<img src="${formData[key]}" style="max-width: 300px; max-height: 60px;">`;
                                         }
-                                        if (key === 'privacyfile' && formData[key]) {
+                                        if (key === 'privacyfile' && formData[key] && typeof formData[key] === 'string' && formData[key].trim() !== '') {
                                             document.getElementById('id_privacybase64').value = formData[key];
                                             document.getElementById('privacy-preview').innerHTML = `<img src="${formData[key]}" style="max-width: 300px; max-height: 60px;">`;
                                         }
@@ -682,6 +684,7 @@
                             }
                         } catch (error) {
                             alert("Error loading data. Invalid JSON file.");
+                            alert(error);
                         }
                     };
                     reader.readAsText(file);
