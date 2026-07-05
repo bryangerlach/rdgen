@@ -567,8 +567,10 @@ def cleanup_secrets(request):
 
 def get_zip(request):
     filename = request.GET['filename']
-    #filename = filename+".exe"
-    file_path = os.path.join('temp_zips',filename)
+    base_dir = os.path.abspath('temp_zips')
+    file_path = os.path.abspath(os.path.join(base_dir, filename))
+    if not file_path.startswith(base_dir + os.sep):
+        return HttpResponseForbidden("Invalid filename")
     with open(file_path, 'rb') as file:
         response = HttpResponse(file, headers={
             'Content-Type': 'application/vnd.microsoft.portable-executable',
