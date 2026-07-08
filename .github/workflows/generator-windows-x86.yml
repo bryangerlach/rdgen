@@ -178,6 +178,9 @@ jobs:
           sed -i -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./src/ui/index.tis
           sed -i -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./Cargo.toml
           sed -i -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./libs/portable/Cargo.toml
+          sed -i -e 's|Purslane Ltd.|${{ env.compname }}|' ./src/ui/index.tis
+          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./Cargo.toml
+          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./libs/portable/Cargo.toml
              
       - name: change url to custom
         if: env.urlLink != 'https://rustdesk.com'
