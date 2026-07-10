@@ -55,6 +55,7 @@ jobs:
     needs: [generate-bridge-linux, setup]
     name: build rustdesk linux ${{ matrix.job.target }}
     runs-on: ${{ matrix.job.on }}
+    timeout-minutes: 240
     strategy:
       fail-fast: false
       matrix:
@@ -138,9 +139,7 @@ jobs:
         with:
           repository: rustdesk/rustdesk
           submodules: recursive
-
       - name: Set Swap Space
-        if: ${{ matrix.job.arch == 'x86_64' }}
         uses: pierotofy/set-swap-space@master
         with:
           swap-size-gb: 12
