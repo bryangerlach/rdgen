@@ -124,6 +124,10 @@ jobs:
           sudo apt-get install -y imagemagick
           # Correção do erro de metadados: atualiza ferramentas críticas do Python do sistema
           sudo python3 -m pip install -U pip setuptools wheel
+      - name: Fix workspace permissions for Git
+        run: |
+          sudo chown -R $USER:$USER $GITHUB_WORKSPACE
+          git submodule foreach --recursive git config --local --unset-all http.https://github.com/.extraheader || true
 
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
