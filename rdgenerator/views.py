@@ -1,6 +1,6 @@
 import io
 from pathlib import Path
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, HttpResponseForbidden
 from django.shortcuts import render
 from django.core.files.base import ContentFile
 import os
@@ -30,7 +30,6 @@ def generator_view(request):
             platform = form.cleaned_data['platform']
             version = form.cleaned_data['version']
             delayFix = form.cleaned_data['delayFix']
-            cycleMonitor = form.cleaned_data['cycleMonitor']
             xOffline = form.cleaned_data['xOffline']
             hidecm = form.cleaned_data['hidecm']
             removeNewVersionNotif = form.cleaned_data['removeNewVersionNotif']
@@ -225,7 +224,6 @@ def generator_view(request):
             # extras['downloadLink'] = downloadLink
             # extras['delayFix'] = 'true' if delayFix else 'false'
             # extras['rdgen'] = 'true'
-            # extras['cycleMonitor'] = 'true' if cycleMonitor else 'false'
             # extras['xOffline'] = 'true' if xOffline else 'false'
             # extras['removeNewVersionNotif'] = 'true' if removeNewVersionNotif else 'false'
             # extras['compname'] = compname
@@ -272,7 +270,6 @@ def generator_view(request):
                 "downloadLink":downloadLink,
                 "delayFix": 'true' if delayFix else 'false',
                 "rdgen":'true',
-                "cycleMonitor": 'true' if cycleMonitor else 'false',
                 "xOffline": 'true' if xOffline else 'false',
                 "removeNewVersionNotif": 'true' if removeNewVersionNotif else 'false',
                 "compname": compname,

@@ -381,18 +381,6 @@ jobs:
         run: |
           sed -i -e 's|!key.is_empty()|false|' ./src/client.rs
 
-      - name: add cycle monitors to toolbar
-        if: env.cycleMonitor == 'true'
-        uses: nick-fields/retry@v3
-        with:
-          timeout_minutes: 1
-          max_attempts: 3
-          shell: pwsh
-          continue_on_error: true
-          command: |
-            Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/cycle_monitor.diff -OutFile cycle_monitor.diff
-            git apply cycle_monitor.diff
-
       - name: use X for offline display instead of orange circle
         if: env.xOffline == 'true'
         uses: nick-fields/retry@v3
