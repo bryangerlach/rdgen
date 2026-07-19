@@ -205,8 +205,9 @@ jobs:
         if: ${{ env.iconlink_url != 'false' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 5
           max_attempts: 3
+          retry_wait_seconds: 15
           shell: bash
           command: |
             mv ./res/icon.ico ./res/icon.ico.bak
@@ -265,8 +266,9 @@ jobs:
       - name: allow custom.txt
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 5
           max_attempts: 3
+          retry_wait_seconds: 15
           shell: bash
           command: |
             sed -i -e 's|rs-ny.rustdesk.com|${{ env.server }}|' ./libs/hbb_common/src/config.rs
@@ -312,8 +314,9 @@ jobs:
         if: env.xOffline == 'true'
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 5
           max_attempts: 3
+          retry_wait_seconds: 15
           shell: bash
           command: |
             wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/xoffline.diff
@@ -323,8 +326,9 @@ jobs:
         if: env.hidecm == 'true'
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 5
           max_attempts: 3
+          retry_wait_seconds: 15
           shell: bash
           command: |
             wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/hidecm.diff
@@ -603,8 +607,9 @@ jobs:
         if: ${{ env.rdgen == 'true' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 5
           max_attempts: 3
+          retry_wait_seconds: 15
           shell: bash
           command: |
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./output/${{ env.filename }}-${{ matrix.job.arch }}.deb" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client
@@ -616,8 +621,9 @@ jobs:
         if: ${{ env.rdgen == 'false' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 5
           max_attempts: 3
+          retry_wait_seconds: 15
           shell: bash
           command: |
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./output/${{ env.filename }}-${{ matrix.job.arch }}.deb" ${{ env.apiServer }}/api/save_custom_client
@@ -684,8 +690,9 @@ jobs:
         if: ${{ env.iconlink_url != 'false' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 5
           max_attempts: 3
+          retry_wait_seconds: 15
           shell: bash
           command: |
             mv ./res/icon.ico ./res/icon.ico.bak
@@ -735,8 +742,9 @@ jobs:
         if: ${{ env.rdgen == 'true' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 5
           max_attempts: 3
+          retry_wait_seconds: 15
           shell: bash
           command: |
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./appimage/${{ env.filename }}-${{ matrix.job.arch }}.AppImage" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client
@@ -745,8 +753,9 @@ jobs:
         if: ${{ env.rdgen == 'false' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 5
           max_attempts: 3
+          retry_wait_seconds: 15
           shell: bash
           command: |
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./appimage/${{ env.filename }}-${{ matrix.job.arch }}.AppImage" ${{ env.apiServer }}/api/save_custom_client
@@ -846,8 +855,9 @@ jobs:
         if: ${{ env.rdgen == 'true' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 5
           max_attempts: 3
+          retry_wait_seconds: 15
           shell: bash
           command: |
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./flatpak/${{ env.filename }}-${{ matrix.job.arch }}.flatpak" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client
@@ -856,8 +866,9 @@ jobs:
         if: ${{ env.rdgen == 'false' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 1
+          timeout_minutes: 5
           max_attempts: 3
+          retry_wait_seconds: 15
           shell: bash
           command: |
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./flatpak/${{ env.filename }}-${{ matrix.job.arch }}.flatpak" ${{ env.apiServer }}/api/save_custom_client
