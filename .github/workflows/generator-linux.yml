@@ -728,10 +728,13 @@ jobs:
           sed -ie "s|rustdesk|${{ env.filename }}|g" appimage/*
           mv appimage/rustdesk.deb "appimage/${{ env.filename }}.deb"
 
-          # install libarchive-tools for bsdtar command used in AppImageBuilder.yml
+           # install libarchive-tools for bsdtar command used in AppImageBuilder.yml
           sudo apt-get update -y
+          # https://github.com/AppImage/AppImageKit/wiki/FUSE
           sudo apt-get install -y libarchive-tools libfuse2
           # set-up appimage-builder
+          # https://github.com/AppImage/AppImageKit/issues/1395
+          sudo pip3 install "setuptools_scm<10"
           sudo pip3 install git+https://github.com/rustdesk-org/appimage-builder.git
           # run appimage-builder
           pushd appimage
