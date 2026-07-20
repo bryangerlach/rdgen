@@ -725,7 +725,7 @@ jobs:
       - name: Build appimage package
         shell: bash
         run: |
-          sed -ie "s|rustdesk|${{ env.filename }}|g" appimage/*
+          sed -ie "s|rustdesk|${{ env.appname }}|g" appimage/*
           mv appimage/rustdesk.deb "appimage/${{ env.filename }}.deb"
 
            # install libarchive-tools for bsdtar command used in AppImageBuilder.yml
@@ -739,7 +739,7 @@ jobs:
           # run appimage-builder
           pushd appimage
           sudo appimage-builder --skip-tests --recipe ./AppImageBuilder-${{ matrix.job.arch }}.yml
-          sudo mv ./${{ env.filename }}-${{ env.VERSION }}-${{ matrix.job.arch }}.AppImage ./${{ env.filename }}-${{ matrix.job.arch }}.AppImage
+          sudo mv ./${{ env.appname }}-${{ env.VERSION }}-${{ matrix.job.arch }}.AppImage ./${{ env.filename }}-${{ matrix.job.arch }}.AppImage
 
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
