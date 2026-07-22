@@ -82,6 +82,21 @@ jobs:
           path: /tmp/flutter_rust_bridge
           key: vcpkg-${{ matrix.job.arch }}
 
+#      - name: Install flutter
+#        uses: subosito/flutter-action@v2
+#        with:
+#          channel: "stable"
+#          flutter-version: ${{ env.FLUTTER_VERSION }}
+#          cache: true
+
+#      - name: Install flutter rust bridge deps
+#        shell: bash
+#        run: |
+#          cargo install cargo-expand --version ${{ env.CARGO_EXPAND_VERSION }} --locked
+#          cargo install flutter_rust_bridge_codegen --version ${{ env.FLUTTER_RUST_BRIDGE_VERSION }} --features "uuid" --locked
+#          pushd flutter && sed -i -e 's/extended_text: 14.0.0/extended_text: 13.0.0/g' pubspec.yaml && flutter pub get && popd
+
+     
       - name: Install flutter
         uses: subosito/flutter-action@v2
         with:
@@ -89,13 +104,16 @@ jobs:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           cache: true
 
+      - name: Clear pub cache
+        run: rm -rf ~/.pub-cache
+
       - name: Install flutter rust bridge deps
         shell: bash
         run: |
           cargo install cargo-expand --version ${{ env.CARGO_EXPAND_VERSION }} --locked
           cargo install flutter_rust_bridge_codegen --version ${{ env.FLUTTER_RUST_BRIDGE_VERSION }} --features "uuid" --locked
           pushd flutter && sed -i -e 's/extended_text: 14.0.0/extended_text: 13.0.0/g' pubspec.yaml && flutter pub get && popd
-
+          
       - name: Run flutter rust bridge
         run: |
           ~/.cargo/bin/flutter_rust_bridge_codegen --rust-input ./src/flutter_ffi.rs --dart-output ./flutter/lib/generated_bridge.dart --c-output ./flutter/macos/Runner/bridge_generated.h
