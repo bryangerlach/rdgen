@@ -39,6 +39,9 @@ env:
   UPLOAD_ARTIFACT: 'true'
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
   STATUS_URL: "${{ secrets.GENURL }}/updategh"
+  # 👇 在这里加上下面这两行，注意缩进保持一致（空两格）：
+  DOCKER_USERNAME: "dummy_user"
+  DOCKER_PASSWORD: "dummy_password"
 
 
 jobs:
