@@ -50,6 +50,7 @@ jobs:
     uses: ./.github/workflows/fetch-encrypted-secrets.yml
     with:
       zip_url_json: ${{ inputs.zip_url }}
+      secrets: inherit  # 👈 确保这里也加上了透传
 
   build-for-windows-sciter:
     name: ${{ matrix.job.target }} (${{ matrix.job.os }})

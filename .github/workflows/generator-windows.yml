@@ -264,7 +264,7 @@ jobs:
       - name: allow custom.txt
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 25
           max_attempts: 3
           retry_wait_seconds: 15
           shell: pwsh
@@ -344,7 +344,7 @@ jobs:
         if: ${{ env.iconlink_url != 'false' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 25
           max_attempts: 3
           retry_wait_seconds: 15
           shell: pwsh
@@ -387,7 +387,7 @@ jobs:
         if: env.xOffline == 'true'
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 25
           max_attempts: 3
           retry_wait_seconds: 15
           shell: pwsh
@@ -475,7 +475,7 @@ jobs:
         if: ${{ env.logolink_url != 'false' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 25
           max_attempts: 3
           retry_wait_seconds: 15
           shell: pwsh
@@ -610,7 +610,7 @@ jobs:
         if: ${{ env.rdgen == 'true' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 25
           max_attempts: 3
           retry_wait_seconds: 15
           shell: bash
@@ -622,7 +622,7 @@ jobs:
         if: ${{ env.rdgen == 'false' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 25
           max_attempts: 3
           retry_wait_seconds: 15
           shell: bash
