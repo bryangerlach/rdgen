@@ -39,9 +39,6 @@ env:
   UPLOAD_ARTIFACT: 'true'
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
   STATUS_URL: "${{ secrets.GENURL }}/updategh"
-  # 👇 在这里加上下面这两行，注意缩进保持一致（空两格）：
-  DOCKER_USERNAME: "dummy_user"
-  DOCKER_PASSWORD: "dummy_password"
 
 
 jobs:
@@ -64,10 +61,8 @@ jobs:
       configuration: Release
       platform: x64
       target_version: Windows10
-  secrets: 
-    DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME || 'dummy_user' }}
-    DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD || 'dummy_password' }}
-  strategy:
+    secrets: inherit
+    strategy:
       fail-fast: false
 
   build-for-windows-flutter:
