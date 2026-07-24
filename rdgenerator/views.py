@@ -315,7 +315,7 @@ def generator_view(request):
             }
             new_github_run = GithubRun(
                 uuid=myuuid,
-                status="Starting generator...please wait"
+                status="正在启动生成器...请稍候"
             )
             try:
                 response = requests.post(url, json=data, headers=headers)
@@ -327,7 +327,7 @@ def generator_view(request):
                     new_github_run.status = "in_progress"
                     new_github_run.save()
 
-                    return render(request, 'waiting.html', {'filename':filename, 'uuid':myuuid, 'status':"Starting generator...please wait", 'platform':platform, 'log_url': github_data.get('html_url')})
+                    return render(request, 'waiting.html', {'filename':filename, 'uuid':myuuid, 'status':"正在启动生成器...请稍候", 'platform':platform, 'log_url': github_data.get('html_url')})
                 else:
                     #new_github_run.delete()
                     return JsonResponse({"error": "GitHub rejected the start request"}, status=500)
@@ -421,7 +421,7 @@ def get_png(request):
 def create_github_run(myuuid):
     new_github_run = GithubRun(
         uuid=myuuid,
-        status="Starting generator...please wait"
+        status="正在启动生成器...请稍候"
     )
     new_github_run.save()
 

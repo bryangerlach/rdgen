@@ -1,127 +1,119 @@
-## Host the rdgen server with docker
+## 使用 Docker 托管 RDGen 服务器
 
-1. First you will need to fork this repo on github
-2. Next, setup a A Github fine-grained access token with permissions for your rdgen
-   repository:
-    * login to your github account  
-    * click on your profile picture at the top right, click Settings  
-    * at the bottom of the left panel, click Developer Settings  
-    * click Personal access tokens  
-    * click Fine-grained tokens  
-    * click Generate new token  
-    * give a token name, change expiration to whatever you want  
-    * under Repository access, select Only select repositories, then pick your
-      rdgen repo  
-    * give Read and Write access to actions and workflows  
-    * You might have to go to: https://github.com/USERNAME/rdgen/actions and hit green Enable Actions button so it works.
-3. Next, login to your Github account, go to your rdgen repo page (https://github.com/USERNAME/rdgen)
-   * Click on Settings
-   * In the left pane, click on Secrets and variables, then click Actions
-   * Now click New repository secret
-   * Set the Name to GENURL
-   * Set the Secret to https://rdgen.hostname.com (or whatever your server will be accessed from)
-   * Now click New repository secret again
-   * Set the Name to ZIP_PASSWORD
-   * Set the Secret to any password you want (use this in the next step as well) - generate a password by running: ```python3 -c 'import secrets; print(secrets.token_hex(100))'```
-4. Now download the docker-compose.yml file and fill in the environment variables:
-  * SECRET_KEY="your secret key" - generate a secret key by running: ```python3 -c 'import secrets; print(secrets.token_hex(100))'```
-  * GHUSER="your github username"  
-  * GHBEARER="your fine-grained access token"  
-  * ZIP_PASSWORD="the same password that you entered as a github secret"
-  * PROTOCOL="https" *optional - defaults to "https", change to "http" if you need to
-  * REPONAME="rdgen" *optional - defaults to "rdgen", change this if you renamed the repo when you forked it
-5. Now just run ```docker compose up -d```
+1. 首先，您需要在 GitHub 上 Fork 此仓库
+2. 接下来，为您的 RDGen 仓库设置一个 GitHub 细粒度访问令牌，授予以下权限：
+    * 登录您的 GitHub 账户
+    * 点击右上角的个人头像，点击 Settings
+    * 在左侧面板底部，点击 Developer Settings
+    * 点击 Personal access tokens
+    * 点击 Fine-grained tokens
+    * 点击 Generate new token
+    * 设置令牌名称，根据需要设置过期时间
+    * 在 Repository access 下，选择 Only select repositories，然后选择您的 RDGen 仓库
+    * 授予 actions 和 workflows 的读取和写入权限
+    * 您可能需要前往 https://github.com/USERNAME/rdgen/actions 并点击绿色的 Enable Actions 按钮才能使其正常工作。
+3. 登录您的 GitHub 账户，前往您的 RDGen 仓库页面 (https://github.com/USERNAME/rdgen)
+    * 点击 Settings
+    * 在左侧面板中点击 Secrets and variables，然后点击 Actions
+    * 点击 New repository secret
+    * 将 Name 设置为 GENURL
+    * 将 Secret 设置为 https://rdgen.hostname.com（或您的服务器将被访问的地址）
+    * 再次点击 New repository secret
+    * 将 Name 设置为 ZIP_PASSWORD
+    * 将 Secret 设置为您想用的任意密码（下一步也需要使用）—— 运行以下命令生成密码：```python3 -c 'import secrets; print(secrets.token_hex(100))'```
+4. 下载 docker-compose.yml 文件并填写环境变量：
+   * SECRET_KEY="您的密钥" —— 运行以下命令生成密钥：```python3 -c 'import secrets; print(secrets.token_hex(100))'```
+   * GHUSER="您的 GitHub 用户名"
+   * GHBEARER="您的细粒度访问令牌"
+   * ZIP_PASSWORD="与您在 GitHub secret 中输入的相同密码"
+   * PROTOCOL="https" *可选 —— 默认为 "https"，如需使用 HTTP 则改为 "http"
+   * REPONAME="rdgen" *可选 —— 默认为 "rdgen"，如果您 Fork 时重命名了仓库，请修改此项
+5. 运行 ```docker compose up -d```
 
 
-## Use a self hosted github runner for faster client generation (Windows only right now)
+## 使用自托管 GitHub Runner 加速客户端生成（目前仅支持 Windows）
 
-1. First you need to set up a Windows computer that can build rustdesk
-2. Once you can build rustdesk, follow github instructions for setting up a self hosted github runner
-3. Now you need to add an environment variable SH_SECRET, which has a key/password that you will need to send to the server
-4. Save a json configuration file from your rdgen web ui
-5. Use the [rdgen-cli] (https://github.com/AlekseyLapunov/rdgen-cli) to submit your json configuration with the added key "sh_secret_field" with the value matching your SH_SECRET
+1. 首先需要配置一台能够编译 RustDesk 的 Windows 计算机
+2. 确认可以编译 RustDesk 后，按照 GitHub 官方指南设置自托管 Runner
+3. 添加环境变量 SH_SECRET，其值为需要发送到服务器的密钥/密码
+4. 从 RDGen 网页界面保存 JSON 配置文件
+5. 使用 [rdgen-cli](https://github.com/AlekseyLapunov/rdgen-cli) 提交 JSON 配置，并添加 "sh_secret_field" 键，其值与您的 SH_SECRET 匹配
 
-## Use your own Windows code signing token
+## 使用自己的 Windows 代码签名令牌
 
-1. You will need a USB signing token plugged into a Windows computer
-2. On the computer with the USB signing token, you need to make sure it is set up correctly to sign using signtool.exe
-3. Run a small [signing api](https://github.com/bryangerlach/signing_api) server on the computer with the USB token connected. Follow the setup instructions for this server.
-4. Now for your rdgen repo, add github secrets for 
-   - SIGN_BASE_URL (the accesible over the internet URL for the signing api server)
-   - SIGN_API_KEY (the api key you have set on your signing api server)
+1. 需要将 USB 签名令牌插入 Windows 计算机
+2. 在连接 USB 签名令牌的计算机上，确保已正确配置 signtool.exe 进行签名
+3. 在连接 USB 令牌的计算机上运行一个小型[签名 API](https://github.com/bryangerlach/signing_api) 服务器。按照该服务器的安装说明进行设置。
+4. 在您的 RDGen 仓库中添加以下 GitHub secrets：
+   - SIGN_BASE_URL（签名 API 服务器在互联网上可访问的 URL）
+   - SIGN_API_KEY（您在签名 API 服务器上设置的 API 密钥）
 
 
-## Host manually:
+## 手动部署：
 
-1. A Github account with a fork of this repo  
-2. A Github fine-grained access token with permissions for your rdgen
-   repository:
-    * login to your github account  
-    * click on your profile picture at the top right, click Settings  
-    * at the bottom of the left panel, click Developer Settings  
-    * click Personal access tokens  
-    * click Fine-grained tokens  
-    * click Generate new token  
-    * give a token name, change expiration to whatever you want  
-    * under Repository access, select Only select repositories, then pick your
-      rdgen repo  
-    * give Read and Write access to actions and workflows  
-    * You might have to go to: https://github.com/USERNAME/rdgen/actions and hit green Enable Actions button so it works.
-3. Setup environment variables/secrets:
-    * environment variables on the server running rdgen:  
-        * GHUSER="your github username"  
-        * GHBEARER="your fine-grained access token"  
-        * PROTOCOL="https" *optional - defaults to "https", change to "http" if you need to
-        * REPONAME="rdgen" *optional - defaults to "rdgen", change this if you renamed the repo when you forked it
-    * github secrets (setup on your github account for your rdgen repo):  
-        * GENURL="example.com:8000"  *this is the domain and port that you are
-          running rdgen on, needs to be accessible on the internet, depending
-          on how you have this setup the port may not be needed  
+1. 拥有此仓库 Fork 的 GitHub 账户
+2. 为您的 RDGen 仓库设置一个 GitHub 细粒度访问令牌，授予以下权限：
+    * 登录您的 GitHub 账户
+    * 点击右上角的个人头像，点击 Settings
+    * 在左侧面板底部，点击 Developer Settings
+    * 点击 Personal access tokens
+    * 点击 Fine-grained tokens
+    * 点击 Generate new token
+    * 设置令牌名称，根据需要设置过期时间
+    * 在 Repository access 下，选择 Only select repositories，然后选择您的 RDGen 仓库
+    * 授予 actions 和 workflows 的读取和写入权限
+    * 您可能需要前往 https://github.com/USERNAME/rdgen/actions 并点击绿色的 Enable Actions 按钮才能使其正常工作。
+3. 配置环境变量/secrets：
+    * 运行 RDGen 的服务器上的环境变量：
+        * GHUSER="您的 GitHub 用户名"
+        * GHBEARER="您的细粒度访问令牌"
+        * PROTOCOL="https" *可选 —— 默认为 "https"，如需使用 HTTP 则改为 "http"
+        * REPONAME="rdgen" *可选 —— 默认为 "rdgen"，如果您 Fork 时重命名了仓库，请修改此项
+    * GitHub secrets（在您的 GitHub 账户中为 RDGen 仓库设置）：
+        * GENURL="example.com:8000"  *这是您运行 RDGen 的域名和端口，需要在互联网上可访问，根据您的配置情况，可能不需要端口号
 
 ```
-# Open to the directory you want to install rdgen (change /opt to wherever you want)  
+# 进入您要安装 RDGen 的目录（将 /opt 改为您想要的路径）
 cd /opt
 
-# Clone your rdgen repo, change bryangerlach to your github username
+# 克隆您的 RDGen 仓库，将 bryangerlach 改为您的 GitHub 用户名
 git clone https://github.com/bryangerlach/rdgen.git
 
-# Open the rdgen directory
+# 进入 RDGen 目录
 cd rdgen
 
-# Setup a python virtual environment called rdgen
+# 创建 Python 虚拟环境，命名为 rdgen
 python -m venv .venv
 
-# Activate the python virtual environment 
+# 激活 Python 虚拟环境
 source .venv/bin/activate
 
-# Install the python dependencies
+# 安装 Python 依赖
 pip install -r requirements.txt
 
-# Setup the database
+# 初始化数据库
 python manage.py migrate
 
-# Run the server, change 8000 with whatever you want
+# 启动服务器，将 8000 改为您想要的端口
 python manage.py runserver 0.0.0.0:8000
 ```
 
-open your web browser to yourdomain:8000
+在浏览器中打开 yourdomain:8000
 
-use nginx, caddy, traefik, etc. for ssl reverse proxy
+使用 nginx、caddy、traefik 等工具配置 SSL 反向代理
 
-### To autostart the server on boot, you can set up a systemd service called rdgen.service
+### 设置开机自启动，可以创建名为 rdgen.service 的 systemd 服务
 
-replace user, group, and port if you need to  replace /opt with wherever you
-have installed rdgen  save the following file as
-/etc/systemd/system/rdgen.service, and make sure to change GHUSER, GHBEARER
+根据需要替换 user、group 和 port，将 /opt 替换为您安装 RDGen 的路径。将以下文件保存为 /etc/systemd/system/rdgen.service，并确保修改 GHUSER 和 GHBEARER：
 
 ```
 [Unit]
-Description=Rustdesk Client Generator
+Description=RustDesk 客户端生成器
 [Service]
 Type=simple
 LimitNOFILE=1000000
-Environment="GHUSER=yourgithubusername"
-Environment="GHBEARER=yourgithubtoken"
+Environment="GHUSER=您的github用户名"
+Environment="GHBEARER=您的github令牌"
 PassEnvironment=GHUSER GHBEARER
 ExecStart=/opt/rdgen/.venv/bin/python3 /opt/rdgen/manage.py runserver 0.0.0.0:8000
 WorkingDirectory=/opt/rdgen/
@@ -130,20 +122,20 @@ Group=root
 Restart=always
 StandardOutput=file:/var/log/rdgen.log
 StandardError=file:/var/log/rdgen.error
-# Restart service after 10 seconds if node service crashes
+# 如果服务崩溃，10 秒后自动重启
 RestartSec=10
 [Install]
 WantedBy=multi-user.target
 ```
 
-then run this to enable autostarting the service on boot, and then start it
-manually this time:
+然后运行以下命令启用开机自启动，并手动启动服务：
 
 ```
 sudo systemctl enable rdgen.service
 sudo systemctl start rdgen.service
 ```
-and to get the status of the server, run:
+
+查看服务器状态，运行：
 ```
 sudo systemctl status rdgen.service
 ```

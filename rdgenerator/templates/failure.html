@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title id="pageTitle">Build Failure</title>
+    <title id="pageTitle">构建失败</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -85,48 +85,48 @@
         <text x="128" y="160" font-family="Arial" font-size="50" font-weight="bold" text-anchor="middle" fill="white">Win</text>
     </svg>
     <div class="error-container">
-        <h2 class="error-header">Workflow Interrupted</h2>
+        <h2 class="error-header">工作流中断</h2>
         
         <div class="warning-box">
-            <strong>Warning:</strong> The build process did not complete successfully. Some files may be missing. You can attempt to download the available files below.
+            <strong>警告：</strong>构建过程未成功完成。某些文件可能缺失。您可以尝试下载以下可用文件。
         </div>
 
         <div class="download-section">
             {% if platform == 'windows' %}
-                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">Download {{filename}}.exe</a>
-                <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">Download {{filename}}.msi</a>
+                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}.exe</a>
+                <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}.msi</a>
             {% elif platform == 'windows-x86' %}
-                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">Download {{filename}}.exe</a>
+                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}.exe</a>
             {% elif platform == 'linux' %}
-                <a href='/download?filename={{filename}}-x86_64.deb&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.deb</a>
-                <a href='/download?filename={{filename}}-x86_64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.rpm</a>
-                <a href='/download?filename={{filename}}-suse-x86_64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-suse-x86_64.rpm</a>
-                <a href='/download?filename={{filename}}-x86_64.pkg.tar.zst&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.pkg.tar.zst</a>
-                <a href='/download?filename={{filename}}-aarch64.deb&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.deb</a>
-                <a href='/download?filename={{filename}}-aarch64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.rpm</a>
-                <a href='/download?filename={{filename}}-suse-aarch64.rpm&uuid={{uuid}}' class="download-link">Download {{filename}}-suse-aarch64.rpm</a>
-                <a href='/download?filename={{filename}}-aarch64.pkg.tar.zst&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.pkg.tar.zst</a>
-                <a href='/download?filename={{filename}}-x86_64.AppImage&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.AppImage</a>
-                <a href='/download?filename={{filename}}-aarch64.AppImage&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.AppImage</a>
-                <a href='/download?filename={{filename}}-x86_64.flatpak&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.flatpak</a>
-                <a href='/download?filename={{filename}}-aarch64.flatpak&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.flatpak</a>
+                <a href='/download?filename={{filename}}-x86_64.deb&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.deb</a>
+                <a href='/download?filename={{filename}}-x86_64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.rpm</a>
+                <a href='/download?filename={{filename}}-suse-x86_64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-suse-x86_64.rpm</a>
+                <a href='/download?filename={{filename}}-x86_64.pkg.tar.zst&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.pkg.tar.zst</a>
+                <a href='/download?filename={{filename}}-aarch64.deb&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.deb</a>
+                <a href='/download?filename={{filename}}-aarch64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.rpm</a>
+                <a href='/download?filename={{filename}}-suse-aarch64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-suse-aarch64.rpm</a>
+                <a href='/download?filename={{filename}}-aarch64.pkg.tar.zst&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.pkg.tar.zst</a>
+                <a href='/download?filename={{filename}}-x86_64.AppImage&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.AppImage</a>
+                <a href='/download?filename={{filename}}-aarch64.AppImage&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.AppImage</a>
+                <a href='/download?filename={{filename}}-x86_64.flatpak&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.flatpak</a>
+                <a href='/download?filename={{filename}}-aarch64.flatpak&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.flatpak</a>
             {% elif platform == 'android' %}
-                <a href='/download?filename={{filename}}-aarch64.apk&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.apk</a>
-                <a href='/download?filename={{filename}}-x86_64.apk&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.apk</a>
-                <a href='/download?filename={{filename}}-armv7.apk&uuid={{uuid}}' class="download-link">Download {{filename}}-armv7.apk</a>
+                <a href='/download?filename={{filename}}-aarch64.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.apk</a>
+                <a href='/download?filename={{filename}}-x86_64.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.apk</a>
+                <a href='/download?filename={{filename}}-armv7.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-armv7.apk</a>
             {% elif platform == 'macos' %}
-                <a href='/download?filename={{filename}}-x86_64.dmg&uuid={{uuid}}' class="download-link">Download {{filename}}-x86_64.dmg</a>
-                <a href='/download?filename={{filename}}-aarch64.dmg&uuid={{uuid}}' class="download-link">Download {{filename}}-aarch64.dmg</a>
+                <a href='/download?filename={{filename}}-x86_64.dmg&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.dmg</a>
+                <a href='/download?filename={{filename}}-aarch64.dmg&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.dmg</a>
             {% else %}
-                <p>Error: No file generated</p>
+                <p>错误：未生成文件</p>
             {% endif %}
         </div>
 
-        <a href="{{ log_url }}" target="_blank" class="log-link">Check GitHub Logs for error details ↗</a>
+        <a href="{{ log_url }}" target="_blank" class="log-link">查看 GitHub 日志以了解错误详情</a>
         
         <div id="platformNote" class="platform-note"></div>
         <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-        <a href="/" style="font-size: 0.9em; color: #666; text-decoration: none;">← Return to Form</a>
+        <a href="/" style="font-size: 0.9em; color: #666; text-decoration: none;">返回表单</a>
     </div>
 
     <script>
@@ -142,7 +142,7 @@
             Object.values(platformLogos).forEach(logo => { if(logo) logo.style.display = 'none'; });
 
             if (platform.includes('windows')) {
-                document.getElementById('pageTitle').textContent = 'Windows Build Failed';
+                document.getElementById('pageTitle').textContent = 'Windows 构建失败';
                 if(platformLogos.windows) platformLogos.windows.style.display = 'block';
             } else if (platform === 'macos') {
                 if(platformLogos.macos) platformLogos.macos.style.display = 'block';

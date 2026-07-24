@@ -1,9 +1,9 @@
 """
-WSGI config for rdgen project.
+rdgen 项目的 WSGI 配置
 
-It exposes the WSGI callable as a module-level variable named ``application``.
+它将 WSGI 可调用对象作为名为 ``application`` 的模块级变量暴露出来。
 
-For more information on this file, see
+更多信息请参阅：
 https://docs.djangoproject.com/en/5.0/howto/deployment/wsgi/
 """
 

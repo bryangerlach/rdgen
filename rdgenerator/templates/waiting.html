@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title id="pageTitle">Generating Build</title>
+    <title id="pageTitle">正在生成构建</title>
     <style>
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
@@ -157,25 +157,25 @@
     </svg>
 
     <div>
-        <h2 class="loading-text">Build in Progress</h2>
+        <h2 class="loading-text">构建进行中</h2>
         <div class="loading-spinner"></div>
         <div class="progress-bar">
             <div id="progressBarFill" class="progress-bar-fill"></div>
         </div>
-        <p class="status-text">This can take 30-45 minutes. You can leave this page open or come back later.</p>
-        <p class="status-text">Status: <span id="statusText">{{status}}</span></p>
+        <p class="status-text">这可能需要 30-45 分钟。您可以保持此页面打开，也可以稍后回来查看。</p>
+        <p class="status-text">状态: <span id="statusText">{{status}}</span></p>
 
         <div class="log-container">
-            <p style="margin: 0 0 8px 0; color: #888;">Technical View</p>
+            <p style="margin: 0 0 8px 0; color: #888;">技术视图</p>
             <a href="{{ log_url }}" target="_blank" class="log-link">
-                View GitHub Action Logs 
+                查看 GitHub Actions 日志 
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
             </a>
         </div>
     </div>
 
     <div id="macosNote" class="macos-note">
-        Note for macOS users: Generating an executable may require additional steps or permissions.
+        macOS 用户请注意：生成可执行文件可能需要额外的步骤或权限。
     </div>
 
     <script>
@@ -195,17 +195,17 @@
 
             // Set appropriate logo and title
             if (platform === 'macos') {
-                document.getElementById('pageTitle').textContent = 'Generating MacOS Build';
+                document.getElementById('pageTitle').textContent = '正在生成 macOS 构建';
                 platformLogos.macos.style.display = 'block';
                 document.getElementById('macosNote').style.display = 'block';
             } else if (platform === 'windows' | platform === 'windows-x86') {
-                document.getElementById('pageTitle').textContent = 'Generating Windows Build';
+                document.getElementById('pageTitle').textContent = '正在生成 Windows 构建';
                 platformLogos.windows.style.display = 'block';
             } else if (platform === 'linux') {
-                document.getElementById('pageTitle').textContent = 'Generating Linux Build';
+                document.getElementById('pageTitle').textContent = '正在生成 Linux 构建';
                 platformLogos.linux.style.display = 'block';
             } else if (platform === 'android') {
-                document.getElementById('pageTitle').textContent = 'Generating Android Build';
+                document.getElementById('pageTitle').textContent = '正在生成 Android 构建';
                 platformLogos.android.style.display = 'block';
             }
         }
@@ -216,11 +216,11 @@
             const statusText = document.getElementById('statusText');
             let progress = 0;
             const stages = [
-                'Initializing build process',
-                'Compiling source code',
-                'Generating platform-specific binaries',
-                'Packaging application',
-                'Finalizing build'
+                '正在初始化构建流程',
+                '正在编译源代码',
+                '正在生成平台二进制文件',
+                '正在打包应用程序',
+                '正在完成构建'
             ];
 
             const progressInterval = setInterval(() => {

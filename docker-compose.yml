@@ -1,6 +1,6 @@
 services:
   rdgen:
-    # use bryangerlach/rdgen:latest for the latest build
+    # 使用 bryangerlach/rdgen:latest 获取最新构建版本
     #build: .
     image: bryangerlach/rdgen:latest
     restart: unless-stopped

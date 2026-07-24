@@ -1,10 +1,10 @@
 import os
 
-# Adjust these values as needed
-bind = "0.0.0.0:8000"  # Host and port for Gunicorn to listen on
-workers = 5  # The number of worker processes for concurrency (adjust based on system resources)
+# 根据需要调整以下参数
+bind = "0.0.0.0:8000"  # Gunicorn 监听的主机和端口
+workers = 5  # 并发工作进程数（根据系统资源调整）
 threads = 6
-activate_base = True  # Activate your virtual environment if applicable
+activate_base = True  # 如适用，激活虚拟环境
 
-# Path to your Django project's main WSGI application file (usually manage.py)
+# Django 项目主 WSGI 应用文件路径
 wsgi_app = "rdgen.wsgi.application"
