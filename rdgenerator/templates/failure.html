@@ -85,7 +85,7 @@
         <text x="128" y="160" font-family="Arial" font-size="50" font-weight="bold" text-anchor="middle" fill="white">Win</text>
     </svg>
     <div class="error-container">
-        <h2 class="error-header">工作流中断</h2>
+        <h2 class="error-header">工作流中断 — {{ display_platform }}</h2>
         
         <div class="warning-box">
             <strong>警告：</strong>构建过程未成功完成。某些文件可能缺失。您可以尝试下载以下可用文件。
@@ -115,6 +115,30 @@
                 <a href='/download?filename={{filename}}-x86_64.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.apk</a>
                 <a href='/download?filename={{filename}}-armv7.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-armv7.apk</a>
             {% elif platform == 'macos' %}
+                <a href='/download?filename={{filename}}-x86_64.dmg&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.dmg</a>
+                <a href='/download?filename={{filename}}-aarch64.dmg&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.dmg</a>
+            {% elif platform == 'all' %}
+                <h3 style="color:#856404;margin:5px 0;">Windows</h3>
+                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}.exe</a>
+                <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}.msi</a>
+                <h3 style="color:#856404;margin:5px 0;">Linux</h3>
+                <a href='/download?filename={{filename}}-x86_64.deb&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.deb</a>
+                <a href='/download?filename={{filename}}-x86_64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.rpm</a>
+                <a href='/download?filename={{filename}}-suse-x86_64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-suse-x86_64.rpm</a>
+                <a href='/download?filename={{filename}}-x86_64.pkg.tar.zst&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.pkg.tar.zst</a>
+                <a href='/download?filename={{filename}}-aarch64.deb&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.deb</a>
+                <a href='/download?filename={{filename}}-aarch64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.rpm</a>
+                <a href='/download?filename={{filename}}-suse-aarch64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-suse-aarch64.rpm</a>
+                <a href='/download?filename={{filename}}-aarch64.pkg.tar.zst&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.pkg.tar.zst</a>
+                <a href='/download?filename={{filename}}-x86_64.AppImage&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.AppImage</a>
+                <a href='/download?filename={{filename}}-aarch64.AppImage&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.AppImage</a>
+                <a href='/download?filename={{filename}}-x86_64.flatpak&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.flatpak</a>
+                <a href='/download?filename={{filename}}-aarch64.flatpak&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.flatpak</a>
+                <h3 style="color:#856404;margin:5px 0;">Android</h3>
+                <a href='/download?filename={{filename}}-aarch64.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.apk</a>
+                <a href='/download?filename={{filename}}-x86_64.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.apk</a>
+                <a href='/download?filename={{filename}}-armv7.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-armv7.apk</a>
+                <h3 style="color:#856404;margin:5px 0;">macOS</h3>
                 <a href='/download?filename={{filename}}-x86_64.dmg&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.dmg</a>
                 <a href='/download?filename={{filename}}-aarch64.dmg&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.dmg</a>
             {% else %}
@@ -148,6 +172,9 @@
                 if(platformLogos.macos) platformLogos.macos.style.display = 'block';
             } else if (platform === 'linux') {
                 if(platformLogos.linux) platformLogos.linux.style.display = 'block';
+            } else if (platform === 'all') {
+                document.getElementById('pageTitle').textContent = '全平台构建失败';
+                Object.values(platformLogos).forEach(logo => { if(logo) logo.style.display = 'block'; });
             }
         }
         updatePlatformUI();

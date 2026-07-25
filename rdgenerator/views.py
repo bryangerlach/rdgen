@@ -307,7 +307,7 @@ def generator_view(request):
             }
 
             first_log_url = None
-            first_run_id = None
+            run_id_list = []
             dispatched_count = 0
             for wf_platform, url in workflows:
                 try:
@@ -317,7 +317,9 @@ def generator_view(request):
                             github_data = response.json()
                             if first_log_url is None:
                                 first_log_url = github_data.get('html_url', '')
-                                first_run_id = github_data.get('workflow_run_id')
+                            run_id_str = str(github_data.get('workflow_run_id', ''))
+                            if run_id_str:
+                                run_id_list.append(run_id_str)
                         except:
                             pass
                         dispatched_count += 1
@@ -331,17 +333,18 @@ def generator_view(request):
 
             new_github_run = GithubRun(
                 uuid=myuuid,
-                github_run_id=first_run_id or 0,
+                github_run_id=int(run_id_list[0]) if run_id_list else 0,
+                run_ids=','.join(run_id_list) if run_id_list else '',
                 status="in_progress"
             )
             new_github_run.save()
 
-            display_platform = platform if platform != 'all' else '全平台'
             return render(request, 'waiting.html', {
                 'filename':filename,
                 'uuid':myuuid,
                 'status':f'已触发 {dispatched_count} 个工作流',
-                'platform': display_platform,
+                'platform': platform,
+                'display_platform': '全平台' if platform == 'all' else platform,
                 'log_url': first_log_url or f'https://github.com/{_settings.GHUSER}/{_settings.REPONAME}/actions'
             })
     else:
@@ -360,29 +363,71 @@ def check_for_file(request):
     gh_run = get_object_or_404(GithubRun, uuid=uuid)
     github_log_url = f"https://github.com/{_settings.GHUSER}/{_settings.REPONAME}/actions"
 
-    if gh_run.github_run_id and gh_run.github_run_id > 0 and gh_run.status not in ['success', 'failure', 'cancelled', 'timed_out', 'skipped']:
-        headers = {
-            "Authorization": f"Bearer {_settings.GHBEARER}",
-            "Accept": "application/vnd.github+json"
-        }
-        api_url = f"https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/runs/{gh_run.github_run_id}"
-        
+    headers = {
+        "Authorization": f"Bearer {_settings.GHBEARER}",
+        "Accept": "application/vnd.github+json"
+    }
+
+    def get_run_status(run_id):
+        api_url = f"https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/runs/{run_id}"
         try:
             gh_response = requests.get(api_url, headers=headers)
             if gh_response.status_code == 200:
                 gh_data = gh_response.json()
-                
                 if gh_data['status'] == 'completed':
-                    gh_run.status = gh_data['conclusion']
-                    gh_run.save()
+                    return gh_data['conclusion']
         except Exception as e:
-            print(f"Error checking GitHub: {e}")
+            print(f"Error checking GitHub run {run_id}: {e}")
+        return None
+
+    def check_all_workflows_done():
+        if gh_run.run_ids:
+            run_ids = gh_run.run_ids.split(',')
+            statuses = []
+            for run_id_str in run_ids:
+                try:
+                    run_id = int(run_id_str)
+                    status = get_run_status(run_id)
+                    if status:
+                        statuses.append(status)
+                    else:
+                        return False, 'in_progress'
+                except ValueError:
+                    continue
+            if not statuses:
+                return False, 'in_progress'
+            if all(s == 'success' for s in statuses):
+                return True, 'success'
+            if any(s in ['failure', 'cancelled', 'timed_out', 'skipped', 'action_required'] for s in statuses):
+                failures = [s for s in statuses if s != 'success']
+                return True, failures[0]
+            return False, 'in_progress'
+        return False, None
+
+    if gh_run.status not in ['success', 'failure', 'cancelled', 'timed_out', 'skipped']:
+        if platform == 'all' and gh_run.run_ids:
+            done, final_status = check_all_workflows_done()
+            if done:
+                gh_run.status = final_status
+                gh_run.save()
+        elif gh_run.github_run_id and gh_run.github_run_id > 0:
+            api_url = f"https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/runs/{gh_run.github_run_id}"
+            try:
+                gh_response = requests.get(api_url, headers=headers)
+                if gh_response.status_code == 200:
+                    gh_data = gh_response.json()
+                    if gh_data['status'] == 'completed':
+                        gh_run.status = gh_data['conclusion']
+                        gh_run.save()
+            except Exception as e:
+                print(f"Error checking GitHub: {e}")
     
     if gh_run.status == "success":
         return render(request, 'generated.html', {
             'filename': filename, 
             'uuid': uuid, 
-            'platform': platform
+            'platform': platform,
+            'display_platform': '全平台' if platform == 'all' else platform,
         })
         
     elif gh_run.status in ['failure', 'cancelled', 'timed_out', 'skipped', 'action_required']:
@@ -391,6 +436,7 @@ def check_for_file(request):
             'filename': filename, 
             'uuid': uuid, 
             'platform': platform,
+            'display_platform': '全平台' if platform == 'all' else platform,
             'status': gh_run.status
         })
         
@@ -399,7 +445,8 @@ def check_for_file(request):
             'filename': filename, 
             'uuid': uuid, 
             'status': gh_run.status, 
-            'platform': platform, 
+            'platform': platform,
+            'display_platform': '全平台' if platform == 'all' else platform,
             'log_url': github_log_url
         })
 
@@ -407,10 +454,23 @@ def download(request):
     filename = request.GET['filename']
     uuid = request.GET['uuid']
     file_path = os.path.join('exe', uuid, filename)
+    content_types = {
+        '.exe': 'application/vnd.microsoft.portable-executable',
+        '.msi': 'application/x-msi',
+        '.deb': 'application/vnd.debian.binary-package',
+        '.rpm': 'application/x-rpm',
+        '.apk': 'application/vnd.android.package-archive',
+        '.dmg': 'application/x-apple-diskimage',
+        '.AppImage': 'application/octet-stream',
+        '.flatpak': 'application/octet-stream',
+        '.pkg.tar.zst': 'application/octet-stream',
+    }
+    ext = next((e for e in content_types if filename.endswith(e)), '')
+    content_type = content_types.get(ext, 'application/octet-stream')
     with open(file_path, 'rb') as file:
         content = file.read()
     response = HttpResponse(content, headers={
-        'Content-Type': 'application/vnd.microsoft.portable-executable',
+        'Content-Type': content_type,
         'Content-Disposition': f'attachment; filename="{filename}"'
     })
     return response

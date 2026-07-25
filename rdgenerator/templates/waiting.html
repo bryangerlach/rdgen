@@ -157,7 +157,7 @@
     </svg>
 
     <div>
-        <h2 class="loading-text">构建进行中</h2>
+        <h2 class="loading-text">构建进行中 — {{ display_platform }}</h2>
         <div class="loading-spinner"></div>
         <div class="progress-bar">
             <div id="progressBarFill" class="progress-bar-fill"></div>
@@ -207,6 +207,9 @@
             } else if (platform === 'android') {
                 document.getElementById('pageTitle').textContent = '正在生成 Android 构建';
                 platformLogos.android.style.display = 'block';
+            } else if (platform === 'all') {
+                document.getElementById('pageTitle').textContent = '正在生成全平台构建';
+                Object.values(platformLogos).forEach(logo => { if(logo) logo.style.display = 'block'; });
             }
         }
 
