@@ -276,6 +276,7 @@ jobs:
           flutter precache --windows
           Invoke-WebRequest -Uri https://github.com/rustdesk/engine/releases/download/main/windows-arm64-release.zip -OutFile windows-arm64-release.zip
           Expand-Archive -Path windows-arm64-release.zip -DestinationPath windows-arm64-release
+          New-Item -ItemType Directory -Force -Path "C:/hostedtoolcache/windows/flutter/stable-${{ env.FLUTTER_VERSION }}-x64/bin/cache/artifacts/engine/windows-arm64-release/"
           mv -Force windows-arm64-release/*  C:/hostedtoolcache/windows/flutter/stable-${{ env.FLUTTER_VERSION }}-x64/bin/cache/artifacts/engine/windows-arm64-release/
 
       - name: Patch flutter
