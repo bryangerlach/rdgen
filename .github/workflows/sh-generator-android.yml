@@ -73,13 +73,6 @@ jobs:
               reltype: release,
               suffix: "",
             }
-          - {
-              arch: x86_64,
-              target: x86_64-linux-android,
-              os: ubuntu-24.04,
-              reltype: release,
-              suffix: "",
-            }
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4

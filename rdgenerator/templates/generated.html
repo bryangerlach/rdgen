@@ -127,8 +127,10 @@
         <h2 class="success-text">构建生成成功 — {{ display_platform }}</h2>
         <div class="download-section">
             {% if platform == 'windows' %}
-                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}.exe</a>
-                <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}.msi</a>
+                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}.exe（64位）</a>
+                <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}.msi（64位）</a>
+                <a href='/download?filename={{filename}}-aarch64.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.exe（ARM64）</a>
+                <a href='/download?filename={{filename}}-aarch64.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.msi（ARM64）</a>
             {% elif platform == 'windows-x86' %}
                 <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}.exe</a>
             {% elif platform == 'linux' %}
@@ -146,15 +148,16 @@
                 <a href='/download?filename={{filename}}-aarch64.flatpak&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.flatpak</a>
             {% elif platform == 'android' %}
                 <a href='/download?filename={{filename}}-aarch64.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.apk</a>
-                <a href='/download?filename={{filename}}-x86_64.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.apk</a>
                 <a href='/download?filename={{filename}}-armv7.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-armv7.apk</a>
             {% elif platform == 'macos' %}
                 <a href='/download?filename={{filename}}-x86_64.dmg&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.dmg</a>
                 <a href='/download?filename={{filename}}-aarch64.dmg&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.dmg</a>
             {% elif platform == 'all' %}
                 <h3 style="color:#555;margin:5px 0;">Windows</h3>
-                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}.exe</a>
-                <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}.msi</a>
+                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}.exe（64位）</a>
+                <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}.msi（64位）</a>
+                <a href='/download?filename={{filename}}-aarch64.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.exe（ARM64）</a>
+                <a href='/download?filename={{filename}}-aarch64.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.msi（ARM64）</a>
                 <h3 style="color:#555;margin:5px 0;">Linux</h3>
                 <a href='/download?filename={{filename}}-x86_64.deb&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.deb</a>
                 <a href='/download?filename={{filename}}-x86_64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.rpm</a>
@@ -170,7 +173,6 @@
                 <a href='/download?filename={{filename}}-aarch64.flatpak&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.flatpak</a>
                 <h3 style="color:#555;margin:5px 0;">Android</h3>
                 <a href='/download?filename={{filename}}-aarch64.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.apk</a>
-                <a href='/download?filename={{filename}}-x86_64.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.apk</a>
                 <a href='/download?filename={{filename}}-armv7.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-armv7.apk</a>
                 <h3 style="color:#555;margin:5px 0;">macOS</h3>
                 <a href='/download?filename={{filename}}-x86_64.dmg&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.dmg</a>
