@@ -227,28 +227,19 @@ def generator_view(request):
             # extra_input = json.dumps(extras)
 
             ####from here run the github action, we need user, repo, access token.
-            if platform == 'windows':
-                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-windows.yml/dispatches'
-                if selfhosted:
-                    url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/sh-generator-windows.yml/dispatches'
-            if platform == 'windows-x86':
-                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-windows-x86.yml/dispatches'
-                if selfhosted:
-                    url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/sh-generator-windows-x86.yml/dispatches'
-            elif platform == 'linux':
-                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-linux.yml/dispatches'
-                if selfhosted:
-                    url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/sh-generator-linux.yml/dispatches'
-            elif platform == 'android':
-                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-android.yml/dispatches'
-                if selfhosted:
-                    url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/sh-generator-android.yml/dispatches'
-            elif platform == 'macos':
-                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-macos.yml/dispatches'
-            else:
-                url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/generator-windows.yml/dispatches'
-                if selfhosted:
-                    url = 'https://api.github.com/repos/'+_settings.GHUSER+'/'+_settings.REPONAME+'/actions/workflows/sh-generator-windows.yml/dispatches'
+            workflows = []
+            if platform == 'windows' or platform == 'all':
+                prefix = 'sh-generator-' if selfhosted else 'generator-'
+                workflows.append(('windows', f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/{prefix}windows.yml/dispatches'))
+                workflows.append(('windows-x86', f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/{prefix}windows-x86.yml/dispatches'))
+            if platform == 'linux' or platform == 'all':
+                prefix = 'sh-generator-' if selfhosted else 'generator-'
+                workflows.append(('linux', f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/{prefix}linux.yml/dispatches'))
+            if platform == 'android' or platform == 'all':
+                prefix = 'sh-generator-' if selfhosted else 'generator-'
+                workflows.append(('android', f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/{prefix}android.yml/dispatches'))
+            if platform == 'macos' or platform == 'all':
+                workflows.append(('macos', f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/generator-macos.yml/dispatches'))
 
             #url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rustdesk/actions/workflows/test.yml/dispatches'  
             inputs_raw = {
@@ -304,38 +295,56 @@ def generator_view(request):
                 "ref":_settings.GHBRANCH,
                 "inputs":{
                     "version":version,
-                    "zip_url":zip_url
+                    "zip_url":zip_url,
+                    "platform_type": platform,
                 },
                 "return_run_details": True
             } 
-            #print(data)
             headers = {
                 'Accept':  'application/vnd.github+json',
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer '+_settings.GHBEARER,
                 'X-GitHub-Api-Version': '2026-03-10'
             }
+
+            first_log_url = None
+            first_run_id = None
+            dispatched_count = 0
+            for wf_platform, url in workflows:
+                try:
+                    response = requests.post(url, json=data, headers=headers)
+                    if response.status_code in (204, 200):
+                        try:
+                            github_data = response.json()
+                            if first_log_url is None:
+                                first_log_url = github_data.get('html_url', '')
+                                first_run_id = github_data.get('workflow_run_id')
+                        except:
+                            pass
+                        dispatched_count += 1
+                    else:
+                        print(f"Failed to dispatch {wf_platform}: {response.status_code}")
+                except Exception as e:
+                    print(f"Error dispatching {wf_platform}: {e}")
+
+            if dispatched_count == 0:
+                return JsonResponse({"error": "GitHub 拒绝了所有构建请求"}, status=500)
+
             new_github_run = GithubRun(
                 uuid=myuuid,
-                status="正在启动生成器...请稍候"
+                github_run_id=first_run_id or 0,
+                status="in_progress"
             )
-            try:
-                response = requests.post(url, json=data, headers=headers)
-                #print(response)
-                if response.status_code == 204 or response.status_code == 200:
-                    github_data = response.json()
-                    print(github_data)
-                    new_github_run.github_run_id = github_data.get('workflow_run_id')
-                    new_github_run.status = "in_progress"
-                    new_github_run.save()
+            new_github_run.save()
 
-                    return render(request, 'waiting.html', {'filename':filename, 'uuid':myuuid, 'status':"正在启动生成器...请稍候", 'platform':platform, 'log_url': github_data.get('html_url')})
-                else:
-                    #new_github_run.delete()
-                    return JsonResponse({"error": "GitHub rejected the start request"}, status=500)
-            except Exception as e:
-                #new_github_run.delete()
-                return JsonResponse({"error": f"Connection error: {str(e)}"}, status=500)
+            display_platform = platform if platform != 'all' else '全平台'
+            return render(request, 'waiting.html', {
+                'filename':filename,
+                'uuid':myuuid,
+                'status':f'已触发 {dispatched_count} 个工作流',
+                'platform': display_platform,
+                'log_url': first_log_url or f'https://github.com/{_settings.GHUSER}/{_settings.REPONAME}/actions'
+            })
     else:
         form = GenerateForm()
     #return render(request, 'maintenance.html')
@@ -350,9 +359,9 @@ def check_for_file(request):
     uuid = request.GET.get('uuid')
     platform = request.GET.get('platform')
     gh_run = get_object_or_404(GithubRun, uuid=uuid)
-    github_log_url = f"https://github.com/{_settings.GHUSER}/{_settings.REPONAME}/actions/runs/{gh_run.github_run_id}"
+    github_log_url = f"https://github.com/{_settings.GHUSER}/{_settings.REPONAME}/actions"
 
-    if gh_run.status not in ['success', 'failure', 'cancelled', 'timed_out', 'skipped']:
+    if gh_run.github_run_id and gh_run.github_run_id > 0 and gh_run.status not in ['success', 'failure', 'cancelled', 'timed_out', 'skipped']:
         headers = {
             "Authorization": f"Bearer {_settings.GHBEARER}",
             "Accept": "application/vnd.github+json"

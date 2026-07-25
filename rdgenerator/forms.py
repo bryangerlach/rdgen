@@ -4,7 +4,7 @@ from PIL import Image
 class GenerateForm(forms.Form):
     sh_secret_field = forms.CharField(required=False)
     #Platform
-    platform = forms.ChoiceField(choices=[('windows','Windows 64Bit'),('windows-x86','Windows 32Bit'),('linux','Linux'),('android','Android'),('macos','macOS')], initial='windows')
+    platform = forms.ChoiceField(choices=[('windows','Windows'),('linux','Linux'),('android','Android'),('macos','macOS'),('all','全平台构建')], initial='windows')
     version = forms.ChoiceField(choices=[('master','nightly'),('1.4.9','1.4.9'),('1.4.8','1.4.8'),('1.4.7','1.4.7'),('1.4.6','1.4.6'),('1.4.5','1.4.5'),('1.4.4','1.4.4'),('1.4.3','1.4.3'),('1.4.2','1.4.2'),('1.4.1','1.4.1'),('1.4.0','1.4.0')], initial='1.4.9')
     help_text="'master' 是开发版本（每日构建），拥有最新功能，但可能不太稳定"
     delayFix = forms.BooleanField(initial=True, required=False)
