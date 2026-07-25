@@ -22,7 +22,7 @@ env:
   SCITER_ARMV7_CMAKE_VERSION: "3.29.7"
   SCITER_NASM_DEBVERSION: "2.15.05-1"
   LLVM_VERSION: "15.0.6"
-  FLUTTER_VERSION: "3.24.5"
+  FLUTTER_VERSION: "3.44.0"
   ANDROID_FLUTTER_VERSION: "3.24.5" 
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
@@ -48,13 +48,16 @@ jobs:
     uses: ./.github/workflows/bridge.yml
     with:
       version: ${{ inputs.version }}
+      flutter-version: '3.44.0'
+      artifact-name: 'bridge-artifact-flutter-3.44'
+      patch-flutter-344: true
 
   build-RustDeskTempTopMostWindow:
     needs: setup
     uses: ./.github/workflows/third-party-RustDeskTempTopMostWindow.yml
     with:
       upload-artifact: true
-      target: windows-2022
+      target: windows-11-arm
       configuration: Release
       platform: ARM64
       target_version: Windows10
@@ -65,16 +68,17 @@ jobs:
   build-for-windows-flutter:
     name: Build Windows ARM
     needs: [build-RustDeskTempTopMostWindow, generate-bridge, setup]
-    runs-on: ${{ matrix.job.os }}
+    runs-on: windows-11-arm
     strategy:
       fail-fast: false
       matrix:
         job:
           - {
               target: aarch64-pc-windows-msvc,
-              os: windows-2022,
               arch: aarch64,
+              flutter-arch: arm64,
               vcpkg-triplet: arm64-windows-static,
+              build-args: "",
             }
     steps:
       - name: Checkout Repository
@@ -134,7 +138,7 @@ jobs:
       - name: Restore bridge files
         uses: actions/download-artifact@master
         with:
-          name: bridge-artifact
+          name: bridge-artifact-flutter-3.44
           path: ./
 
       - name: Install ImageMagick on Windows
@@ -259,32 +263,53 @@ jobs:
             Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeSetupServerTip.diff -OutFile removeSetupServerTip.diff
             git apply removeSetupServerTip.diff
 
+      - name: Patch RustDesk sources for Flutter 3.44
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i 's/dialogTheme: DialogTheme(/dialogTheme: DialogThemeData(/g' flutter/lib/common.dart
+          sed -i 's/tabBarTheme: const TabBarTheme(/tabBarTheme: const TabBarThemeData(/g' flutter/lib/common.dart
+          sed -i '/static ThemeData lightTheme = ThemeData(/,/static ThemeData darkTheme = ThemeData(/s/dialogTheme: DialogThemeData(/dialogTheme: DialogThemeData(\
+                backgroundColor: Colors.white,/' flutter/lib/common.dart
+          sed -i '/static ThemeData darkTheme = ThemeData(/,/scrollbarTheme: scrollbarThemeDark,/s/dialogTheme: DialogThemeData(/dialogTheme: DialogThemeData(\
+                backgroundColor: Color(0xFF18191E),/' flutter/lib/common.dart
+          sed -i 's/extended_text: 14.0.0/extended_text: 15.0.2/' flutter/pubspec.yaml
+          sed -i 's/google_fonts: \^6.2.1/google_fonts: ^8.1.0/' flutter/pubspec.yaml
+
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v1
         with:
           version: ${{ env.LLVM_VERSION }}
 
       - name: Install flutter
+        id: flutter
         uses: subosito/flutter-action@v2.12.0
         with:
           channel: "stable"
           flutter-version: ${{ env.FLUTTER_VERSION }}
+          architecture: x64
 
-      - name: Replace engine with rustdesk custom flutter engine (ARM64)
+      - name: Force arm64 Dart SDK + engine
         run: |
-          flutter doctor -v
-          flutter precache --windows
-          Invoke-WebRequest -Uri https://github.com/rustdesk/engine/releases/download/main/windows-arm64-release.zip -OutFile windows-arm64-release.zip
-          Expand-Archive -Path windows-arm64-release.zip -DestinationPath windows-arm64-release
-          New-Item -ItemType Directory -Force -Path "C:/hostedtoolcache/windows/flutter/stable-${{ env.FLUTTER_VERSION }}-x64/bin/cache/artifacts/engine/windows-arm64-release/"
-          mv -Force windows-arm64-release/*  C:/hostedtoolcache/windows/flutter/stable-${{ env.FLUTTER_VERSION }}-x64/bin/cache/artifacts/engine/windows-arm64-release/
-
-      - name: Patch flutter
-        shell: bash
-        run: |
-          cp .github/patches/flutter_3.24.4_dropdown_menu_enableFilter.diff $(dirname $(dirname $(which flutter)))
-          cd $(dirname $(dirname $(which flutter)))
-          [[ "3.24.5" == ${{env.FLUTTER_VERSION}} ]] && git apply flutter_3.24.4_dropdown_menu_enableFilter.diff
+          $flutterRoot = "${{ steps.flutter.outputs['CACHE-PATH'] }}"
+          Write-Host "PROCESSOR_ARCHITECTURE=$env:PROCESSOR_ARCHITECTURE"
+          Write-Host "Flutter root: $flutterRoot"
+          Remove-Item -Force "$flutterRoot\bin\cache\engine-dart-sdk.stamp" -ErrorAction SilentlyContinue
+          & "$flutterRoot\bin\internal\update_dart_sdk.ps1"
+          $dartVer = & "$flutterRoot\bin\dart.bat" --version 2>&1 | Out-String
+          Write-Host $dartVer
+          if ($dartVer -notmatch "windows_arm64") {
+            Write-Error "Expected an arm64 Dart SDK but got: $dartVer"
+            exit 1
+          }
+          & "$flutterRoot\bin\flutter.bat" precache --windows
+          $engineDir = "$flutterRoot\bin\cache\artifacts\engine"
+          Write-Host "Engine artifacts present:"
+          Get-ChildItem $engineDir -Directory | Select-Object -ExpandProperty Name | Write-Host
+          if (-not (Test-Path "$engineDir\windows-arm64-release")) {
+            Write-Error "Expected windows-arm64-release engine artifacts but they are missing (wrong-arch SDK)."
+            exit 1
+          }
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@v1
@@ -295,7 +320,7 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: ${{ matrix.job.os }}
+          prefix-key: windows-11-arm
 
       - name: Setup vcpkg with Github Actions binary cache
         uses: lukka/run-vcpkg@v11
@@ -323,6 +348,10 @@ jobs:
           fi
           head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-${{ matrix.job.vcpkg-triplet }}-rel-out.log" || true
         shell: bash
+
+      - name: Set SODIUM_LIB_DIR (arm64)
+        shell: bash
+        run: echo "SODIUM_LIB_DIR=$VCPKG_ROOT/installed/${{ matrix.job.vcpkg-triplet }}/lib" >> "$GITHUB_ENV"
           
       - name: magick stuff
         if: ${{ env.iconlink_url != 'false' }}
@@ -397,18 +426,9 @@ jobs:
           flutter pub run flutter_launcher_icons
           cd ..
 
-      - name: Patch build.py for ARM64 cross-compilation
-        shell: bash
-        run: |
-          sed -i "s/win_arch = 'arm64' if platform.machine().lower() in ('arm64', 'aarch64') else 'x64'/win_arch = 'arm64'/" build.py
-          sed -i "s/flutter build windows --release/flutter build windows --release --target-platform windows-arm64/" build.py
-          sed -i "s|target/release/librustdesk.dll|target/aarch64-pc-windows-msvc/release/librustdesk.dll|g" build.py
-          sed -i "s|target/release/deps/dylib_virtual_display.dll|target/aarch64-pc-windows-msvc/release/deps/dylib_virtual_display.dll|g" build.py
-
       - name: Build rustdesk (ARM64)
         run: |
-          $env:CARGO_BUILD_TARGET='aarch64-pc-windows-msvc'
-          python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
+          python3 .\build.py --portable --hwcodec --flutter --skip-portable-pack
           mv ./flutter/build/windows/arm64/runner/Release ./rustdesk
  
           Invoke-WebRequest -Uri https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip -OutFile usbmmidd_v2.zip

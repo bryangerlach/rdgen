@@ -10,6 +10,21 @@ on:
         required: true
         default: '1.3.1'
         type: string
+      flutter-version:
+        description: 'Flutter version for codegen'
+        required: false
+        default: '3.22.3'
+        type: string
+      artifact-name:
+        description: 'Upload artifact name'
+        required: false
+        default: 'bridge-artifact'
+        type: string
+      patch-flutter-344:
+        description: 'Apply Flutter 3.44 source patches before codegen'
+        required: false
+        default: false
+        type: boolean
 
 env:
   CARGO_EXPAND_VERSION: "1.0.95"
@@ -86,15 +101,29 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: "stable"
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version: ${{ inputs.flutter-version }}
           cache: true
+
+      - name: Patch RustDesk sources for Flutter 3.44
+        if: ${{ inputs.patch-flutter-344 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i 's/dialogTheme: DialogTheme(/dialogTheme: DialogThemeData(/g' flutter/lib/common.dart
+          sed -i 's/tabBarTheme: const TabBarTheme(/tabBarTheme: const TabBarThemeData(/g' flutter/lib/common.dart
+          sed -i '/static ThemeData lightTheme = ThemeData(/,/static ThemeData darkTheme = ThemeData(/s/dialogTheme: DialogThemeData(/dialogTheme: DialogThemeData(\
+                backgroundColor: Colors.white,/' flutter/lib/common.dart
+          sed -i '/static ThemeData darkTheme = ThemeData(/,/scrollbarTheme: scrollbarThemeDark,/s/dialogTheme: DialogThemeData(/dialogTheme: DialogThemeData(\
+                backgroundColor: Color(0xFF18191E),/' flutter/lib/common.dart
+          sed -i 's/extended_text: 14.0.0/extended_text: 15.0.2/' flutter/pubspec.yaml
+          sed -i 's/google_fonts: \^6.2.1/google_fonts: ^8.1.0/' flutter/pubspec.yaml
 
       - name: Install flutter rust bridge deps
         shell: bash
         run: |
           cargo install cargo-expand --version ${{ env.CARGO_EXPAND_VERSION }} --locked
           cargo install flutter_rust_bridge_codegen --version ${{ env.FLUTTER_RUST_BRIDGE_VERSION }} --features "uuid" --locked
-          pushd flutter && sed -i -e 's/extended_text: 14.0.0/extended_text: 13.0.0/g' pubspec.yaml && flutter pub get && popd
+          pushd flutter && flutter pub get && popd
 
       - name: Run flutter rust bridge
         run: |
@@ -104,7 +133,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@master
         with:
-          name: bridge-artifact
+          name: ${{ inputs.artifact-name }}
           path: |
             ./src/bridge_generated.rs
             ./src/bridge_generated.io.rs
