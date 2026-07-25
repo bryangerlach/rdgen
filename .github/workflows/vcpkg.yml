@@ -1,0 +1,67 @@
+name: Export vcpkg Dependencies
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual build'
+        required: false
+        default: 'Manual dependency update'
+
+env:
+  VCPKG_COMMIT_ID: '120deac3062162151622ca4860575a33844ba10b'
+
+jobs:
+  build-and-export:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        job:
+          - vcpkg-triplet: x64-windows-static
+
+    steps:
+      - name: Enable Long Paths
+        run: git config --global core.longpaths true
+
+      - name: Install Build Tools
+        run: |
+          choco install nasm
+          echo "C:\Program Files\NASM" >> $GITHUB_PATH
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Clone RustDesk overlays
+        run: |
+          git clone --filter=blob:none --sparse https://github.com/rustdesk/rustdesk.git rustdesk_repo
+          cd rustdesk_repo
+          git sparse-checkout set res/vcpkg
+          git checkout master -- vcpkg.json || git checkout master -- vcpkg.json
+          cd ..
+          cp rustdesk_repo/vcpkg.json .
+          mkdir -p res
+          cp -r rustdesk_repo/res/vcpkg ./res/
+        shell: bash
+
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+        with:
+          vcpkgDirectory: ${{ github.workspace }}/vcpkg
+          vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
+          doNotCache: false
+
+      - name: Install vcpkg dependencies
+        env:
+          VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.job.vcpkg-triplet }}
+        run: |
+          ./vcpkg/vcpkg install \
+            --triplet ${{ matrix.job.vcpkg-triplet }} \
+            --x-install-root="${{ github.workspace }}/installed"
+        shell: bash
+
+      - name: Upload Installed Dependencies
+        uses: actions/upload-artifact@v4
+        with:
+          name: vcpkg-export-${{ matrix.job.vcpkg-triplet }}
+          path: ${{ github.workspace }}/installed/
+          if-no-files-found: error

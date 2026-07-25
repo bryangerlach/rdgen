@@ -1,0 +1,37 @@
+name: 'Decrypt and Mask Secrets'
+description: 'Decrypts a zip and masks the JSON contents as env vars'
+inputs:
+  zip_password:
+    description: 'Password for the Zip'
+    required: true
+  zip_path:
+    description: 'Path to the encrypted zip'
+    required: false
+    default: 'secrets.zip'
+
+runs:
+  using: "composite"
+  steps:
+    - name: install python deps
+      shell: bash
+      run: |
+        pip install pyzipper
+    - name: Decrypt and Mask
+      shell: python
+      run: |
+        import pyzipper
+        import json
+        import os
+
+        with pyzipper.AESZipFile('${{ inputs.zip_path }}') as zf:
+            zf.setpassword('${{ inputs.zip_password }}'.encode())
+            with zf.open('secrets.json') as f:
+                secrets = json.load(f)
+
+        with open(os.environ['GITHUB_ENV'], 'a') as env_file:
+            for key, value in secrets.items():
+                if value:
+                    print(f"::add-mask::{value}")
+                    env_file.write(f"{key}={value}\n")
+        
+        print(f"Successfully masked {len(secrets)} secrets.")

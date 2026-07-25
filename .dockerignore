@@ -1,0 +1,16 @@
+docker-compose.yml
+
+# Docs
+README.md
+setup.md
+LICENSE
+
+# Git stuff
+.git
+.github
+.gitignore
+
+# .gitignore
+*.pyc
+.venv
+db.sqlite3
