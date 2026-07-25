@@ -231,7 +231,6 @@ def generator_view(request):
             if platform == 'windows' or platform == 'all':
                 prefix = 'sh-generator-' if selfhosted else 'generator-'
                 workflows.append(('windows', f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/{prefix}windows.yml/dispatches'))
-                workflows.append(('windows-x86', f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/{prefix}windows-x86.yml/dispatches'))
             if platform == 'linux' or platform == 'all':
                 prefix = 'sh-generator-' if selfhosted else 'generator-'
                 workflows.append(('linux', f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/{prefix}linux.yml/dispatches'))
