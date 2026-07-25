@@ -156,14 +156,14 @@ jobs:
           sed -i '' -e 's|Purslane Ltd.|${{ env.compname }}|' ./flutter/macos/Runner/Configs/AppInfo.xcconfig
           # Keep DEVELOPMENT_TEAM if it exists, don't blank it out
 
-          sed -i -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./Cargo.toml
-          sed -i -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./libs/portable/Cargo.toml
-          sed -i -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./flutter/lib/desktop/pages/desktop_setting_page.dart
-          sed -i -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./src/main.rs
-          sed -i -e 's|Purslane Ltd.|${{ env.compname }}|' ./Cargo.toml
-          sed -i -e 's|Purslane Ltd.|${{ env.compname }}|' ./libs/portable/Cargo.toml
-          sed -i -e 's|Purslane Ltd.|${{ env.compname }}|' ./flutter/lib/desktop/pages/desktop_setting_page.dart
-          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./src/main.rs
+          sed -i '' -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./Cargo.toml
+          sed -i '' -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./libs/portable/Cargo.toml
+          sed -i '' -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./flutter/lib/desktop/pages/desktop_setting_page.dart
+          sed -i '' -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./src/main.rs
+          sed -i '' -e 's|Purslane Ltd.|${{ env.compname }}|' ./Cargo.toml
+          sed -i '' -e 's|Purslane Ltd.|${{ env.compname }}|' ./libs/portable/Cargo.toml
+          sed -i '' -e 's|Purslane Ltd.|${{ env.compname }}|' ./flutter/lib/desktop/pages/desktop_setting_page.dart
+          sed -i '' -e 's|Purslane Ltd|${{ env.compname }}|' ./src/main.rs
           
           # Update Xcode project settings
           sed -i '' -e 's/PRODUCT_NAME = "RustDesk"/PRODUCT_NAME = "${{ env.appname }}"/' ./flutter/macos/Runner.xcodeproj/project.pbxproj
@@ -197,11 +197,11 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          sed -i -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./flutter/lib/desktop/pages/desktop_home_page.dart
-          sed -i -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./flutter/lib/mobile/pages/connection_page.dart
-          sed -i -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./src/ui/index.tis
-          sed -i -e 's|&download_url|"${{ env.downloadLink }}"|' ./src/updater.rs
-          sed -i -e 's|$downloadUrl/$downloadFile|${{ env.downloadLink }}|' ./flutter/lib/desktop/widgets/update_progress.dart
+          sed -i '' -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./flutter/lib/desktop/pages/desktop_home_page.dart
+          sed -i '' -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./flutter/lib/mobile/pages/connection_page.dart
+          sed -i '' -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./src/ui/index.tis
+          sed -i '' -e 's|&download_url|"${{ env.downloadLink }}"|' ./src/updater.rs
+          sed -i '' -e 's|$downloadUrl/$downloadFile|${{ env.downloadLink }}|' ./flutter/lib/desktop/widgets/update_progress.dart
 
           # Update slogan
           #sed -i '' '/<key>NSHumanReadableCopyright<\/key>/{n;s/<string>.*<\/string>/<string>Copyright 2025 ${{ env.appname }}. All rights reserved.<\/string>/;}' ./flutter/macos/Runner/Info.plist
@@ -217,9 +217,9 @@ jobs:
           sed -i '' -e 's/("About RustDesk", "Over RustDesk")/("About RustDesk", "Over ${{ env.appname }}")/' ./src/lang/nl.rs
           sed -i '' -e 's/("About", "Over")/("About", "Over ${{ env.appname }}")/' ./src/lang/nl.rs
 
-          sed -i -e 's|rs-ny.rustdesk.com|${{ env.server }}|' ./libs/hbb_common/src/config.rs
-          sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.key }}|' ./libs/hbb_common/src/config.rs
-          sed -i -e 's|https://admin.rustdesk.com|${{ env.apiServer }}|' ./src/common.rs
+          sed -i '' -e 's|rs-ny.rustdesk.com|${{ env.server }}|' ./libs/hbb_common/src/config.rs
+          sed -i '' -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.key }}|' ./libs/hbb_common/src/config.rs
+          sed -i '' -e 's|https://admin.rustdesk.com|${{ env.apiServer }}|' ./src/common.rs
           
           wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/allowCustom.py
           python allowCustom.py
@@ -271,7 +271,7 @@ jobs:
         run: |
           cd "$(dirname "$(which flutter)")"
           # https://github.com/flutter/flutter/issues/133533
-          sed -i -e 's/_setFramesEnabledState(false);/\/\/_setFramesEnabledState(false);/g' ../packages/flutter/lib/src/scheduler/binding.dart
+          sed -i '' -e 's/_setFramesEnabledState(false);/\/\/_setFramesEnabledState(false);/g' ../packages/flutter/lib/src/scheduler/binding.dart
           grep -n '_setFramesEnabledState(false);' ../packages/flutter/lib/src/scheduler/binding.dart
         
       - name: Install Rust toolchain
@@ -436,7 +436,7 @@ jobs:
         if: ${{ env.delayFix == 'true' }}
         shell: bash
         run: |
-          sed -i -e 's|!key.is_empty()|false|' ./src/client.rs
+          sed -i '' -e 's|!key.is_empty()|false|' ./src/client.rs
   
       - name: use X for offline display instead of orange circle
         continue-on-error: true
@@ -456,7 +456,7 @@ jobs:
         continue-on-error: true
         if: env.removeNewVersionNotif == 'true'
         run: | 
-          sed -i -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
+          sed -i '' -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
           sed -i '/let (request, url) =/,/Ok(())/{/Ok(())/!d}' ./src/common.rs
 
       - name: Restore bridge files
@@ -495,12 +495,12 @@ jobs:
         run: |
           if [ "${{ matrix.job.target }}" = "aarch64-apple-darwin" ]; then
             MIN_MACOS_VERSION="12.3"
-            sed -i -e "s/MACOSX_DEPLOYMENT_TARGET\=[0-9]*.[0-9]*/MACOSX_DEPLOYMENT_TARGET=${MIN_MACOS_VERSION}/" build.py
-            sed -i -e "s/platform :osx, '.*'/platform :osx, '${MIN_MACOS_VERSION}'/" flutter/macos/Podfile
-            sed -i -e "s/osx_minimum_system_version = \"[0-9]*.[0-9]*\"/osx_minimum_system_version = \"${MIN_MACOS_VERSION}\"/" Cargo.toml
-            sed -i -e "s/MACOSX_DEPLOYMENT_TARGET = [0-9]*.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = ${MIN_MACOS_VERSION};/" flutter/macos/Runner.xcodeproj/project.pbxproj
+            sed -i '' -e "s/MACOSX_DEPLOYMENT_TARGET\=[0-9]*.[0-9]*/MACOSX_DEPLOYMENT_TARGET=${MIN_MACOS_VERSION}/" build.py
+            sed -i '' -e "s/platform :osx, '.*'/platform :osx, '${MIN_MACOS_VERSION}'/" flutter/macos/Podfile
+            sed -i '' -e "s/osx_minimum_system_version = \"[0-9]*.[0-9]*\"/osx_minimum_system_version = \"${MIN_MACOS_VERSION}\"/" Cargo.toml
+            sed -i '' -e "s/MACOSX_DEPLOYMENT_TARGET = [0-9]*.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = ${MIN_MACOS_VERSION};/" flutter/macos/Runner.xcodeproj/project.pbxproj
           fi
-          sed -i -e "s/RustDesk.app/\"${{ env.appname }}.app\"/" build.py
+          sed -i '' -e "s/RustDesk.app/\"${{ env.appname }}.app\"/" build.py
           ./build.py --flutter --hwcodec --unix-file-copy-paste ${{ matrix.job.extra-build-args }}
 
       - name: Create custom.txt in macOS app bundle
