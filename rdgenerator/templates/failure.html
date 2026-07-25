@@ -97,8 +97,6 @@
                 <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}.msi（64位）</a>
                 <a href='/download?filename={{filename}}-aarch64.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.exe（ARM64）</a>
                 <a href='/download?filename={{filename}}-aarch64.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.msi（ARM64）</a>
-            {% elif platform == 'windows-x86' %}
-                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}.exe</a>
             {% elif platform == 'linux' %}
                 <a href='/download?filename={{filename}}-x86_64.deb&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.deb</a>
                 <a href='/download?filename={{filename}}-x86_64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.rpm</a>

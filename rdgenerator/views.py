@@ -10,6 +10,7 @@ import requests
 import base64
 import json
 import uuid
+import time
 import pyzipper
 from django.conf import settings as _settings
 from django.db.models import Q
@@ -227,19 +228,20 @@ def generator_view(request):
             # extra_input = json.dumps(extras)
 
             ####from here run the github action, we need user, repo, access token.
-            workflows = []
+            workflow_defs = []
             if platform == 'windows' or platform == 'all':
                 prefix = 'sh-generator-' if selfhosted else 'generator-'
-                workflows.append(('windows', f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/{prefix}windows.yml/dispatches'))
-                workflows.append(('windows-arm', f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/{prefix}windows-arm.yml/dispatches'))
+                workflow_defs.append(('windows', f'{prefix}windows.yml'))
+                workflow_defs.append(('windows-arm', f'{prefix}windows-arm.yml'))
             if platform == 'linux' or platform == 'all':
                 prefix = 'sh-generator-' if selfhosted else 'generator-'
-                workflows.append(('linux', f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/{prefix}linux.yml/dispatches'))
+                workflow_defs.append(('linux', f'{prefix}linux.yml'))
             if platform == 'android' or platform == 'all':
                 prefix = 'sh-generator-' if selfhosted else 'generator-'
-                workflows.append(('android', f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/{prefix}android.yml/dispatches'))
+                workflow_defs.append(('android', f'{prefix}android.yml'))
             if platform == 'macos' or platform == 'all':
-                workflows.append(('macos', f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/generator-macos.yml/dispatches'))
+                # macOS 构建需要 Apple 硬件（Mac），GitHub 自托管 Runner 不支持
+                workflow_defs.append(('macos', 'generator-macos.yml'))
 
             #url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rustdesk/actions/workflows/test.yml/dispatches'  
             inputs_raw = {
@@ -297,8 +299,7 @@ def generator_view(request):
                     "version":version,
                     "zip_url":zip_url,
                     "platform_type": platform,
-                },
-                "return_run_details": True
+                }
             } 
             headers = {
                 'Accept':  'application/vnd.github+json',
@@ -310,20 +311,27 @@ def generator_view(request):
             first_log_url = None
             run_id_list = []
             dispatched_count = 0
-            for wf_platform, url in workflows:
+            for wf_platform, wf_filename in workflow_defs:
+                dispatch_url = f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/{wf_filename}/dispatches'
                 try:
-                    response = requests.post(url, json=data, headers=headers)
+                    response = requests.post(dispatch_url, json=data, headers=headers)
                     if response.status_code in (204, 200):
-                        try:
-                            github_data = response.json()
-                            if first_log_url is None:
-                                first_log_url = github_data.get('html_url', '')
-                            run_id_str = str(github_data.get('workflow_run_id', ''))
-                            if run_id_str:
-                                run_id_list.append(run_id_str)
-                        except:
-                            pass
                         dispatched_count += 1
+                        # GitHub dispatch API 返回 204，需通过 runs API 获取实际的 run_id
+                        time.sleep(2)
+                        runs_url = f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/{wf_filename}/runs?per_page=1&branch={_settings.GHBRANCH}'
+                        try:
+                            runs_resp = requests.get(runs_url, headers=headers)
+                            if runs_resp.status_code == 200:
+                                runs_data = runs_resp.json()
+                                wf_runs = runs_data.get('workflow_runs', [])
+                                if wf_runs:
+                                    run_id = str(wf_runs[0]['id'])
+                                    run_id_list.append(run_id)
+                                    if first_log_url is None:
+                                        first_log_url = wf_runs[0].get('html_url', '')
+                        except Exception as e:
+                            print(f"Error fetching run ID for {wf_platform}: {e}")
                     else:
                         print(f"Failed to dispatch {wf_platform}: {response.status_code}")
                 except Exception as e:
@@ -406,7 +414,7 @@ def check_for_file(request):
         return False, None
 
     if gh_run.status not in ['success', 'failure', 'cancelled', 'timed_out', 'skipped']:
-        if platform == 'all' and gh_run.run_ids:
+        if gh_run.run_ids:
             done, final_status = check_all_workflows_done()
             if done:
                 gh_run.status = final_status

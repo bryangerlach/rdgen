@@ -131,8 +131,6 @@
                 <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}.msi（64位）</a>
                 <a href='/download?filename={{filename}}-aarch64.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.exe（ARM64）</a>
                 <a href='/download?filename={{filename}}-aarch64.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.msi（ARM64）</a>
-            {% elif platform == 'windows-x86' %}
-                <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}.exe</a>
             {% elif platform == 'linux' %}
                 <a href='/download?filename={{filename}}-x86_64.deb&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.deb</a>
                 <a href='/download?filename={{filename}}-x86_64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.rpm</a>
@@ -205,7 +203,7 @@
                 platformLogos.macos.style.display = 'block';
                 platformNote.textContent = '注意：对于 macOS，您可能需要调整安全设置才能运行该应用。';
                 platformNote.style.display = 'block';
-            } else if (platform === 'windows' || platform === 'windows-x86') {
+            } else if (platform === 'windows') {
                 document.getElementById('pageTitle').textContent = 'Windows 构建已生成';
                 platformLogos.windows.style.display = 'block';
                 platformNote.textContent = '注意：您可能需要禁用 SmartScreen 或调整 Windows 安全设置。';
