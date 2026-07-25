@@ -232,9 +232,6 @@ def generator_view(request):
                 prefix = 'sh-generator-' if selfhosted else 'generator-'
                 workflow_defs.append(('windows', f'{prefix}windows.yml'))
                 workflow_defs.append(('windows-arm', f'{prefix}windows-arm.yml'))
-            if platform == 'linux' or platform == 'all':
-                prefix = 'sh-generator-' if selfhosted else 'generator-'
-                workflow_defs.append(('linux', f'{prefix}linux.yml'))
             if platform == 'android' or platform == 'all':
                 prefix = 'sh-generator-' if selfhosted else 'generator-'
                 workflow_defs.append(('android', f'{prefix}android.yml'))
@@ -481,13 +478,8 @@ def download(request):
     content_types = {
         '.exe': 'application/vnd.microsoft.portable-executable',
         '.msi': 'application/x-msi',
-        '.deb': 'application/vnd.debian.binary-package',
-        '.rpm': 'application/x-rpm',
         '.apk': 'application/vnd.android.package-archive',
         '.dmg': 'application/x-apple-diskimage',
-        '.AppImage': 'application/octet-stream',
-        '.flatpak': 'application/octet-stream',
-        '.pkg.tar.zst': 'application/octet-stream',
     }
     ext = next((e for e in content_types if filename.endswith(e)), '')
     content_type = content_types.get(ext, 'application/octet-stream')

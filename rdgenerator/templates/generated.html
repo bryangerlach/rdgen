@@ -93,18 +93,6 @@
         <text x="128" y="200" font-family="Arial" font-size="50" font-weight="bold" text-anchor="middle" fill="white">Mac</text>
     </svg>
 
-    <svg id="linuxLogo" class="platform-logo" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-            <linearGradient id="linuxGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" style="stop-color:#FFA500;stop-opacity:1" />
-                <stop offset="100%" style="stop-color:#FF4500;stop-opacity:1" />
-            </linearGradient>
-        </defs>
-        <rect width="256" height="256" rx="50" ry="50" fill="url(#linuxGradient)"/>
-        <path d="M128 80 C100 120, 156 140, 128 200" fill="none" stroke="white" stroke-width="10" opacity="0.3"/>
-        <text x="128" y="200" font-family="Arial" font-size="50" font-weight="bold" text-anchor="middle" fill="white">Linux</text>
-    </svg>
-
     <svg id="androidLogo" class="platform-logo" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
         <defs>
             <linearGradient id="androidGradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -131,19 +119,6 @@
                 <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}.msi（64位）</a>
                 <a href='/download?filename={{filename}}-aarch64.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.exe（ARM64）</a>
                 <a href='/download?filename={{filename}}-aarch64.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.msi（ARM64）</a>
-            {% elif platform == 'linux' %}
-                <a href='/download?filename={{filename}}-x86_64.deb&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.deb</a>
-                <a href='/download?filename={{filename}}-x86_64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.rpm</a>
-                <a href='/download?filename={{filename}}-suse-x86_64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-suse-x86_64.rpm</a>
-                <a href='/download?filename={{filename}}-x86_64.pkg.tar.zst&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.pkg.tar.zst</a>
-                <a href='/download?filename={{filename}}-aarch64.deb&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.deb</a>
-                <a href='/download?filename={{filename}}-aarch64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.rpm</a>
-                <a href='/download?filename={{filename}}-suse-aarch64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-suse-aarch64.rpm</a>
-                <a href='/download?filename={{filename}}-aarch64.pkg.tar.zst&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.pkg.tar.zst</a>
-                <a href='/download?filename={{filename}}-x86_64.AppImage&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.AppImage</a>
-                <a href='/download?filename={{filename}}-aarch64.AppImage&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.AppImage</a>
-                <a href='/download?filename={{filename}}-x86_64.flatpak&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.flatpak</a>
-                <a href='/download?filename={{filename}}-aarch64.flatpak&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.flatpak</a>
             {% elif platform == 'android' %}
                 <a href='/download?filename={{filename}}-aarch64.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.apk</a>
                 <a href='/download?filename={{filename}}-armv7.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-armv7.apk</a>
@@ -156,19 +131,6 @@
                 <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}.msi（64位）</a>
                 <a href='/download?filename={{filename}}-aarch64.exe&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.exe（ARM64）</a>
                 <a href='/download?filename={{filename}}-aarch64.msi&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.msi（ARM64）</a>
-                <h3 style="color:#555;margin:5px 0;">Linux</h3>
-                <a href='/download?filename={{filename}}-x86_64.deb&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.deb</a>
-                <a href='/download?filename={{filename}}-x86_64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.rpm</a>
-                <a href='/download?filename={{filename}}-suse-x86_64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-suse-x86_64.rpm</a>
-                <a href='/download?filename={{filename}}-x86_64.pkg.tar.zst&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.pkg.tar.zst</a>
-                <a href='/download?filename={{filename}}-aarch64.deb&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.deb</a>
-                <a href='/download?filename={{filename}}-aarch64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.rpm</a>
-                <a href='/download?filename={{filename}}-suse-aarch64.rpm&uuid={{uuid}}' class="download-link">下载 {{filename}}-suse-aarch64.rpm</a>
-                <a href='/download?filename={{filename}}-aarch64.pkg.tar.zst&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.pkg.tar.zst</a>
-                <a href='/download?filename={{filename}}-x86_64.AppImage&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.AppImage</a>
-                <a href='/download?filename={{filename}}-aarch64.AppImage&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.AppImage</a>
-                <a href='/download?filename={{filename}}-x86_64.flatpak&uuid={{uuid}}' class="download-link">下载 {{filename}}-x86_64.flatpak</a>
-                <a href='/download?filename={{filename}}-aarch64.flatpak&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.flatpak</a>
                 <h3 style="color:#555;margin:5px 0;">Android</h3>
                 <a href='/download?filename={{filename}}-aarch64.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-aarch64.apk</a>
                 <a href='/download?filename={{filename}}-armv7.apk&uuid={{uuid}}' class="download-link">下载 {{filename}}-armv7.apk</a>
@@ -189,7 +151,6 @@
             const platformLogos = {
                 'windows': document.getElementById('windowsLogo'),
                 'macos': document.getElementById('macosLogo'),
-                'linux': document.getElementById('linuxLogo'),
                 'android': document.getElementById('androidLogo')
             };
             const platformNote = document.getElementById('platformNote');
@@ -207,11 +168,6 @@
                 document.getElementById('pageTitle').textContent = 'Windows 构建已生成';
                 platformLogos.windows.style.display = 'block';
                 platformNote.textContent = '注意：您可能需要禁用 SmartScreen 或调整 Windows 安全设置。';
-                platformNote.style.display = 'block';
-            } else if (platform === 'linux') {
-                document.getElementById('pageTitle').textContent = 'Linux 构建已生成';
-                platformLogos.linux.style.display = 'block';
-                platformNote.textContent = '注意：请确保已安装必要的依赖项。';
                 platformNote.style.display = 'block';
             } else if (platform === 'android') {
                 document.getElementById('pageTitle').textContent = 'Android 构建已生成';

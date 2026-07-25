@@ -73,9 +73,6 @@ jobs:
               arch: aarch64,
               vcpkg-triplet: arm64-osx,
             }
-    env:
-      STATUS_URL: "${{ secrets.GENURL }}/updategh"
-
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -105,6 +102,16 @@ jobs:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Set rdgen value
+        if: ${{ env.rdgen == 'true' }}
+        run: |
+          echo "STATUS_URL=${{ secrets.GENURL }}/updategh" >> $GITHUB_ENV
+
+      - name: Set rdgen value
+        if: ${{ env.rdgen == 'false' }}
+        run: |
+          echo "STATUS_URL=${{ env.apiServer }}/api/updategh" >> $GITHUB_ENV
 
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
@@ -495,6 +502,26 @@ jobs:
           fi
           sed -i -e "s/RustDesk.app/\"${{ env.appname }}.app\"/" build.py
           ./build.py --flutter --hwcodec --unix-file-copy-paste ${{ matrix.job.extra-build-args }}
+
+      - name: Create custom.txt in macOS app bundle
+        shell: bash
+        run: |
+          # Determine the actual app bundle path
+          if [ -d "flutter/build/macos/Build/Products/Release/${{ env.appname }}.app" ]; then
+            APP_BUNDLE="flutter/build/macos/Build/Products/Release/${{ env.appname }}.app"
+          elif [ -d "flutter/build/macos/Build/Products/Release/RustDesk.app" ]; then
+            APP_BUNDLE="flutter/build/macos/Build/Products/Release/RustDesk.app"
+          else
+            echo "Error: Cannot find app bundle!"
+            exit 1
+          fi
+          
+          # Create custom_.txt with base64-encoded custom settings
+          CUSTOM_DIR="$APP_BUNDLE/Contents/MacOS"
+          mkdir -p "$CUSTOM_DIR"
+          echo "${{ env.custom }}" > "$CUSTOM_DIR/custom_.txt"
+          echo "Created custom_.txt in $CUSTOM_DIR/"
+          echo "File size: $(wc -c < "$CUSTOM_DIR/custom_.txt") bytes"
 
       # - name: Copy service file
       #   run: |
