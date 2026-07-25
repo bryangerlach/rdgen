@@ -397,8 +397,17 @@ jobs:
           flutter pub run flutter_launcher_icons
           cd ..
 
+      - name: Patch build.py for ARM64 cross-compilation
+        shell: bash
+        run: |
+          sed -i "s/win_arch = 'arm64' if platform.machine().lower() in ('arm64', 'aarch64') else 'x64'/win_arch = 'arm64'/" build.py
+          sed -i "s/flutter build windows --release/flutter build windows --release --target-platform windows-arm64/" build.py
+          sed -i "s|target/release/librustdesk.dll|target/aarch64-pc-windows-msvc/release/librustdesk.dll|g" build.py
+          sed -i "s|target/release/deps/dylib_virtual_display.dll|target/aarch64-pc-windows-msvc/release/deps/dylib_virtual_display.dll|g" build.py
+
       - name: Build rustdesk (ARM64)
         run: |
+          $env:CARGO_BUILD_TARGET='aarch64-pc-windows-msvc'
           python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
           mv ./flutter/build/windows/arm64/runner/Release ./rustdesk
  
