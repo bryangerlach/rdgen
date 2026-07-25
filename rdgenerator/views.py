@@ -95,12 +95,11 @@ def generator_view(request):
                 appname = "rustdesk"
             myuuid = str(uuid.uuid4())
             protocol = _settings.PROTOCOL
-            host = request.get_host()
             # --- Fix: Port in URL for setup / download-zip
             # --- protocol = _settings.PROTOCOL
             # --- host = request.get_host()
             # --- full_url = f"{protocol}://{host}"
-            full_url = f"{protocol}://{host}" if _settings.GENURL else f"{_settings.PROTOCOL}://{request.get_host()}"
+            full_url = _settings.GENURL if _settings.GENURL else f"{_settings.PROTOCOL}://{request.get_host()}"
             try:
                 iconfile = form.cleaned_data.get('iconfile')
                 if not iconfile:
@@ -140,7 +139,7 @@ def generator_view(request):
                 decodedCustom['disable-installation'] = 'Y'
             if settings == "settingsN":
                 decodedCustom['disable-settings'] = 'Y'
-            if appname.upper != "rustdesk".upper and appname != "":
+            if appname.upper() != "rustdesk".upper() and appname != "":
                 decodedCustom['app-name'] = appname
             decodedCustom['override-settings'] = {}
             decodedCustom['default-settings'] = {}
@@ -243,6 +242,13 @@ def generator_view(request):
                 # macOS 构建需要 Apple 硬件（Mac），GitHub 自托管 Runner 不支持
                 workflow_defs.append(('macos', 'generator-macos.yml'))
 
+            # 前置校验：确保 GitHub 认证信息已配置
+            if not _settings.GHUSER or not _settings.GHBEARER:
+                return JsonResponse({
+                    "error": "GitHub 认证信息未配置",
+                    "details": "环境变量 GHUSER 或 GHBEARER 为空，请检查 docker-compose.yml 或启动环境中的配置"
+                }, status=500)
+
             #url = 'https://api.github.com/repos/'+_settings.GHUSER+'/rustdesk/actions/workflows/test.yml/dispatches'  
             inputs_raw = {
                 "server":server,
@@ -293,14 +299,6 @@ def generator_view(request):
 
             zip_url = json.dumps(zipJson)
 
-            data = {
-                "ref":_settings.GHBRANCH,
-                "inputs":{
-                    "version":version,
-                    "zip_url":zip_url,
-                    "platform_type": platform,
-                }
-            } 
             headers = {
                 'Accept':  'application/vnd.github+json',
                 'Content-Type': 'application/json',
@@ -311,7 +309,15 @@ def generator_view(request):
             first_log_url = None
             run_id_list = []
             dispatched_count = 0
+            dispatch_errors = []  # 收集错误详情
             for wf_platform, wf_filename in workflow_defs:
+                data = {
+                    "ref":_settings.GHBRANCH,
+                    "inputs":{
+                        "version":version,
+                        "zip_url":zip_url,
+                    }
+                }
                 dispatch_url = f'https://api.github.com/repos/{_settings.GHUSER}/{_settings.REPONAME}/actions/workflows/{wf_filename}/dispatches'
                 try:
                     response = requests.post(dispatch_url, json=data, headers=headers)
@@ -333,12 +339,21 @@ def generator_view(request):
                         except Exception as e:
                             print(f"Error fetching run ID for {wf_platform}: {e}")
                     else:
-                        print(f"Failed to dispatch {wf_platform}: {response.status_code}")
+                        error_detail = response.text[:200] if response.text else '无响应体'
+                        error_msg = f"{wf_filename}: HTTP {response.status_code} - {error_detail}"
+                        dispatch_errors.append(error_msg)
+                        print(f"Failed to dispatch {wf_platform}: {response.status_code} - {error_detail}")
                 except Exception as e:
+                    error_msg = f"{wf_filename}: 网络异常 - {str(e)}"
+                    dispatch_errors.append(error_msg)
                     print(f"Error dispatching {wf_platform}: {e}")
 
             if dispatched_count == 0:
-                return JsonResponse({"error": "GitHub 拒绝了所有构建请求"}, status=500)
+                error_summary = "; ".join(dispatch_errors) if dispatch_errors else "未知错误"
+                return JsonResponse({
+                    "error": f"GitHub 拒绝了所有构建请求 ({len(dispatch_errors)} 个工作流均失败)",
+                    "details": error_summary
+                }, status=500)
 
             new_github_run = GithubRun(
                 uuid=myuuid,
