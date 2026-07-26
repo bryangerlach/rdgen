@@ -220,11 +220,6 @@ jobs:
           sed -i '' -e 's|rs-ny.rustdesk.com|${{ env.server }}|' ./libs/hbb_common/src/config.rs
           sed -i '' -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.key }}|' ./libs/hbb_common/src/config.rs
           sed -i '' -e 's|https://admin.rustdesk.com|${{ env.apiServer }}|' ./src/common.rs
-          
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/allowCustom.py
-          python allowCustom.py
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeSetupServerTip.diff
-          git apply removeSetupServerTip.diff
             
           # Update pubspec.yaml with proper YAML formatting
           cp ./flutter/pubspec.yaml ./flutter/pubspec.yaml.bak
@@ -232,6 +227,19 @@ jobs:
           awk '/intl:/{print;system("cat ./flutter/temp_dependency.txt");next}1' ./flutter/pubspec.yaml > ./flutter/pubspec.yaml.tmp
           mv ./flutter/pubspec.yaml.tmp ./flutter/pubspec.yaml
           rm ./flutter/temp_dependency.txt 
+
+      - name: allow custom.txt
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 15
+          shell: bash
+          command: |
+            wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/allowCustom.py
+            python allowCustom.py
+            wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeSetupServerTip.diff
+            git apply removeSetupServerTip.diff
           
       - name: Install build runtime
         run: |
@@ -519,7 +527,7 @@ jobs:
           # Create custom_.txt with base64-encoded custom settings
           CUSTOM_DIR="$APP_BUNDLE/Contents/MacOS"
           mkdir -p "$CUSTOM_DIR"
-          echo "${{ env.custom }}" > "$CUSTOM_DIR/custom_.txt"
+          echo -n "${{ env.custom }}" > "$CUSTOM_DIR/custom_.txt"
           echo "Created custom_.txt in $CUSTOM_DIR/"
           echo "File size: $(wc -c < "$CUSTOM_DIR/custom_.txt") bytes"
 
