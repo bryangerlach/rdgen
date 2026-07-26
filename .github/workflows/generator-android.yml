@@ -287,7 +287,6 @@ jobs:
             sed -i '/ic_launcher_background/d' ./flutter/android/app/src/main/res/values/colors.xml
 
       - name: set server, key, and apiserver
-        continue-on-error: true
         shell: bash
         run: |
           sed -i -e 's|rs-ny.rustdesk.com|${{ env.server }}|' ./libs/hbb_common/src/config.rs
@@ -364,7 +363,6 @@ jobs:
           sed -i -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./src/ui/index.tis
 
       - name: allow custom.txt
-        continue-on-error: true
         shell: bash
         run: |
           sed -i -e '/const KEY:/,/};/d' ./src/common.rs

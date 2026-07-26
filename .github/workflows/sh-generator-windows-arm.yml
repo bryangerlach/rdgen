@@ -238,7 +238,6 @@ jobs:
           sed -i -e 's|$downloadUrl/$downloadFile|${{ env.downloadLink }}|' ./flutter/lib/desktop/widgets/update_progress.dart
 
       - name: set server, key, and apiserver
-        continue-on-error: true
         shell: bash
         run: |
           sed -i -e 's|rs-ny.rustdesk.com|${{ env.server }}|' ./libs/hbb_common/src/config.rs

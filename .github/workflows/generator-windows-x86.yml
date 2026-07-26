@@ -203,7 +203,6 @@ jobs:
           sed -i -e 's|&download_url|"${{ env.downloadLink }}"|' ./src/updater.rs
 
       - name: set server, key, and apiserver
-        continue-on-error: true
         shell: bash
         run: |
           sed -i -e 's|rs-ny.rustdesk.com|${{ env.server }}|' ./libs/hbb_common/src/config.rs
@@ -218,7 +217,6 @@ jobs:
           max_attempts: 3
           retry_wait_seconds: 15
           shell: pwsh
-          continue_on_error: true
           command: |
             Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/allowCustom.diff -OutFile allowCustom.diff
             git apply allowCustom.diff
