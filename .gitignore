@@ -1,4 +1,0 @@
-*.pyc
-db.sqlite3
-gunicorn.conf
-.venv
