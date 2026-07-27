@@ -1,0 +1,73 @@
+html
+    {% load static %}
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <title>Generate Custom Client</title>
+        <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    </head>
+    <body>
+    <h1>Generate Custom Client</h1>
+    
+    <form method="post"
+          enctype="multipart/form-data"
+          action="{% url 'generator_view' %}">
+        {% csrf_token %}
+    
+        <!-- Required fields -->
+        <label>App name (will appear in the UI):
+            <input type="text" name="appname" required value="{{ form.appname.value|default_if_none:'' }}">
+        </label><br>
+    
+        <label>DMG / EXE filename (without extension):
+            <input type="text" name="filename" required value="{{ form.filename.value|default_if_none:'' }}">
+        </label><br>
+    
+        <label>RustDesk version to build:
+            {{ form.version }}
+        </label><br>
+    
+        <!-- Optional: custom slogan and company (stored inside JSON) -->
+        <label>Slogan / quote (will be embedded via custom.txt):
+            <input type="text" name="slogan" value="{{ form.slogan.value|default_if_none:'' }}">
+        </label><br>
+    
+        <label>Company name (shown in About dialog):
+            <input type="text" name="compname" value="{{ form.compname.value|default_if_none:'' }}">
+        </label><br>
+    
+        <!-- Custom txt content (the actual file that ends up in the binary) -->
+        <label>Custom text (will be base64‑encoded into custom.txt):
+            <textarea name="custom" rows="4" cols="50">{{ form.custom.value|default_if_none:'' }}</textarea>
+        </label><br>
+    
+        <!-- Icon / logo uploads (optional) -->
+        <label>App icon (PNG, square):
+            <input type="file" name="iconfile" accept="image/png">
+        </label><br>
+    
+        <label>App logo (PNG):
+            <input type="file" name="logofile" accept="image/png">
+        </label><br>
+    
+        <!-- Platform selector (required for the workflow URL) -->
+        <label>Target platform:
+            {{ form.platform }}
+        </label><br>
+    
+        <!-- Submit -->
+        <button type="submit">Generate</button>
+    </form>
+    
+    {% if form.errors %}
+        <h3 style="color:#c00;">Form validation errors</h3>
+        <ul>
+        {% for field, errors in form.errors.items %}
+            <li><strong>{{ field }}:</strong> {{ errors|join:", " }}</li>
+        {% endfor %}
+        </ul>
+    {% endif %}
+    
+    </body>
+    </html>
