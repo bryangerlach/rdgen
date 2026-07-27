@@ -1,0 +1,38 @@
+diff --git a/flutter/lib/desktop/pages/desktop_setting_page.dart b/flutter/lib/desktop/pages/desktop_setting_page.dart
+index 1234567..abcdefg 100644
+--- a/flutter/lib/desktop/pages/desktop_setting_page.dart
++++ b/flutter/lib/desktop/pages/desktop_setting_page.dart
+@@ -64,17 +64,20 @@ class DesktopSettingPage extends StatefulWidget {
+   final SettingsTabKey initialTabkey;
+   static final List<SettingsTabKey> tabKeys = [
+     SettingsTabKey.general,
+-    if (!isWeb &&
+-        !bind.isOutgoingOnly() &&
+-        !bind.isDisableSettings() &&
+-        bind.mainGetBuildinOption(key: kOptionHideSecuritySetting) != 'Y')
+-      SettingsTabKey.safety,
+-    if (!bind.isDisableSettings() &&
+-        bind.mainGetBuildinOption(key: kOptionHideNetworkSetting) != 'Y')
+-      SettingsTabKey.network,
++    // SECURITY SETTINGS PERMANENTLY HIDDEN
++    // if (!isWeb &&
++    //     !bind.isOutgoingOnly() &&
++    //     !bind.isDisableSettings() &&
++    //     bind.mainGetBuildinOption(key: kOptionHideSecuritySetting) != 'Y')
++    //   SettingsTabKey.safety,
++    // NETWORK SETTINGS PERMANENTLY HIDDEN
++    // if (!bind.isDisableSettings() &&
++    //     bind.mainGetBuildinOption(key: kOptionHideNetworkSetting) != 'Y')
++    //   SettingsTabKey.network,
+     if (!bind.isIncomingOnly()) SettingsTabKey.display,
+     if (!isWeb && !bind.isIncomingOnly() && bind.pluginFeatureIsEnabled())
+       SettingsTabKey.plugin,
+     if (!bind.isDisableAccount()) SettingsTabKey.account,
+-    if (isWindows &&
+-        bind.mainGetBuildinOption(key: kOptionHideRemotePrinterSetting) != 'Y')
+-      SettingsTabKey.printer,
++    // PRINTER SETTINGS PERMANENTLY HIDDEN
++    // if (isWindows &&
++    //     bind.mainGetBuildinOption(key: kOptionHideRemotePrinterSetting) != 'Y')
++    //   SettingsTabKey.printer,
+     SettingsTabKey.about,

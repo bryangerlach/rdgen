@@ -23,8 +23,8 @@ else:
     from django.conf.urls import  url, include
 
 urlpatterns = [
-    url(r'^$',views.generator_view),
-    url(r'^generator',views.generator_view),
+    url(r'^$',views.generator_view, name='generator_view'),
+    url(r'^generator',views.generator_view, name='generator_view'),
     url(r'^check_for_file',views.check_for_file),
     url(r'^download',views.download),
     url(r'^creategh',views.create_github_run),

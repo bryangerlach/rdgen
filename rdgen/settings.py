@@ -11,9 +11,14 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+from urllib.parse import urlparse
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+load_dotenv(os.path.join(BASE_DIR, '.env'))
 
 
 # Quick-start development settings - unsuitable for production
@@ -21,13 +26,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = os.environ.get('SECRET_KEY','django-insecure-!(t-!f#6g#sr%yfded9(xha)g+=!6craeez^cp+*&bz_7vdk61')
+
+# GitHub Configuration - MUST be set as environment variables
 GHUSER = os.environ.get("GHUSER", '')
 GHBEARER = os.environ.get("GHBEARER", '')
 GENURL = os.environ.get("GENURL", '')
-GHBRANCH = os.environ.get("GHBRANCH",'master')
-ZIP_PASSWORD = os.environ.get("ZIP_PASSWORD",'insecure')
+API_TOKEN = os.environ.get("API_TOKEN", '')
+GHBRANCH = os.environ.get("GHBRANCH", 'master')
+REPONAME = os.environ.get("REPONAME", 'creator')
+ZIP_PASSWORD = os.environ.get("ZIP_PASSWORD", 'insecure')
 PROTOCOL = os.environ.get("PROTOCOL", 'https')
-REPONAME = os.environ.get("REPONAME", 'rdgen')
 SH_SECRET = os.environ.get('SH_SECRET', 'secret')
 
 MEDIA_URL = '/media/'
@@ -38,8 +46,25 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 DEBUG_ENV = os.environ.get("DEBUG", "False")
 DEBUG = DEBUG_ENV.lower() in ['true', '1', 't']
 
-ALLOWED_HOSTS = ['*']
-#CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', '').split()
+#ALLOWED_HOSTS = ['*']
+
+_env_hosts = [h for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h]
+if _env_hosts:
+    ALLOWED_HOSTS = _env_hosts
+elif GENURL:
+    parsed = urlparse(GENURL)
+    host = parsed.hostname
+    if not host:
+        raise ValueError(f"Invalid GENURL: {GENURL}")
+    ALLOWED_HOSTS = [host, 'creator.nas86.eu']
+
+    scheme = parsed.scheme or 'https'
+    port = f":{parsed.port}" if parsed.port else ""
+    auto_origin = f"{scheme}://{host}{port}"
+else:
+    ALLOWED_HOSTS = ["localhost", "127.0.0.1", 'creator.nas86.eu']
+    auto_origin = None
+CSRF_TRUSTED_ORIGINS = [o for o in os.getenv('CSRF_TRUSTED_ORIGINS', '').split(',') if o]
 
 # Application definition
 
@@ -57,7 +82,7 @@ MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
-    #'django.middleware.csrf.CsrfViewMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',

@@ -1,4 +1,1 @@
-*.pyc
-db.sqlite3
-gunicorn.conf
-.venv
+.monkeycode-tmp-files/

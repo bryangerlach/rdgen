@@ -1,0 +1,56 @@
+diff --git a/flutter/lib/desktop/pages/desktop_home_page.dart b/flutter/lib/desktop/pages/desktop_home_page.dart
+index 1234567..abcdefg 100644
+--- a/flutter/lib/desktop/pages/desktop_home_page.dart
++++ b/flutter/lib/desktop/pages/desktop_home_page.dart
+@@ -1000,6 +1000,8 @@ class _DesktopHomePageState extends State<DesktopHomePage>
+   }
+ 
+   Widget _buildSettingsButton() {
++    // SETTINGS COMPLETELY DISABLED BY CUSTOM BUILD
++    return Container();
+     return IconButton(
+       icon: Icon(Icons.settings),
+       onPressed: () => Navigator.push(
+diff --git a/flutter/lib/desktop/pages/desktop_setting_page.dart b/flutter/lib/desktop/pages/desktop_setting_page.dart
+index 1234567..abcdefg 100644
+--- a/flutter/lib/desktop/pages/desktop_setting_page.dart
++++ b/flutter/lib/desktop/pages/desktop_setting_page.dart
+@@ -100,6 +100,8 @@ class _DesktopSettingPageState extends State<DesktopSettingPage>
+ 
+   @override
+   Widget build(BuildContext context) {
++    // SETTINGS COMPLETELY DISABLED BY CUSTOM BUILD
++    return Container(child: Center(child: Text('Settings have been disabled by administrator')));
+     super.build(context);
+     return _buildBlock(
+       children: [
+diff --git a/flutter/lib/mobile/pages/home_page.dart b/flutter/lib/mobile/pages/home_page.dart
+index 1234567..abcdefg 100644
+--- a/flutter/lib/mobile/pages/home_page.dart
++++ b/flutter/lib/mobile/pages/home_page.dart
+@@ -53,7 +53,9 @@ class HomePageState extends State<HomePage> {
+       _chatPageTabIndex = _pages.length;
+       _pages.addAll([ChatPage(type: ChatPageType.mobileMain), ServerPage()]);
+     }
+-    _pages.add(SettingsPage());
++    // SETTINGS COMPLETELY DISABLED BY CUSTOM BUILD
++    if (!bind.isDisableSettings()) {
++      _pages.add(SettingsPage());
++    }
+   }
+diff --git a/flutter/lib/mobile/pages/settings_page.dart b/flutter/lib/mobile/pages/settings_page.dart
+index 1234567..abcdefg 100644
+--- a/flutter/lib/mobile/pages/settings_page.dart
++++ b/flutter/lib/mobile/pages/settings_page.dart
+@@ -136,6 +136,11 @@ class _SettingsState extends State<SettingsPage> with WidgetsBindingObserver {
+ 
+   @override
+   Widget build(BuildContext context) {
++    // SETTINGS COMPLETELY DISABLED BY CUSTOM BUILD
++    if (bind.isDisableSettings()) {
++      return Scaffold(appBar: AppBar(title: Text(translate("Settings"))), 
++        body: Center(child: Text(translate('Settings have been disabled by your organization'))));
++    }
+     Provider.of<FfiModel>(context);
+     final outgoingOnly = bind.isOutgoingOnly();
+     final incomingOnly = bind.isIncomingOnly();

@@ -85,13 +85,14 @@
         <text x="128" y="160" font-family="Arial" font-size="50" font-weight="bold" text-anchor="middle" fill="white">Win</text>
     </svg>
     <div class="error-container">
-        <h2 class="error-header">Workflow Interrupted</h2>
+        <h2 class="error-header">Build Failed</h2>
         
         <div class="warning-box">
-            <strong>Warning:</strong> The build process did not complete successfully. Some files may be missing. You can attempt to download the available files below.
+            <strong>The build process did not complete successfully.</strong> Please try generating your custom client again. If the issue persists, check the GitHub Actions logs below for details.
         </div>
 
-        <div class="download-section">
+        <div class="download-section" style="display: none;">
+        </div>
             {% if platform == 'windows' %}
                 <a href='/download?filename={{filename}}.exe&uuid={{uuid}}' class="download-link">Download {{filename}}.exe</a>
                 <a href='/download?filename={{filename}}.msi&uuid={{uuid}}' class="download-link">Download {{filename}}.msi</a>
@@ -126,7 +127,7 @@
         
         <div id="platformNote" class="platform-note"></div>
         <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-        <a href="/" style="font-size: 0.9em; color: #666; text-decoration: none;">← Return to Form</a>
+        <a href="/" style="display: inline-block; padding: 12px 24px; background-color: #3498db; color: white; text-decoration: none; border-radius: 5px; font-size: 1em;">← Return to Homepage</a>
     </div>
 
     <script>

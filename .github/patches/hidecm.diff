@@ -75,7 +75,7 @@ index 877576461..4efd6c8b0 100644
 -    */
    }
  
-   TextEditingController get serverId => _serverId;
+   bool get allowNumericOneTimePassword => _allowNumericOneTimePassword;
 @@ -126,7 +126,6 @@ class ServerModel with ChangeNotifier {
      _emptyIdShow = translate("Generating ...");
      _serverId = IDTextEditingController(text: _emptyIdShow);

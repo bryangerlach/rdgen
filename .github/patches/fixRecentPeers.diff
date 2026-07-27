@@ -1,0 +1,11 @@
+diff --git a/src/bridge_generated.rs b/src/bridge_generated.rs
+index d9dc3eec4..76f386b76 100644
+--- a/src/bridge_generated.rs
++++ b/src/bridge_generated.rs
+@@ -2479,7 +2479,7 @@ impl FlutterRustBridgeCodecs {
+     pub fn decode_RecentPeers(
+         &self,
+     ) -> impl Future<Output = Result<Vec<RecentPeer>, DartError>> + Send {
+-            move |task_callback| Ok(main_get_recent_peers(api_get_all))
++            move |task_callback| Ok(main_load_recent_peers(api_get_all))
+     }
