@@ -1,7 +1,0 @@
-django
-requests
-pillow
-python-dotenv
-gunicorn
-cryptography>=42.0.0
-pyzipper
