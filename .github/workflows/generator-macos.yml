@@ -619,6 +619,32 @@ jobs:
             # Clean up
             rm certificate.p12 
 
+      - name: Ad-hoc Sign macOS app bundle (Fallback)
+        if: env.MACOS_P12_BASE64 == '' || env.MACOS_P12_BASE64 == null
+        shell: bash
+        run: |
+            cd flutter/build/macos/Build/Products/Release
+            
+            # Renombrar RustDesk.app al nombre de la marca blanca si aplica
+            if [ -d "RustDesk.app" ]; then
+              mv "RustDesk.app" "${{ env.appname }}.app"
+              echo "RustDesk.app renombrado a ${{ env.appname }}.app"
+            fi
+            
+            TARGET_APP="${{ env.appname }}.app"
+            
+            if [ -d "$TARGET_APP" ]; then
+              echo "Limpiando atributos extendidos..."
+              xattr -cr "$TARGET_APP" || true
+              
+              echo "Re-firmando $TARGET_APP de forma Ad-Hoc y recursiva..."
+              codesign --force --deep --sign - "$TARGET_APP"
+              echo "Firma Ad-Hoc completada con exito."
+            else
+              echo "Error: No se encontro la app bundle en $TARGET_APP para firmar."
+              exit 1
+            fi
+
       - name: Create DMG
         run: |
           cd /Users/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}/flutter/build/macos/Build/Products/Release
