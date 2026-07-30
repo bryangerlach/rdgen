@@ -17,6 +17,7 @@ Including another URLconf
 import django
 
 from rdgenerator import views as views
+from rdgenerator import api_views as api_views
 if django.__version__.split('.')[0]>='4':
     from django.urls import re_path as url
 else:
@@ -34,4 +35,7 @@ urlpatterns = [
     url(r'^save_custom_client',views.save_custom_client),
     url(r'^get_zip',views.get_zip),
     url(r'^cleanzip',views.cleanup_secrets),
+    # JSON API endpoints
+    url(r'^api/generate$',api_views.api_generate),
+    url(r'^api/status$',api_views.api_status),
 ]
