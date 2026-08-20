@@ -272,6 +272,55 @@ jobs:
             # Remove Setup Server Tip
             Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeSetupServerTip.diff -OutFile removeSetupServerTip.diff
             git apply removeSetupServerTip.diff  
+
+      - name: Patch remote printer port to spool file
+        shell: python
+        run: |
+          import os, re
+
+          src = "."
+          app = os.environ.get("appname") or "RustDesk"
+          literal = "C:\\\\ProgramData\\\\%s\\\\printer-spool\\\\job.prn" % app
+
+          # atch Rust remote_printer lib.rs
+          rs = os.path.join(src, "libs", "remote_printer", "src", "lib.rs")
+          if os.path.isfile(rs):
+              with open(rs, "r", encoding="utf-8") as f:
+                  t = f.read()
+              if "printer-spool" in t:
+                  print("Rust printer port already points to spool file")
+              else:
+                  old = ('fn get_port_name(app_name: &str) -> Vec<u16> {\n'
+                         '    format!("{} Printer", app_name)')
+                  new = ('fn get_port_name(app_name: &str) -> Vec<u16> {\n'
+                         '    let base = std::env::var("ProgramData")\n'
+                         '        .unwrap_or_else(|_| "C:\\\\ProgramData".to_string());\n'
+                         '    let dir = format!("{}\\\\{}\\\\printer-spool", base, app_name);\n'
+                         '    let _ = std::fs::create_dir_all(&dir);\n'
+                         '    format!("{}\\\\job.prn", dir)')
+                  if old in t:
+                      with open(rs, "w", encoding="utf-8") as f:
+                          f.write(t.replace(old, new, 1))
+                      print("Successfully patched Rust printer port")
+                  else:
+                      print("Warning: get_port_name() signature not matched in Rust source")
+
+          # patch C++ MSI Custom Action
+          cpp = os.path.join(src, "res", "msi", "CustomActions", "RemotePrinter.cpp")
+          if os.path.isfile(cpp):
+              with open(cpp, "r", encoding="utf-8") as f:
+                  t = f.read()
+              if "printer-spool" in t:
+                  print("MSI printer port already points to spool file")
+              else:
+                  pattern = r'(RD_PRINTER_PORT\s*=\s*)L"[^"]*"'
+                  new_t, n = re.subn(pattern, lambda m: m.group(1) + 'L"%s"' % literal, t, count=1)
+                  if n == 1:
+                      with open(cpp, "w", encoding="utf-8") as f:
+                          f.write(new_t)
+                      print("Successfully patched MSI CustomAction printer port")
+                  else:
+                      print("Warning: RD_PRINTER_PORT not matched in RemotePrinter.cpp")
           
       - name: magick stuff
         if: ${{ env.iconlink_url != 'false' }}
@@ -358,31 +407,30 @@ jobs:
           Remove-Item -Path "usbmmidd_v2\deviceinstaller64.exe", "usbmmidd_v2\deviceinstaller.exe", "usbmmidd_v2\usbmmidd.bat"
           mv -Force .\usbmmidd_v2 ./rustdesk   
 
-          # Download printer driver files and extract them to ./rustdesk
+          # Download and install driver package
           try {
             Invoke-WebRequest -Uri https://github.com/rustdesk/hbb_common/releases/download/driver/rustdesk_printer_driver_v4-1.4.zip -OutFile rustdesk_printer_driver_v4-1.4.zip
-            Invoke-WebRequest -Uri https://github.com/rustdesk/hbb_common/releases/download/driver/printer_driver_adapter.zip -OutFile printer_driver_adapter.zip
-            Invoke-WebRequest -Uri https://github.com/rustdesk/hbb_common/releases/download/driver/sha256sums -OutFile sha256sums
-
-            # Check and move the files
-            $checksum_driver = (Select-String -Path .\sha256sums -Pattern '^([a-fA-F0-9]{64}) \*rustdesk_printer_driver_v4-1.4\.zip$').Matches.Groups[1].Value
-            $downloadsum_driver = Get-FileHash -Path rustdesk_printer_driver_v4-1.4.zip -Algorithm SHA256
-            $checksum_adapter = (Select-String -Path .\sha256sums -Pattern '^([a-fA-F0-9]{64}) \*printer_driver_adapter\.zip$').Matches.Groups[1].Value
-            $downloadsum_adapter = Get-FileHash -Path printer_driver_adapter.zip -Algorithm SHA256
-            if ($checksum_driver -eq $downloadsum_driver.Hash -and $checksum_adapter -eq $downloadsum_adapter.Hash) {
-                Write-Output "rustdesk_printer_driver_v4-1.4, checksums match, extract the file."
-                Expand-Archive rustdesk_printer_driver_v4-1.4.zip -DestinationPath .
-                mkdir ./rustdesk/drivers
-                mv -Force .\rustdesk_printer_driver_v4-1.4 ./rustdesk/drivers/RustDeskPrinterDriver
-                Expand-Archive printer_driver_adapter.zip -DestinationPath .
-                mv -Force .\printer_driver_adapter.dll ./rustdesk
-            } elseif ($checksum_driver -ne $downloadsum_driver.Hash) {
-                Write-Output "rustdesk_printer_driver_v4-1.4, checksums do not match, ignore the file."
-            } else {
-                Write-Output "printer_driver_adapter.dll, checksums do not match, ignore the file."
-            }
+            Expand-Archive rustdesk_printer_driver_v4-1.4.zip -DestinationPath .
+            mkdir ./rustdesk/drivers -ErrorAction SilentlyContinue
+            mv -Force .\rustdesk_printer_driver_v4-1.4 ./rustdesk/drivers/RustDeskPrinterDriver
           } catch {
-              Write-Host "Ingore the printer driver error."
+            Write-Host "Warning: Printer driver download failed."
+          }
+
+          # Build and install open printer adapter
+          if (Test-Path "./printer-adapter/Cargo.toml") {
+            Write-Host "Building open printer-adapter..."
+            pushd ./printer-adapter
+            cargo build --release --locked
+            popd
+            if (Test-Path "./printer-adapter/target/release/printer_driver_adapter.dll") {
+              cp -Force "./printer-adapter/target/release/printer_driver_adapter.dll" "./rustdesk/printer_driver_adapter.dll"
+              Write-Host "Replaced printer_driver_adapter.dll with open implementation."
+            } else {
+              Write-Host "Error: printer-adapter build succeeded but DLL was not found."
+            }
+          } else {
+            Write-Host "Warning: ./printer-adapter/Cargo.toml not found, remote printing will remain disabled."
           }
 
       - name: icon stuff
