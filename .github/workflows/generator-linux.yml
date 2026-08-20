@@ -277,9 +277,23 @@ jobs:
             python allowCustom.py
             wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeSetupServerTip.diff
             git apply removeSetupServerTip.diff
-            echo -n "${{ env.custom }}" | cat > ./custom_.txt
             # sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
             sed -i -e 's|https://admin.rustdesk.com|${{ env.apiServer }}|' ./src/common.rs
+
+      # Android never file-reads custom_.txt — the config must be handed to the
+      # native side. Both the server (Kotlin FFI.startServer) and the FFI init
+      # (Dart main_init) pass "" by default; embed the base64 config there so
+      # read_custom_client() runs and presets the password + permissions.
+      - name: Embed custom config for Android
+        shell: bash
+        run: |
+          KOTLIN=./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/MainService.kt
+          DART=./flutter/lib/models/native_model.dart
+          sed -i "s|FFI.startServer(configPath, \"\")|FFI.startServer(configPath, \"${{ env.custom }}\")|" "$KOTLIN"
+          sed -i "s|customClientConfig: '',|customClientConfig: '${{ env.custom }}',|" "$DART"
+          echo "--- verify ---"
+          grep -n 'FFI.startServer(configPath' "$KOTLIN" | sed 's/\(.\{80\}\).*/\1.../'
+          grep -n 'customClientConfig:' "$DART" | sed 's/\(.\{80\}\).*/\1.../'
           
       - name: change url to custom
         if: env.urlLink != 'https://rustdesk.com'

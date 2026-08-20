@@ -499,6 +499,14 @@ jobs:
       # - name: Copy service file
       #   run: |
       #     cp -rf ../target/release/service ./build/macos/Build/Products/Release/RustDesk.app/Contents/MacOS/
+
+      - name: Embed custom config into the .app bundle
+        shell: bash
+        run: |
+          APP=$(find ./flutter/build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n 1)
+          echo "App bundle: $APP"
+          echo -n '${{ env.custom }}' > "$APP/Contents/MacOS/custom_.txt"
+          ls -l "$APP/Contents/MacOS/custom_.txt"
       
       - name: Install rcodesign tool
         if: env.MACOS_P12_BASE64 != null
