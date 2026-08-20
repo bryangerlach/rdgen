@@ -562,6 +562,14 @@ jobs:
               mv "$name" /workspace/output/"${{ env.filename }}-${{ matrix.job.arch }}.deb"
             done
 
+            # rpm/suse/arch package the flutter BUNDLE (not tmpdeb), so the deb's
+            # custom_.txt never reaches them. Copy it into the bundle too, so the
+            # baked password/permissions land in every format.
+            BUNDLE=flutter/build/linux/x64/release/bundle
+            [ "${{ matrix.job.arch }}" = "aarch64" ] && BUNDLE=flutter/build/linux/arm64/release/bundle
+            cp ./custom_.txt "$BUNDLE/custom_.txt" || echo "WARN: could not copy custom_.txt into bundle"
+            ls -l "$BUNDLE/custom_.txt" || echo "WARN: custom_.txt missing from bundle ($BUNDLE)"
+
             # rpm package
             echo -e "start packaging fedora package"
             pushd /workspace
