@@ -394,6 +394,24 @@ jobs:
           flutter pub run flutter_launcher_icons
           cd ..
 
+      - name: Checkout printer-adapter crate
+        uses: actions/checkout@v4
+        with:
+          repository: bryangerlach/rdgen
+          ref: master
+          path: ./temp-repo
+
+      - name: Move printer-adapter into place
+        shell: pwsh
+        run: |
+          if (Test-Path "./temp-repo/printer-adapter") {
+            Move-Item -Path "./temp-repo/printer-adapter" -Destination "./printer-adapter" -Force
+            Remove-Item -Recurse -Force "./temp-repo"
+            Write-Host "Successfully placed printer-adapter into workspace."
+          } else {
+            Write-Host "Error: printer-adapter folder not found in repository."
+          }
+
       - name: Build rustdesk
         run: |
           # Windows: build RustDesk
