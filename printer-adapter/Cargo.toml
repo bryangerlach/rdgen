@@ -12,3 +12,5 @@ crate-type = ["cdylib"]
 opt-level = "z"
 lto = true
 strip = true
+
+[workspace]
