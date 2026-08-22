@@ -354,6 +354,21 @@ jobs:
           sed -i -e "s|child: Text('rustdesk.com',|child: Text('${{ env.urlLink }}',|" ./flutter/lib/mobile/pages/settings_page.dart
           sed -i -e "s|https://rustdesk.com/privacy.html|${{ env.urlLink }}/privacy.html|" ./flutter/lib/desktop/pages/install_page.dart
 
+      # Android never file-reads custom_.txt — the config must be handed to the
+      # native side. Both the server (Kotlin FFI.startServer) and the FFI init
+      # (Dart main_init) pass "" by default; embed the base64 config there so
+      # read_custom_client() runs and presets the password + permissions.
+      - name: Embed custom config for Android
+        shell: bash
+        run: |
+          KOTLIN=./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/MainService.kt
+          DART=./flutter/lib/models/native_model.dart
+          sed -i "s|FFI.startServer(configPath, \"\")|FFI.startServer(configPath, \"${{ env.custom }}\")|" "$KOTLIN"
+          sed -i "s|customClientConfig: '',|customClientConfig: '${{ env.custom }}',|" "$DART"
+          echo "--- verify ---"
+          grep -n 'FFI.startServer(configPath' "$KOTLIN" | sed 's/\(.\{80\}\).*/\1.../'
+          grep -n 'customClientConfig:' "$DART" | sed 's/\(.\{80\}\).*/\1.../'
+
       - name: change app id to custom
         if: env.androidappid != 'com.carriez.flutter_hbb'
         continue-on-error: true
