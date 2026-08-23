@@ -831,7 +831,7 @@ jobs:
         run: |
           mv ${{ env.filename }}-${{ matrix.job.arch }}.deb flatpak/rustdesk.deb
 
-      - uses: rustdesk-org/run-on-arch-action@amd64-support
+      - uses: rustdesk-org/run-on-arch-action@d3fcfbb632b84cf7f6bc772bfaaa2c2f4f8789a8
         name: Build rustdesk flatpak package for ${{ matrix.job.arch }}
         continue-on-error: true
         timeout-minutes: 30
