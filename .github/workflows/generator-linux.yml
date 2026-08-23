@@ -730,24 +730,22 @@ jobs:
             </svg>
             EOF
 
-      - name: Build appimage package
+      - name: Build AppImage
         shell: bash
         run: |
-          sed -ie "s|rustdesk|${{ env.appname }}|g" appimage/*
-          mv appimage/rustdesk.deb "appimage/${{ env.filename }}.deb"
-
-           # install libarchive-tools for bsdtar command used in AppImageBuilder.yml
+          if [ "${{ env.appname }}" != "rustdesk" ] && [ "${{ env.appname }}" != "RustDesk" ]; then
+            sed -ie "s|rustdesk|${{ env.appname }}|g" appimage/*
+            mv appimage/rustdesk.deb "appimage/${{ env.filename }}.deb" 2>/dev/null || true
+          fi
           sudo apt-get update -y
-          # https://github.com/AppImage/AppImageKit/wiki/FUSE
           sudo apt-get install -y libarchive-tools libfuse2
-          # set-up appimage-builder
-          # https://github.com/AppImage/AppImageKit/issues/1395
           sudo pip3 install "setuptools_scm<10"
           sudo pip3 install git+https://github.com/rustdesk-org/appimage-builder.git
-          # run appimage-builder
           pushd appimage
           sudo appimage-builder --skip-tests --recipe ./AppImageBuilder-${{ matrix.job.arch }}.yml
-          sudo mv ./${{ env.appname }}-${{ env.VERSION }}-${{ matrix.job.arch }}.AppImage ./${{ env.filename }}-${{ matrix.job.arch }}.AppImage
+          # recipe output is <name>-<version>-<arch>.AppImage (name = rustdesk or custom)
+          sudo mv ./*-${{ env.VERSION }}-${{ matrix.job.arch }}.AppImage ./${{ env.filename }}-${{ matrix.job.arch }}.AppImage
+          popd
 
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
@@ -851,6 +849,11 @@ jobs:
             apt-get update -y
             apt-get install -y git flatpak flatpak-builder
           run: |
+            if [ "${{ env.appname }}" != "rustdesk" ] && [ "${{ env.appname }}" != "RustDesk" ]; then
+              sed -ie "s|rustdesk|${{ env.appname }}|g" flatpak/*
+              sed -ie "s|RustDesk|${{ env.appname }}|g" flatpak/*
+              mv flatpak/rustdesk.deb "flatpak/${{ env.filename }}.deb" 2>/dev/null || true
+            fi
             # disable git safe.directory
             git config --global --add safe.directory "*"
             pushd /workspace
@@ -860,7 +863,7 @@ jobs:
             pushd flatpak
             git clone https://github.com/flathub/shared-modules.git --depth=1
             flatpak-builder --user --install-deps-from=flathub -y --force-clean --repo=repo ./build ./rustdesk.json
-            flatpak build-bundle ./repo ${{ env.filename }}-${{ matrix.job.arch }}.flatpak com.rustdesk.RustDesk
+            flatpak build-bundle ./repo ${{ env.filename }}-${{ matrix.job.arch }}.flatpak com.${{ env.appname }}.${{ env.appname }}
 
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
