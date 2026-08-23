@@ -770,15 +770,17 @@ jobs:
       - name: Build libdrmtap
         run: |
           sudo apt-get install -y meson ninja-build pkg-config \
-            libdrm-dev libegl1-mesa-dev libgles2-mesa-dev
-          python3 - <<'PY'
-          import importlib.util, sys
-          spec = importlib.util.spec_from_file_location("b", "build.py")
-          b = importlib.util.module_from_spec(spec)
-          sys.argv = ["build.py"]
-          spec.loader.exec_module(b)
-          print(f"::notice::built {b.build_libdrmtap_so()}")
-          PY
+            libdrm-dev libegl1-mesa-dev libgles2-mesa-dev git
+
+          mkdir -p third_party
+          if [ ! -d "third_party/libdrmtap" ]; then
+            git clone https://github.com/rustdesk-org/libdrmtap.git third_party/libdrmtap
+          fi
+
+          cd third_party/libdrmtap
+          meson setup build-pkg --prefix=/usr --buildtype=release
+          ninja -C build-pkg
+          echo "::notice::built libdrmtap successfully"
         shell: bash
 
       - name: icon stuff
