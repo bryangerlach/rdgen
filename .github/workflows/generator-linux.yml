@@ -433,7 +433,7 @@ jobs:
             echo $JOBS
 
             # Make the right unit stop when the services is stopped by tray
-            sed -ie "s|\(systemctl\s\+\S\+\s\){app_name}|\1${{ env.filename }}|g" src/platform/linux.rs
+            sed -ie "s|\(systemctl\s\+\S\+\s\){app_name}|\1${{ env.appname }}|g" src/platform/linux.rs
             sed -ie 's|\({home}/{p}/{app_name0}2\?.toml\)|\\"\1\\"|g' src/platform/linux.rs
             sed -ie 's|\(/root/{p}/\)|\\"\1\\"|g' src/platform/linux.rs
 
