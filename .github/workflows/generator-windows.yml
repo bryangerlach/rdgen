@@ -250,7 +250,10 @@ jobs:
           sed -i -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./src/ui/index.tis
           sed -i -e 's|&download_url|"${{ env.downloadLink }}"|' ./src/updater.rs
           sed -i -e 's|$downloadUrl/$downloadFile|${{ env.downloadLink }}|' ./flutter/lib/desktop/widgets/update_progress.dart
-
+      - name: skip custom client
+        shell: bash
+        run: |
+          sed -i '/if (bind\.isCustomClient())/d' flutter/lib/desktop/pages/desktop_home_page.dart
       - name: set server, key, and apiserver
         continue-on-error: true
         shell: bash
