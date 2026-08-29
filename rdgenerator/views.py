@@ -15,11 +15,12 @@ from django.conf import settings as _settings
 from django.db.models import Q
 from .forms import GenerateForm
 from .models import GithubRun
+from . import config_store
 from PIL import Image
 from urllib.parse import quote
 
 
-def generate_custom_client(params, full_url):
+def generate_custom_client(params, full_url, dest=None):
     """
     Core generation logic shared by web form and JSON API.
 
@@ -272,7 +273,8 @@ def generate_custom_client(params, full_url):
         "removeNewVersionNotif": 'true' if removeNewVersionNotif else 'false',
         "compname": compname,
         "androidappid":androidappid,
-        "filename":filename
+        "filename":filename,
+        "dest": dest or ""
     }
 
     temp_json_path = f"data_{uuid.uuid4()}.json"
@@ -322,6 +324,14 @@ def generate_custom_client(params, full_url):
             new_github_run.github_run_id = github_data.get('workflow_run_id')
             new_github_run.status = "in_progress"
             new_github_run.save()
+
+            # Saved-config builds land under builds/<cfg>/<ts>/; record the build
+            # and index build_uuid -> dir so the callbacks can find it (Option A).
+            if dest:
+                cfg, _, ts = dest.partition('/')
+                if config_store.is_valid_config_id(cfg) and config_store.is_valid_build_id(ts):
+                    config_store.start_build(cfg, ts, myuuid,
+                                             new_github_run.github_run_id, platform, version)
 
             return {
                 "success": True,
@@ -486,6 +496,8 @@ def update_github_run(request):
     myuuid = data.get('uuid')
     mystatus = data.get('status')
     GithubRun.objects.filter(Q(uuid=myuuid)).update(status=mystatus)
+    # Mirror the status onto the saved-config build, if this uuid is one.
+    config_store.update_build_status(myuuid, mystatus)
     return HttpResponse('')
 
 def resize_and_encode_icon(imagefile):
@@ -589,11 +601,23 @@ def save_png(file, uuid, domain, name):
 def save_custom_client(request):
     file = request.FILES['file']
     myuuid = request.POST.get('uuid')
-    file_save_path = "exe/%s/%s" % (myuuid, file.name)
-    Path("exe/%s" % myuuid).mkdir(parents=True, exist_ok=True)
-    with open(file_save_path, "wb+") as f:
+
+    # Option A: resolve the saved-config build dir from the build uuid. Falls
+    # back to the legacy exe/<uuid>/ path for the plain single-shot generator.
+    resolved = config_store.resolve_build(myuuid)
+    base_dir = resolved[2] if resolved else os.path.abspath("exe/%s" % myuuid)
+
+    Path(base_dir).mkdir(parents=True, exist_ok=True)
+    save_path = os.path.abspath(os.path.join(base_dir, file.name))
+    if not save_path.startswith(base_dir + os.sep):
+        return HttpResponseForbidden("Invalid filename")
+
+    with open(save_path, "wb+") as f:
         for chunk in file.chunks():
             f.write(chunk)
+
+    if resolved:
+        config_store.record_artifact(myuuid, file.name)
 
     return HttpResponse("File saved successfully!")
 

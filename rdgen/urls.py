@@ -18,6 +18,7 @@ import django
 
 from rdgenerator import views as views
 from rdgenerator import api_views as api_views
+from rdgenerator import config_views as config_views
 if django.__version__.split('.')[0]>='4':
     from django.urls import re_path as url
 else:
@@ -35,6 +36,16 @@ urlpatterns = [
     url(r'^save_custom_client',views.save_custom_client),
     url(r'^get_zip',views.get_zip),
     url(r'^cleanzip',views.cleanup_secrets),
+    # Saved-config console (order matters: specific routes before the list prefix)
+    url(r'^configs/new$', config_views.config_new),
+    url(r'^configs/save$', config_views.config_save),
+    url(r'^configs/(?P<cfg>[0-9a-f-]{36})/edit$', config_views.config_edit),
+    url(r'^configs/(?P<cfg>[0-9a-f-]{36})/duplicate$', config_views.config_duplicate),
+    url(r'^configs/(?P<cfg>[0-9a-f-]{36})/delete$', config_views.config_delete),
+    url(r'^configs/(?P<cfg>[0-9a-f-]{36})/build$', config_views.config_build),
+    url(r'^configs/(?P<cfg>[0-9a-f-]{36})/history$', config_views.config_history),
+    url(r'^configs/(?P<cfg>[0-9a-f-]{36})/builds/(?P<ts>\d{8}T\d{6}Z(?:-\d+)?)/download$', config_views.config_build_download),
+    url(r'^configs/?$', config_views.configs_list),
     # JSON API endpoints
     url(r'^api/generate$',api_views.api_generate),
     url(r'^api/status$',api_views.api_status),

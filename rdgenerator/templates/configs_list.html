@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RustDesk Saved Configurations</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #000;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+        }
+        .wrap { max-width: 1200px; margin: 0 auto; }
+        .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        h1 { color: #fff; font-size: 1.4em; margin: 0; }
+        a.button, button.button {
+            background-color: #0077ff; color: #fff; border: none;
+            padding: 10px 18px; border-radius: 4px; cursor: pointer;
+            text-decoration: none; font-size: 0.95em; display: inline-flex; align-items: center; gap: 6px;
+        }
+        a.button:hover, button.button:hover { background-color: #0066cc; }
+        table { width: 100%; border-collapse: collapse; background-color: #111; border-radius: 8px; overflow: hidden; }
+        th, td { text-align: left; padding: 14px 16px; border-bottom: 1px solid #222; }
+        th { color: #bbb; font-weight: 700; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; }
+        td .name { color: #4d9fff; font-weight: 700; }
+        td .app { color: #ddd; }
+        .muted { color: #777; }
+        .actions { white-space: nowrap; }
+        .actions form { display: inline; margin: 0; }
+        .actions a, .actions button {
+            background: none; border: none; color: #4d9fff; cursor: pointer;
+            font-size: 0.95em; padding: 0 6px; text-decoration: none;
+        }
+        .actions a:hover, .actions button:hover { text-decoration: underline; }
+        .actions .danger { color: #ff5c5c; }
+        .actions .disabled { color: #555; cursor: not-allowed; }
+        .status-badge { font-size: 0.85em; color: #ccc; }
+        .empty { text-align: center; padding: 60px 20px; color: #777; }
+
+        .modal-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+            z-index: 200; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow-y: auto;
+        }
+        .modal-overlay.open { display: flex; }
+        .modal {
+            background: #111; border: 1px solid #222; border-radius: 8px;
+            width: 100%; max-width: 820px; box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+        }
+        .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid #222; }
+        .modal-head h2 { margin: 0; font-size: 1.1em; }
+        .modal-close { background: none; border: none; color: #bbb; font-size: 1.3em; cursor: pointer; padding: 0; }
+        .modal-body { padding: 8px 20px 20px; }
+        .modal-body table { border-radius: 0; }
+        .modal-body td, .modal-body th { padding: 10px 12px; font-size: 0.9em; }
+        .status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; text-transform: capitalize; }
+        .status.success { background: #113d1f; color: #6ee7a0; }
+        .status.failure, .status.cancelled, .status.timed_out { background: #3d1414; color: #ff8a8a; }
+        .status.in_progress, .status.unknown, .status.skipped { background: #33321a; color: #e6d76a; }
+        .artifact-link { color: #4d9fff; text-decoration: none; display: inline-block; margin-right: 10px; }
+        .artifact-link:hover { text-decoration: underline; }
+        .loading { text-align: center; color: #888; padding: 30px; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="topbar">
+            <h1><i class="fas fa-cogs"></i> Saved Configurations</h1>
+            <a class="button" href="/configs/new"><i class="fas fa-plus"></i> Create</a>
+        </div>
+
+        {% if configs %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Application name</th>
+                    <th>Last build</th>
+                    <th>Note</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in configs %}
+                <tr>
+                    <td><span class="name">{{ c.name }}</span></td>
+                    <td><span class="app"><i class="fab fa-windows"></i> {{ c.appname }}</span></td>
+                    <td>
+                        {% if c.last_build %}
+                            <span class="status-badge">{{ c.last_build.status }}
+                                <span class="muted">· {{ c.last_build.timestamp }}</span></span>
+                        {% else %}
+                            <span class="muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>{% if c.note %}{{ c.note }}{% else %}<span class="muted">-</span>{% endif %}</td>
+                    <td class="actions">
+                        <a href="/configs/{{ c.id }}/edit"><i class="fas fa-pen"></i> Edit</a>
+                        <form method="post" action="/configs/{{ c.id }}/duplicate">
+                            <button type="submit"><i class="fas fa-copy"></i> Duplicate</button>
+                        </form>
+                        <form method="post" action="/configs/{{ c.id }}/delete"
+                              onsubmit="return confirm('Delete configuration &quot;{{ c.name }}&quot; and all its builds?');">
+                            <button type="submit" class="danger"><i class="fas fa-trash"></i> Delete</button>
+                        </form>
+                        <form method="post" action="/configs/{{ c.id }}/build">
+                            <button type="submit"><i class="fas fa-rocket"></i> Build</button>
+                        </form>
+                        <button type="button" onclick="showHistory('{{ c.id }}', '{{ c.name|escapejs }}')"><i class="fas fa-clock-rotate-left"></i> History</button>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">
+            <p>No saved configurations yet.</p>
+            <a class="button" href="/configs/new"><i class="fas fa-plus"></i> Create your first configuration</a>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="modal-overlay" id="historyModal" onclick="if(event.target===this)closeHistory()">
+        <div class="modal">
+            <div class="modal-head">
+                <h2><i class="fas fa-clock-rotate-left"></i> Build history — <span id="historyName"></span></h2>
+                <button type="button" class="modal-close" onclick="closeHistory()">&times;</button>
+            </div>
+            <div class="modal-body" id="historyBody">
+                <div class="loading">Loading…</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const historyModal = document.getElementById('historyModal');
+
+        function closeHistory() { historyModal.classList.remove('open'); }
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') closeHistory(); });
+
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => (
+                {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]
+            ));
+        }
+
+        async function showHistory(cfgId, name) {
+            document.getElementById('historyName').textContent = name;
+            document.getElementById('historyBody').innerHTML = '<div class="loading">Loading…</div>';
+            historyModal.classList.add('open');
+            try {
+                const resp = await fetch(`/configs/${cfgId}/history`);
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                const data = await resp.json();
+                renderHistory(cfgId, data.builds || []);
+            } catch (err) {
+                document.getElementById('historyBody').innerHTML =
+                    `<div class="loading">Failed to load history (${esc(err.message)}).</div>`;
+            }
+        }
+
+        function renderHistory(cfgId, builds) {
+            if (!builds.length) {
+                document.getElementById('historyBody').innerHTML =
+                    '<div class="loading">No builds yet for this configuration.</div>';
+                return;
+            }
+            let rows = '';
+            builds.forEach((b, i) => {
+                const when = b.started_at || b.timestamp || '';
+                const current = i === 0 ? ' <span class="muted">(current)</span>' : '';
+                const statusCls = (b.status || 'unknown').replace(/[^a-z_]/gi, '');
+                let artifacts = '<span class="muted">—</span>';
+                if (b.artifacts && b.artifacts.length) {
+                    artifacts = b.artifacts.map(a =>
+                        `<a class="artifact-link" href="/configs/${cfgId}/builds/${encodeURIComponent(b.timestamp)}/download?file=${encodeURIComponent(a)}">` +
+                        `<i class="fas fa-download"></i> ${esc(a)}</a>`
+                    ).join('');
+                }
+                const log = b.log_url
+                    ? `<a class="artifact-link" href="${esc(b.log_url)}" target="_blank"><i class="fas fa-up-right-from-square"></i> log</a>`
+                    : '<span class="muted">—</span>';
+                rows += `<tr>
+                    <td>${esc(when)}${current}</td>
+                    <td><span class="status ${statusCls}"${b.error ? ` title="${esc(b.error)}"` : ''}>${esc(b.status || 'unknown')}</span></td>
+                    <td>${esc(b.platform)} <span class="muted">${esc(b.version)}</span></td>
+                    <td>${artifacts}</td>
+                    <td>${log}</td>
+                </tr>`;
+            });
+            document.getElementById('historyBody').innerHTML = `
+                <table>
+                    <thead><tr><th>Build</th><th>Status</th><th>Platform</th><th>Artifacts</th><th>Log</th></tr></thead>
+                    <tbody>${rows}</tbody>
+                </table>`;
+        }
+    </script>
+</body>
+</html>

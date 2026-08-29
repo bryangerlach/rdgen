@@ -22,3 +22,6 @@ services:
       - ./exe:/opt/rdgen/exe
       - ./png:/opt/rdgen/png
       - ./temp_zips:/opt/rdgen/temp_zips
+      # Saved configurations and their builds (the /configs console). One
+      # subdirectory per config; artifacts land in builds/<config>/<timestamp>/.
+      - ./builds:/opt/rdgen/builds
