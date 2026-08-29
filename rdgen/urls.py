@@ -19,13 +19,15 @@ import django
 from rdgenerator import views as views
 from rdgenerator import api_views as api_views
 from rdgenerator import config_views as config_views
+from django.views.generic.base import RedirectView
 if django.__version__.split('.')[0]>='4':
     from django.urls import re_path as url
 else:
     from django.conf.urls import  url, include
 
 urlpatterns = [
-    url(r'^$',views.generator_view),
+    # Landing page is the saved-configs console; the generator lives at /generator.
+    url(r'^$', RedirectView.as_view(url='/configs', permanent=False)),
     url(r'^generator',views.generator_view),
     url(r'^check_for_file',views.check_for_file),
     url(r'^download',views.download),
