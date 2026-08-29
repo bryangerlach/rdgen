@@ -170,8 +170,17 @@ def has_asset(cfg, name):
     return os.path.isfile(os.path.join(assets_dir(cfg), f'{name}.png'))
 
 
+def load_asset_b64(cfg, name):
+    """Return a persisted asset as a data-URI base64 string, or None."""
+    path = os.path.join(assets_dir(cfg), f'{name}.png')
+    if not os.path.isfile(path):
+        return None
+    with open(path, 'rb') as f:
+        return 'data:image/png;base64,' + base64.b64encode(f.read()).decode('ascii')
+
+
 def latest_build(cfg):
-    """Newest build.json summary for a config, or None. (Builds arrive in Phase 2.)"""
+    """Newest build.json summary for a config, or None."""
     builds = list_builds(cfg)
     return builds[0] if builds else None
 
@@ -223,3 +232,141 @@ def list_configs():
         })
     rows.sort(key=lambda r: r['updated_at'], reverse=True)
     return rows
+
+
+# --- Builds (Phase 2) -------------------------------------------------------
+#
+# A build is a timestamped subdir of a config. Each carries a build.json and,
+# once the workflow reports back, its artifacts. The workflow only knows the
+# build_uuid (Option A: it POSTs `uuid` unchanged), so build_uuid -> dir is
+# resolved server-side via a small index file, falling back to a scan.
+
+INDEX_DIRNAME = '.index'
+
+
+def new_build_dir(cfg):
+    """Create and return a fresh, unique build timestamp for a config."""
+    base = utc_stamp()
+    ts, n = base, 2
+    while os.path.exists(build_dir(cfg, ts)):
+        ts, n = f'{base}-{n}', n + 1
+    Path(build_dir(cfg, ts)).mkdir(parents=True, exist_ok=True)
+    return ts
+
+
+def _build_json_path(cfg, ts):
+    return os.path.join(build_dir(cfg, ts), 'build.json')
+
+
+def read_build(cfg, ts):
+    path = _build_json_path(cfg, ts)
+    if not os.path.isfile(path):
+        return None
+    with open(path, 'r') as f:
+        return json.load(f)
+
+
+def write_build(cfg, ts, data):
+    Path(build_dir(cfg, ts)).mkdir(parents=True, exist_ok=True)
+    with open(_build_json_path(cfg, ts), 'w') as f:
+        json.dump(data, f, indent=2)
+
+
+def _index_path(build_uuid):
+    # build_uuid is a uuid4 — same shape as a config id.
+    if not is_valid_config_id(build_uuid):
+        raise ValueError(f'invalid build uuid: {build_uuid!r}')
+    return os.path.join(builds_root(), INDEX_DIRNAME, build_uuid)
+
+
+def register_build(build_uuid, cfg, ts):
+    """Record build_uuid -> '<cfg>/<ts>' so callbacks can find the build dir."""
+    Path(os.path.join(builds_root(), INDEX_DIRNAME)).mkdir(parents=True, exist_ok=True)
+    with open(_index_path(build_uuid), 'w') as f:
+        f.write(f'{cfg}/{ts}')
+
+
+def resolve_build(build_uuid):
+    """Return (cfg, ts, abs_dir) for a build_uuid, or None. Index first, then scan."""
+    if not is_valid_config_id(build_uuid):
+        return None
+    idx = _index_path(build_uuid)
+    if os.path.isfile(idx):
+        with open(idx, 'r') as f:
+            cfg, _, ts = f.read().strip().partition('/')
+        if is_valid_config_id(cfg) and is_valid_build_id(ts) and os.path.isdir(build_dir(cfg, ts)):
+            return cfg, ts, build_dir(cfg, ts)
+    # Fallback: scan every build.json for a matching build_uuid.
+    root = builds_root()
+    if not os.path.isdir(root):
+        return None
+    for cfg_entry in os.scandir(root):
+        if not cfg_entry.is_dir() or not is_valid_config_id(cfg_entry.name):
+            continue
+        for b in os.scandir(cfg_entry.path):
+            if not b.is_dir() or not is_valid_build_id(b.name):
+                continue
+            data = read_build(cfg_entry.name, b.name)
+            if data and data.get('build_uuid') == build_uuid:
+                return cfg_entry.name, b.name, b.path
+    return None
+
+
+def start_build(cfg, ts, build_uuid, github_run_id, platform, version):
+    """Mark a build in-progress once its workflow has been dispatched."""
+    now = utc_stamp()
+    write_build(cfg, ts, {
+        'build_uuid': build_uuid,
+        'github_run_id': github_run_id,
+        'status': 'in_progress',
+        'platform': platform,
+        'version': version,
+        'started_at': now,
+        'updated_at': now,
+        'artifacts': [],
+    })
+    register_build(build_uuid, cfg, ts)
+
+
+def fail_build(cfg, ts, error):
+    """Record a build that could not be dispatched."""
+    data = read_build(cfg, ts) or {'artifacts': []}
+    data.update({'status': 'failure', 'error': str(error), 'updated_at': utc_stamp()})
+    write_build(cfg, ts, data)
+
+
+def update_build_status(build_uuid, status):
+    """Update a build's status by build_uuid (called from the /updategh callback)."""
+    resolved = resolve_build(build_uuid)
+    if not resolved:
+        return False
+    cfg, ts, _ = resolved
+    data = read_build(cfg, ts) or {'artifacts': []}
+    data.update({'status': status, 'updated_at': utc_stamp()})
+    write_build(cfg, ts, data)
+    return True
+
+
+def record_artifact(build_uuid, filename):
+    """Append an artifact filename to a build's build.json. Returns the build dir or None."""
+    resolved = resolve_build(build_uuid)
+    if not resolved:
+        return None
+    cfg, ts, bdir = resolved
+    data = read_build(cfg, ts) or {'artifacts': []}
+    artifacts = data.get('artifacts', [])
+    if filename not in artifacts:
+        artifacts.append(filename)
+    data['artifacts'] = artifacts
+    data['updated_at'] = utc_stamp()
+    write_build(cfg, ts, data)
+    return bdir
+
+
+def build_artifact_path(cfg, ts, filename):
+    """Absolute path to an artifact, validated to stay inside the build dir."""
+    bdir = build_dir(cfg, ts)
+    path = os.path.abspath(os.path.join(bdir, filename))
+    if path != os.path.join(bdir, os.path.basename(filename)):
+        raise ValueError(f'artifact escapes build dir: {filename!r}')
+    return path

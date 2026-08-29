@@ -5,11 +5,15 @@ Building a config and its history arrive in later phases; this module is the
 config CRUD + table. It reuses the existing GenerateForm and generator.html
 (rendered in "save mode") so the editor UI stays a single source of truth.
 """
-from django.http import Http404, HttpResponseBadRequest
+import os
+
+from django.conf import settings
+from django.http import Http404, HttpResponse, HttpResponseBadRequest
 from django.shortcuts import redirect, render
 
 from . import config_store as store
 from .forms import GenerateForm
+from .views import generate_custom_client
 
 
 def _persist_assets(cfg, form, request):
@@ -94,3 +98,47 @@ def config_delete(request, cfg):
         raise Http404('Config not found')
     store.delete_config(cfg)
     return redirect('/configs')
+
+
+def config_build(request, cfg):
+    """Kick off a build for a saved config into builds/<cfg>/<timestamp>/."""
+    if request.method != 'POST':
+        return HttpResponseBadRequest('POST required')
+    record = store.read_config(cfg)
+    if record is None:
+        raise Http404('Config not found')
+
+    params = dict(record.get('params', {}))
+    # Feed persisted images to the generator as base64 (it re-uploads them).
+    for name, (_upload_field, b64_field) in store.ASSETS.items():
+        b64 = store.load_asset_b64(cfg, name)
+        if b64:
+            params[b64_field] = b64
+
+    ts = store.new_build_dir(cfg)
+    full_url = f"{settings.PROTOCOL}://{request.get_host()}"
+    result = generate_custom_client(params, full_url, dest=f'{cfg}/{ts}')
+    if not result.get('success'):
+        store.fail_build(cfg, ts, result.get('error', 'dispatch failed'))
+    return redirect('/configs')
+
+
+def config_build_download(request, cfg, ts):
+    """Download a single artifact from builds/<cfg>/<ts>/."""
+    if not (store.is_valid_config_id(cfg) and store.is_valid_build_id(ts)):
+        raise Http404('Not found')
+    filename = request.GET.get('file', '')
+    if not filename:
+        return HttpResponseBadRequest('Missing file')
+    try:
+        path = store.build_artifact_path(cfg, ts, filename)
+    except ValueError:
+        raise Http404('Not found')
+    if not os.path.isfile(path):
+        raise Http404('Not found')
+    with open(path, 'rb') as f:
+        content = f.read()
+    return HttpResponse(content, headers={
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': f'attachment; filename="{os.path.basename(path)}"',
+    })

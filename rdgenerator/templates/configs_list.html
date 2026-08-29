@@ -83,8 +83,10 @@
                               onsubmit="return confirm('Delete configuration &quot;{{ c.name }}&quot; and all its builds?');">
                             <button type="submit" class="danger"><i class="fas fa-trash"></i> Delete</button>
                         </form>
-                        <a class="disabled" title="Available once the build phase lands"><i class="fas fa-rocket"></i> Build</a>
-                        <a class="disabled" title="Available once the build phase lands"><i class="fas fa-clock-rotate-left"></i> History</a>
+                        <form method="post" action="/configs/{{ c.id }}/build">
+                            <button type="submit"><i class="fas fa-rocket"></i> Build</button>
+                        </form>
+                        <a class="disabled" title="Available once the history phase lands"><i class="fas fa-clock-rotate-left"></i> History</a>
                     </td>
                 </tr>
                 {% endfor %}
