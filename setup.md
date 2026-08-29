@@ -33,6 +33,36 @@
 5. Now just run ```docker compose up -d```
 
 
+## Saved configurations
+
+The server includes a **Saved Configurations** console at `/configs`. It lets you
+create, edit, duplicate and delete named client configurations, kick off builds
+from a table, and review each config's build history — all persisted on disk so
+they survive restarts (no database rows are used).
+
+Everything lives under a `builds/` directory, one UUID subdirectory per config:
+
+```
+builds/
+  <config-uuid>/
+    config.json                 # the saved configuration
+    assets/                     # persisted icon/logo/privacy PNGs
+    <UTC-timestamp>/            # one directory per build
+      build.json                # status, GitHub run id, artifacts
+      <artifacts>               # the generated client(s)
+```
+
+* **Docker:** the provided `docker-compose.yml` mounts `./builds:/opt/rdgen/builds`.
+  Keep this volume to retain configs and builds across container recreation.
+* **Manual host:** `builds/` is created automatically in the working directory.
+  Set the `BUILDS_ROOT` environment variable to store it elsewhere.
+
+Building a saved config routes its artifacts into
+`builds/<config>/<timestamp>/` with no changes to the generator workflows — the
+server resolves each build's destination from the build UUID the workflow
+already reports back.
+
+
 ## Use a self hosted github runner for faster client generation (Windows only right now)
 
 1. First you need to set up a Windows computer that can build rustdesk
