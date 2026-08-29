@@ -27,7 +27,10 @@ env:
   # for arm64 linux because official Dart SDK does not work
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  # NuGet (GitHub Packages) is a durable binary cache that is NOT subject to the
+  # 10 GB Actions-cache LRU eviction that was forcing ffmpeg to rebuild from
+  # source (~14 min). x-gha is kept as a fallback so behaviour never regresses.
+  VCPKG_BINARY_SOURCES: "clear;nuget,GitHub,readwrite;x-gha,readwrite"
   # vcpkg version: 2024.07.12
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   ARMV7_VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
@@ -69,6 +72,13 @@ jobs:
     name: Build Windows
     needs: [build-RustDeskTempTopMostWindow, generate-bridge, setup]
     runs-on: ${{ matrix.job.os }}
+    # packages: write lets vcpkg push/pull its binary cache to the GitHub
+    # Packages NuGet feed. contents/actions:read preserve checkout and
+    # download-artifact, which no longer inherit write from the default token.
+    permissions:
+      contents: read
+      packages: write
+      actions: read
     strategy:
       fail-fast: false
       matrix:
@@ -328,6 +338,8 @@ jobs:
         uses: KyleMayes/install-llvm-action@v1
         with:
           version: ${{ env.LLVM_VERSION }}
+          # Cache the LLVM download instead of re-fetching it every run.
+          cached: true
 
       - name: Install flutter
         uses: subosito/flutter-action@v2.12.0 #https://github.com/subosito/flutter-action/issues/277
@@ -367,7 +379,25 @@ jobs:
         with:
           vcpkgDirectory: C:\vcpkg
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-          doNotCache: false
+          # The built packages are cached via VCPKG_BINARY_SOURCES (NuGet + x-gha),
+          # so caching the vcpkg tree here too just competes for the 10 GB
+          # Actions-cache budget and can evict the Rust cache. Let it re-bootstrap.
+          doNotCache: true
+
+      - name: Authenticate vcpkg NuGet binary cache (GitHub Packages)
+        # Register the durable NuGet feed used by VCPKG_BINARY_SOURCES above.
+        # Non-fatal on purpose: if auth fails, vcpkg silently falls back to the
+        # x-gha cache and the build behaves exactly as it did before.
+        continue-on-error: true
+        shell: pwsh
+        env:
+          FEED_URL: "https://nuget.pkg.github.com/parkview-gh/index.json"
+          GH_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $nuget = & "$env:VCPKG_ROOT\vcpkg.exe" fetch nuget | Select-Object -Last 1
+          & $nuget sources add -Source "$env:FEED_URL" -Name GitHub `
+            -Username "parkview-gh" -Password "$env:GH_PACKAGES_TOKEN" -StorePasswordInClearText
+          & $nuget setapikey "$env:GH_PACKAGES_TOKEN" -Source "$env:FEED_URL"
 
       - name: Install vcpkg dependencies
         env:
