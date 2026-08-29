@@ -57,6 +57,7 @@ def generate_custom_client(params, full_url):
     direction = params.get('direction', 'both')
     installation = params.get('installation', 'installationY')
     settings = params.get('settings', 'settingsY')
+    account = params.get('account', 'accountY')
     appname = params.get('appname', '')
     if not appname:
         appname = "rustdesk"
@@ -141,6 +142,8 @@ def generate_custom_client(params, full_url):
         decodedCustom['disable-installation'] = 'Y'
     if settings == "settingsN":
         decodedCustom['disable-settings'] = 'Y'
+    if account == "accountN":
+        decodedCustom['disable-account'] = 'Y'
     if appname.upper != "rustdesk".upper and appname != "":
         decodedCustom['app-name'] = appname
     decodedCustom['override-settings'] = {}

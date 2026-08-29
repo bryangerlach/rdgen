@@ -25,6 +25,10 @@ class GenerateForm(forms.Form):
         ('settingsY', 'No, enable settings'),
         ('settingsN', 'Yes, DISABLE settings')
     ], initial='settingsY')
+    account = forms.ChoiceField(label="Disable Account", choices=[
+        ('accountY', 'No, enable account'),
+        ('accountN', 'Yes, DISABLE account')
+    ], initial='accountY')
     androidappid = forms.CharField(label="Custom Android App ID (replaces 'com.carriez.flutter_hbb')", required=False)
 
     #Custom Server
