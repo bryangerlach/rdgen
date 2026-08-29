@@ -27,10 +27,10 @@ env:
   # for arm64 linux because official Dart SDK does not work
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
-  # NuGet (GitHub Packages) is a durable binary cache that is NOT subject to the
-  # 10 GB Actions-cache LRU eviction that was forcing ffmpeg to rebuild from
-  # source (~14 min). x-gha is kept as a fallback so behaviour never regresses.
-  VCPKG_BINARY_SOURCES: "clear;nuget,GitHub,readwrite;x-gha,readwrite"
+  # Durable binary cache on a GitHub Packages NuGet feed. (The old x-gha backend
+  # was removed from vcpkg, so it was a no-op that only printed a warning — and
+  # its absence is why cold builds rebuilt ffmpeg from source for ~14 min.)
+  VCPKG_BINARY_SOURCES: "clear;nuget,GitHub,readwrite"
   # vcpkg version: 2024.07.12
   VCPKG_COMMIT_ID: "120deac3062162151622ca4860575a33844ba10b"
   ARMV7_VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
@@ -409,15 +409,15 @@ jobs:
         with:
           vcpkgDirectory: C:\vcpkg
           vcpkgGitCommitId: ${{ env.VCPKG_COMMIT_ID }}
-          # The built packages are cached via VCPKG_BINARY_SOURCES (NuGet + x-gha),
+          # The built packages are cached via VCPKG_BINARY_SOURCES (NuGet feed),
           # so caching the vcpkg tree here too just competes for the 10 GB
           # Actions-cache budget and can evict the Rust cache. Let it re-bootstrap.
           doNotCache: true
 
       - name: Authenticate vcpkg NuGet binary cache (GitHub Packages)
         # Register the durable NuGet feed used by VCPKG_BINARY_SOURCES above.
-        # Non-fatal on purpose: if auth fails, vcpkg silently falls back to the
-        # x-gha cache and the build behaves exactly as it did before.
+        # Non-fatal on purpose: if auth fails, vcpkg builds from source (no cache)
+        # rather than failing the run.
         continue-on-error: true
         shell: pwsh
         env:
