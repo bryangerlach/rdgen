@@ -433,9 +433,23 @@ jobs:
         env:
           VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.job.vcpkg-triplet }}
         run: |
+          # Release-only overlay triplet. vcpkg builds Release AND Debug for every
+          # port by default, but RustDesk links Release throughout, so the Debug
+          # half (most expensively, ffmpeg) is built and thrown away. Skipping it
+          # roughly halves from-source vcpkg time and binary-cache size.
+          # Generated inline because by this point the workspace holds the rustdesk
+          # checkout, not this repo, so a committed file here would be gone.
+          mkdir -p ./vcpkg-triplets
+          cat > ./vcpkg-triplets/${{ matrix.job.vcpkg-triplet }}.cmake <<'EOF'
+          set(VCPKG_TARGET_ARCHITECTURE x64)
+          set(VCPKG_CRT_LINKAGE static)
+          set(VCPKG_LIBRARY_LINKAGE static)
+          set(VCPKG_BUILD_TYPE release)
+          EOF
           if ! $VCPKG_ROOT/vcpkg \
             install \
             --triplet ${{ matrix.job.vcpkg-triplet }} \
+            --overlay-triplets="$(pwd)/vcpkg-triplets" \
             --x-install-root="$VCPKG_ROOT/installed"; then
             find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
               echo "$_1:"
