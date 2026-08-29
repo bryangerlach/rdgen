@@ -43,6 +43,7 @@ urlpatterns = [
     url(r'^configs/(?P<cfg>[0-9a-f-]{36})/duplicate$', config_views.config_duplicate),
     url(r'^configs/(?P<cfg>[0-9a-f-]{36})/delete$', config_views.config_delete),
     url(r'^configs/(?P<cfg>[0-9a-f-]{36})/build$', config_views.config_build),
+    url(r'^configs/(?P<cfg>[0-9a-f-]{36})/history$', config_views.config_history),
     url(r'^configs/(?P<cfg>[0-9a-f-]{36})/builds/(?P<ts>\d{8}T\d{6}Z(?:-\d+)?)/download$', config_views.config_build_download),
     url(r'^configs/?$', config_views.configs_list),
     # JSON API endpoints

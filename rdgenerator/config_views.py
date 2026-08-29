@@ -8,12 +8,15 @@ config CRUD + table. It reuses the existing GenerateForm and generator.html
 import os
 
 from django.conf import settings
-from django.http import Http404, HttpResponse, HttpResponseBadRequest
+from django.http import Http404, HttpResponse, HttpResponseBadRequest, JsonResponse
 from django.shortcuts import redirect, render
 
 from . import config_store as store
 from .forms import GenerateForm
-from .views import generate_custom_client
+from .views import generate_custom_client, _get_run_status
+
+# Statuses GitHub won't change again — no need to re-poll.
+TERMINAL_STATUSES = {'success', 'failure', 'cancelled', 'timed_out', 'skipped'}
 
 
 def _persist_assets(cfg, form, request):
@@ -121,6 +124,42 @@ def config_build(request, cfg):
     if not result.get('success'):
         store.fail_build(cfg, ts, result.get('error', 'dispatch failed'))
     return redirect('/configs')
+
+
+def config_history(request, cfg):
+    """JSON list of a config's builds (current + previous), newest first.
+
+    Non-terminal builds are refreshed from GitHub (via the shared GithubRun
+    status check) and the fresh status mirrored back onto build.json.
+    """
+    if store.read_config(cfg) is None:
+        raise Http404('Config not found')
+
+    builds = []
+    for b in store.list_builds(cfg):
+        status = b.get('status', 'unknown')
+        build_uuid = b.get('build_uuid')
+        run_id = b.get('github_run_id')
+        if build_uuid and status not in TERMINAL_STATUSES:
+            info = _get_run_status(build_uuid)
+            if info.get('found'):
+                status = info['status']
+                store.update_build_status(build_uuid, status)
+        log_url = None
+        if run_id:
+            log_url = (f"https://github.com/{settings.GHUSER}/"
+                       f"{settings.REPONAME}/actions/runs/{run_id}")
+        builds.append({
+            'timestamp': b.get('timestamp'),
+            'status': status,
+            'platform': b.get('platform', ''),
+            'version': b.get('version', ''),
+            'artifacts': b.get('artifacts', []),
+            'started_at': b.get('started_at', ''),
+            'error': b.get('error', ''),
+            'log_url': log_url,
+        })
+    return JsonResponse({'builds': builds})
 
 
 def config_build_download(request, cfg, ts):
