@@ -561,7 +561,9 @@ def save_png(file, uuid, domain, name):
 
     if isinstance(file, str):  # Check if it's a base64 string
         try:
-            header, encoded = file.split(';base64,')
+            # LT-158: accept a full data URL (data:image/png;base64,XXXX) OR raw
+            # base64 with no prefix (what the web UI actually POSTs).
+            encoded = file.split(';base64,', 1)[1] if ';base64,' in file else file
             decoded_img = base64.b64decode(encoded)
             file = ContentFile(decoded_img, name=name) # Create a file-like object
         except ValueError:
