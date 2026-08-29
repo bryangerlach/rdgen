@@ -56,7 +56,8 @@
         .modal-body { padding: 8px 20px 20px; }
         .modal-body table { border-radius: 0; }
         .modal-body td, .modal-body th { padding: 10px 12px; font-size: 0.9em; }
-        .status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; text-transform: capitalize; }
+        .status { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.8em; text-transform: capitalize; text-decoration: none; }
+        a.status:hover { filter: brightness(1.2); }
         .status.success { background: #113d1f; color: #6ee7a0; }
         .status.failure, .status.cancelled, .status.timed_out { background: #3d1414; color: #ff8a8a; }
         .status.in_progress, .status.unknown, .status.skipped { background: #33321a; color: #e6d76a; }
@@ -90,8 +91,12 @@
                     <td><span class="app"><i class="fab fa-windows"></i> {{ c.appname }}</span></td>
                     <td>
                         {% if c.last_build %}
-                            <span class="status-badge">{{ c.last_build.status }}
-                                <span class="muted">· {{ c.last_build.timestamp }}</span></span>
+                            {% if c.last_build.log_url %}
+                                <a class="status {{ c.last_build.status }}" href="{{ c.last_build.log_url }}" target="_blank" title="View workflow run">{{ c.last_build.status }}</a>
+                            {% else %}
+                                <span class="status {{ c.last_build.status }}">{{ c.last_build.status }}</span>
+                            {% endif %}
+                            <span class="muted">· {{ c.last_build.timestamp }}</span>
                         {% else %}
                             <span class="muted">—</span>
                         {% endif %}

@@ -179,10 +179,22 @@ def load_asset_b64(cfg, name):
         return 'data:image/png;base64,' + base64.b64encode(f.read()).decode('ascii')
 
 
+def github_run_url(run_id):
+    """URL of a GitHub Actions run for this repo, or None."""
+    if not run_id:
+        return None
+    return (f"https://github.com/{settings.GHUSER}/"
+            f"{settings.REPONAME}/actions/runs/{run_id}")
+
+
 def latest_build(cfg):
-    """Newest build.json summary for a config, or None."""
+    """Newest build.json summary for a config, or None. Includes log_url."""
     builds = list_builds(cfg)
-    return builds[0] if builds else None
+    if not builds:
+        return None
+    last = builds[0]
+    last['log_url'] = github_run_url(last.get('github_run_id'))
+    return last
 
 
 def list_builds(cfg):
