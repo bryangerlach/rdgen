@@ -491,6 +491,21 @@ jobs:
             Write-Host "Error: printer-adapter folder not found in repository."
           }
 
+      - name: logo asset (pre-build so it is bundled into the manifest)
+        if: ${{ env.logolink_url != 'false' }}
+        uses: nick-fields/retry@v3
+        with:
+          timeout_minutes: 5
+          max_attempts: 3
+          retry_wait_seconds: 15
+          shell: pwsh
+          command: |
+            # Place the logo in the SOURCE assets dir BEFORE the Flutter build so
+            # pubspec (assets: - assets/) globs it into AssetManifest.bin and RustDesk
+            # can load it (loadLogo -> rootBundle.load). The post-build "logo stuff"
+            # step drops it in too late to be manifested (Watchtower LT-158).
+            Invoke-WebRequest -Uri ${{ env.logolink_url }}/get_png?filename=${{ env.logolink_file }}"&"uuid=${{ env.logolink_uuid }} -OutFile ./flutter/assets/logo.png
+
       - name: Build rustdesk
         run: |
           # Windows: build RustDesk
@@ -548,6 +563,24 @@ jobs:
           continue_on_error: true
           command: |
             Invoke-WebRequest -Uri ${{ env.logolink_url }}/get_png?filename=${{ env.logolink_file }}"&"uuid=${{ env.logolink_uuid }} -OutFile ./rustdesk/data/flutter_assets/assets/logo.png
+
+      - name: verify logo is in the asset manifest
+        if: ${{ env.logolink_url != 'false' }}
+        shell: pwsh
+        run: |
+          # Proof the custom logo actually got bundled: RustDesk loads it via
+          # rootBundle.load, which needs it in AssetManifest.bin - not just on disk
+          # (Watchtower LT-158). Fail loudly instead of shipping an invisible logo.
+          $manifest = "./rustdesk/data/flutter_assets/AssetManifest.bin"
+          $onDisk = Test-Path "./rustdesk/data/flutter_assets/assets/logo.png"
+          $inManifest = Select-String -Path $manifest -Pattern "logo" -SimpleMatch -Quiet
+          Write-Host "logo.png on disk:          $onDisk"
+          Write-Host "logo in AssetManifest.bin: $inManifest"
+          if (-not $inManifest) {
+            Write-Error "Custom logo requested but NOT in AssetManifest.bin - it will not render. (LT-158)"
+            exit 1
+          }
+          Write-Host "OK: custom logo is bundled and will render."
 
       - name: find Runner.res
         # Windows: find Runner.res (compiled from ./flutter/windows/runner/Runner.rc), copy to ./Runner.res
