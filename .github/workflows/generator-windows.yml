@@ -214,6 +214,36 @@ jobs:
           sed -i -e 's|reg delete HKEY_CLASSES_ROOT\\\\.{ext} /f|reg delete \\\"HKEY_CLASSES_ROOT\\\\.{ext}\\\" /f|' ./src/platform/windows.rs
           sed -i -e 's|reg delete HKEY_CLASSES_ROOT\\\\{ext} /f|reg delete \\\"HKEY_CLASSES_ROOT\\\\{ext}\\\" /f|' ./src/platform/windows.rs
           
+      - name: Restructure About page (plain copyright, drop slogan)
+        # Watchtower: pull the copyright out of the blue box into the same plain
+        # SelectionArea/Text format as Version/Build/Fingerprint above it, and drop
+        # the "Slogan_tip" line. Runs BEFORE "change company name", which then
+        # renames Purslane -> compname in the copyright text. Regex-based so it does
+        # not depend on exact source indentation.
+        shell: python
+        run: |
+          import re
+          path = "flutter/lib/desktop/pages/desktop_setting_page.dart"
+          with open(path, encoding="utf-8") as f:
+              s = f.read()
+          pattern = re.compile(
+              r"Container\(\s*decoration: const BoxDecoration\(color: Color\(0xFF2c8cff\)\)"
+              r".*?\)\.marginSymmetric\(vertical: 4\.0\)",
+              re.DOTALL,
+          )
+          replacement = (
+              "SelectionArea(\n"
+              "                  child: Text(\n"
+              "                          'Copyright © ${DateTime.now().toString().substring(0, 4)} Purslane Tech Pte. Ltd.')\n"
+              "                      .marginSymmetric(vertical: 4.0))"
+          )
+          s, n = pattern.subn(replacement, s, count=1)
+          if n != 1:
+              raise SystemExit("About page anchor not matched - RustDesk layout changed")
+          with open(path, "w", encoding="utf-8") as f:
+              f.write(s)
+          print("About page restructured: plain copyright, slogan removed")
+
       - name: change company name
         if: env.compname != 'Purslane Ltd'
         continue-on-error: true
