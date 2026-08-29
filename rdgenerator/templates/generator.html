@@ -224,8 +224,15 @@
       </style>
 </head>
 <body>
+    {% if save_mode %}
+    <h1><i class="fas fa-cogs"></i> {% if config_id %}Edit{% else %}New{% endif %} Configuration</h1>
+    <div style="max-width:1200px;margin:0 auto 10px;"><a href="/configs" style="color:#4d9fff;text-decoration:none;"><i class="fas fa-arrow-left"></i> Back to configurations</a></div>
+    <form id="myForm" action="/configs/save" method="post" enctype="multipart/form-data">
+        <input type="hidden" name="config_id" value="{{ config_id }}">
+    {% else %}
     <h1><i class="fas fa-cogs"></i> RustDesk Custom Client Builder</h1>
     <form id="myForm" action="/generator" method="post" enctype="multipart/form-data">
+    {% endif %}
         <div class="save-load-section-container">
             <div class="section">
                 <h2 id="saveLoadTitle">Save/Load Configuration <i class="fas fa-chevron-down"></i></h2>  
@@ -258,13 +265,7 @@
                     <i class="fab fa-android platform-icon" data-platform="android"></i>
                     <i class="fab fa-apple platform-icon" data-platform="macos"></i>
                 </div>
-                <select name="platform" id="id_platform">
-                    <option value="windows" selected>Windows 64Bit</option>
-                    <option value="windows-x86">Windows 32Bit</option>
-                    <option value="linux">Linux</option>
-                    <option value="android">Android</option>
-                    <option value="macos">macOS</option>
-                </select>
+                {{ form.platform }}
                 <label for="{{ form.version.id_for_label }}">Rustdesk Version:</label>
                 {{ form.version }}
                 {% if form.version.help_text %}
@@ -279,6 +280,10 @@
                 <h2><i class="fas fa-sliders-h"></i> General</h2>
                     <label for="{{ form.exename.id_for_label }}">Name of the configuration (no spaces or special characters, English characters only):</label>
                     {{ form.exename }}<span id="filenameError" class="error"></span><br><br>
+                    {% if save_mode %}
+                    <label for="id_note">Note (optional):</label>
+                    <input type="text" name="note" id="id_note" value="{{ note }}"><br><br>
+                    {% endif %}
                     <label for="{{ form.appname.id_for_label }}">Custom Application Name (leave blank to use default):</label>
                     {{ form.appname }}<br><br>
                     <label for="{{ form.direction.id_for_label }}">Connection Type:</label>
@@ -387,7 +392,11 @@
         </div>
         <div class="platform">
             <div class="section">
+                {% if save_mode %}
+                <button type="submit"><i class="fas fa-save"></i> Save Configuration</button>
+                {% else %}
                 <button type="submit"><i class="fas fa-rocket"></i> Generate Custom Client</button>
+                {% endif %}
             </div>
         </div>
         <div style="text-align: center; margin: 30px 0;">
@@ -415,6 +424,18 @@
                 document.getElementById('id_platform').value = this.dataset.platform;
             });
         });
+        // Keep the highlighted platform icon in sync with the (possibly pre-filled) select.
+        (function syncPlatformIcon() {
+            const select = document.getElementById('id_platform');
+            if (!select) return;
+            const apply = () => {
+                document.querySelectorAll('.platform-icon').forEach(i => {
+                    i.classList.toggle('active', i.dataset.platform === select.value);
+                });
+            };
+            select.addEventListener('change', apply);
+            apply();
+        })();
         document.getElementById("{{ form.iconfile.id_for_label }}").addEventListener('change', function(event) {
             previewImage(event.target, 'icon-preview');
         });

@@ -33,6 +33,10 @@ SH_SECRET = os.environ.get('SH_SECRET', 'secret')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Root of the saved-config / build store (Docker volume mounted at
+# /opt/rdgen/builds; BASE_DIR is /opt/rdgen in the container).
+BUILDS_ROOT = os.environ.get('BUILDS_ROOT', os.path.join(BASE_DIR, 'builds'))
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG_ENV = os.environ.get("DEBUG", "False")

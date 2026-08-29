@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RustDesk Saved Configurations</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #000;
+            color: #e0e0e0;
+            margin: 0;
+            padding: 20px;
+        }
+        .wrap { max-width: 1200px; margin: 0 auto; }
+        .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+        h1 { color: #fff; font-size: 1.4em; margin: 0; }
+        a.button, button.button {
+            background-color: #0077ff; color: #fff; border: none;
+            padding: 10px 18px; border-radius: 4px; cursor: pointer;
+            text-decoration: none; font-size: 0.95em; display: inline-flex; align-items: center; gap: 6px;
+        }
+        a.button:hover, button.button:hover { background-color: #0066cc; }
+        table { width: 100%; border-collapse: collapse; background-color: #111; border-radius: 8px; overflow: hidden; }
+        th, td { text-align: left; padding: 14px 16px; border-bottom: 1px solid #222; }
+        th { color: #bbb; font-weight: 700; font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.5px; }
+        td .name { color: #4d9fff; font-weight: 700; }
+        td .app { color: #ddd; }
+        .muted { color: #777; }
+        .actions { white-space: nowrap; }
+        .actions form { display: inline; margin: 0; }
+        .actions a, .actions button {
+            background: none; border: none; color: #4d9fff; cursor: pointer;
+            font-size: 0.95em; padding: 0 6px; text-decoration: none;
+        }
+        .actions a:hover, .actions button:hover { text-decoration: underline; }
+        .actions .danger { color: #ff5c5c; }
+        .actions .disabled { color: #555; cursor: not-allowed; }
+        .status-badge { font-size: 0.85em; color: #ccc; }
+        .empty { text-align: center; padding: 60px 20px; color: #777; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div class="topbar">
+            <h1><i class="fas fa-cogs"></i> Saved Configurations</h1>
+            <a class="button" href="/configs/new"><i class="fas fa-plus"></i> Create</a>
+        </div>
+
+        {% if configs %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Application name</th>
+                    <th>Last build</th>
+                    <th>Note</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in configs %}
+                <tr>
+                    <td><span class="name">{{ c.name }}</span></td>
+                    <td><span class="app"><i class="fab fa-windows"></i> {{ c.appname }}</span></td>
+                    <td>
+                        {% if c.last_build %}
+                            <span class="status-badge">{{ c.last_build.status }}
+                                <span class="muted">· {{ c.last_build.timestamp }}</span></span>
+                        {% else %}
+                            <span class="muted">—</span>
+                        {% endif %}
+                    </td>
+                    <td>{% if c.note %}{{ c.note }}{% else %}<span class="muted">-</span>{% endif %}</td>
+                    <td class="actions">
+                        <a href="/configs/{{ c.id }}/edit"><i class="fas fa-pen"></i> Edit</a>
+                        <form method="post" action="/configs/{{ c.id }}/duplicate">
+                            <button type="submit"><i class="fas fa-copy"></i> Duplicate</button>
+                        </form>
+                        <form method="post" action="/configs/{{ c.id }}/delete"
+                              onsubmit="return confirm('Delete configuration &quot;{{ c.name }}&quot; and all its builds?');">
+                            <button type="submit" class="danger"><i class="fas fa-trash"></i> Delete</button>
+                        </form>
+                        <a class="disabled" title="Available once the build phase lands"><i class="fas fa-rocket"></i> Build</a>
+                        <a class="disabled" title="Available once the build phase lands"><i class="fas fa-clock-rotate-left"></i> History</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <div class="empty">
+            <p>No saved configurations yet.</p>
+            <a class="button" href="/configs/new"><i class="fas fa-plus"></i> Create your first configuration</a>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
