@@ -113,7 +113,8 @@
                               onsubmit="return confirm('Delete configuration &quot;{{ c.name }}&quot; and all its builds?');">
                             <button type="submit" class="danger"><i class="fas fa-trash"></i> Delete</button>
                         </form>
-                        <form method="post" action="/configs/{{ c.id }}/build">
+                        <form method="post" action="/configs/{{ c.id }}/build"
+                              onsubmit="return confirm('Start a build for &quot;{{ c.name }}&quot;?');">
                             <button type="submit"><i class="fas fa-rocket"></i> Build</button>
                         </form>
                         <button type="button" onclick="showHistory('{{ c.id }}', '{{ c.name|escapejs }}')"><i class="fas fa-clock-rotate-left"></i> History</button>
