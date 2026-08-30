@@ -404,15 +404,6 @@ jobs:
         with:
           prefix-key: ${{ matrix.job.os }}
 
-      # sccache caches compiler output per crate - including the workspace-member
-      # crates that rust-cache drops - so the many rustdesk crates that don't
-      # change between customer builds aren't recompiled every run. Backed by the
-      # GitHub Actions cache. CARGO_INCREMENTAL=0 (set by the rust-toolchain
-      # action) is what sccache needs. RUSTC_WRAPPER is enabled only on the two
-      # build steps below, so it never routes the toolchain's own rustc probes.
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
       - name: Setup vcpkg with Github Actions binary cache
         uses: lukka/run-vcpkg@v11
         with:
@@ -590,9 +581,6 @@ jobs:
             Invoke-WebRequest -Uri ${{ env.logolink_url }}/get_png?filename=${{ env.logolink_file }}"&"uuid=${{ env.logolink_uuid }} -OutFile ./flutter/assets/logo.png
 
       - name: Build rustdesk
-        env:
-          RUSTC_WRAPPER: sccache
-          SCCACHE_GHA_ENABLED: "true"
         run: |
           # Windows: build RustDesk
           python3 .\build.py --portable --hwcodec --flutter --vram --skip-portable-pack
@@ -727,9 +715,6 @@ jobs:
       - name: Build self-extracted executable
         shell: bash
         if: env.UPLOAD_ARTIFACT == 'true'
-        env:
-          RUSTC_WRAPPER: sccache
-          SCCACHE_GHA_ENABLED: "true"
         run: |
           mv "./rustdesk/rustdesk.exe" "./rustdesk/${{ env.appname }}.exe" || echo "rustdesk.exe"
           sed -i '/dpiAware/d' res/manifest.xml
@@ -739,12 +724,6 @@ jobs:
           popd
           mkdir -p ./SignOutput
           mv ./target/release/rustdesk-portable-packer.exe "./SignOutput/rustdesk.exe"
-
-      # Hit-rate visibility for the sccache trial. Non-fatal.
-      - name: sccache stats
-        if: always()
-        continue-on-error: true
-        run: sccache --show-stats
 
       - name: Add MSBuild to PATH
         uses: microsoft/setup-msbuild@v2
