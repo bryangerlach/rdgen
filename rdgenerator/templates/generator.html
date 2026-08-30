@@ -125,19 +125,16 @@
             max-height: 100px;
             margin-top: 10px;
         }
-        .save-load-section-container { /* New container for fixed positioning */
-            position: fixed;
-            top: 20px; /* Adjust as needed */
-            left: 20px; /* Adjust as needed */
-            background-color: #111; /* Match your section background */
-            padding: 0px;
-            border-radius: 8px;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            z-index: 100; /* Ensure it's above other content */
+        .config-actions-row {
+            max-width: 1200px;
+            margin: 0 auto 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .save-load-section {
-            display: none; /* Initially hidden */
-        }
+        .config-actions a { margin-left: 20px; }
+        .text-link { color: #4d9fff; text-decoration: none; cursor: pointer; }
+        .text-link:hover { text-decoration: underline; }
         .error {
             color: red;
         }
@@ -226,22 +223,23 @@
 <body>
     {% if save_mode %}
     <h1><i class="fas fa-cogs"></i> {% if config_id %}Edit{% else %}New{% endif %} Configuration</h1>
-    <div style="max-width:1200px;margin:0 auto 10px;"><a href="/configs" style="color:#4d9fff;text-decoration:none;"><i class="fas fa-arrow-left"></i> Back to configurations</a></div>
     <form id="myForm" action="/configs/save" method="post" enctype="multipart/form-data">
         <input type="hidden" name="config_id" value="{{ config_id }}">
     {% else %}
     <h1><i class="fas fa-cogs"></i> RustDesk Custom Client Builder</h1>
     <form id="myForm" action="/generator" method="post" enctype="multipart/form-data">
     {% endif %}
-        <div class="save-load-section-container">
-            <div class="section">
-                <h2 id="saveLoadTitle">Save/Load Configuration <i class="fas fa-chevron-down"></i></h2>  
-                <div class="save-load-section">  
-                    <button type="button" onclick="saveFormData()">Save Configuration</button>
-                    <input type="file" id="fileInput" style="display:none;" accept=".json">
-                    <button type="button" onclick="loadFormData()">Load Configuration</button>
-                </div>
-            </div>
+        <div class="config-actions-row">
+            {% if save_mode %}
+            <a href="/configs" class="text-link"><i class="fas fa-arrow-left"></i> Back to configurations</a>
+            {% else %}
+            <span></span>
+            {% endif %}
+            <span class="config-actions">
+                <a href="#" class="text-link" onclick="saveFormData(); return false;">Save Configuration</a>
+                <input type="file" id="fileInput" style="display:none;" accept=".json">
+                <a href="#" class="text-link" onclick="loadFormData(); return false;">Load Configuration</a>
+            </span>
         </div>
         {% if form.iconfile.errors %}
             <ul class="errorlist">
@@ -565,21 +563,6 @@
                 reader.readAsDataURL(input.files[0]);
             }
         }
-        const saveLoadTitle = document.getElementById("saveLoadTitle");
-        const saveLoadSection = document.querySelector(".save-load-section");
-
-        saveLoadTitle.addEventListener("click", () => {
-            if (!saveLoadSection.style.display || saveLoadSection.style.display === "none") {
-                saveLoadSection.style.display = "block";
-            } else {
-                saveLoadSection.style.display = "none";
-            }
-
-            const icon = saveLoadTitle.querySelector("i");
-            icon.classList.toggle("fa-chevron-down");
-            icon.classList.toggle("fa-chevron-up");
-        });
-
         async function saveFormData() {
             const filename = document.getElementById("{{ form.exename.id_for_label }}").value;
             if (!filename) {
