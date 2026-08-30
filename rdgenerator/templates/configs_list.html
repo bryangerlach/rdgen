@@ -91,12 +91,14 @@
                     <td><span class="app"><i class="fab fa-windows"></i> {{ c.appname }}</span></td>
                     <td>
                         {% if c.last_build %}
-                            {% if c.last_build.log_url %}
-                                <a class="status {{ c.last_build.status }}" href="{{ c.last_build.log_url }}" target="_blank" title="View workflow run">{{ c.last_build.status }}</a>
-                            {% else %}
-                                <span class="status {{ c.last_build.status }}">{{ c.last_build.status }}</span>
-                            {% endif %}
-                            <span class="muted">· {{ c.last_build.timestamp }}</span>
+                            <span class="last-build" data-config-id="{{ c.id }}" data-status="{{ c.last_build.status }}">
+                                {% if c.last_build.log_url %}
+                                    <a class="status {{ c.last_build.status }}" href="{{ c.last_build.log_url }}" target="_blank" title="View workflow run">{{ c.last_build.status }}</a>
+                                {% else %}
+                                    <span class="status {{ c.last_build.status }}">{{ c.last_build.status }}</span>
+                                {% endif %}
+                                <span class="muted">· {{ c.last_build.timestamp }}</span>
+                            </span>
                         {% else %}
                             <span class="muted">—</span>
                         {% endif %}
@@ -202,6 +204,49 @@
                     <tbody>${rows}</tbody>
                 </table>`;
         }
+
+        // Live-refresh in-progress last-build chips so they flip to
+        // success/failure without a hard refresh. Reuses /configs/<cfg>/history
+        // (which refreshes non-terminal builds from GitHub server-side).
+        (function livePollStatuses() {
+            const TERMINAL = new Set(['success', 'failure', 'cancelled', 'timed_out', 'skipped']);
+            const INTERVAL_MS = 15000;
+            let timer = null;
+
+            const pending = () => Array.from(document.querySelectorAll('.last-build'))
+                .filter(el => !TERMINAL.has(el.dataset.status));
+
+            function renderChip(cell, build) {
+                const cls = (build.status || 'unknown').replace(/[^a-z_]/gi, '');
+                const chip = build.log_url
+                    ? `<a class="status ${cls}" href="${esc(build.log_url)}" target="_blank" title="View workflow run">${esc(build.status)}</a>`
+                    : `<span class="status ${cls}">${esc(build.status)}</span>`;
+                const ts = build.timestamp ? ` <span class="muted">· ${esc(build.timestamp)}</span>` : '';
+                cell.innerHTML = chip + ts;
+                cell.dataset.status = build.status || 'unknown';
+            }
+
+            async function tick() {
+                if (document.hidden) return;
+                const cells = pending();
+                if (!cells.length) { clearInterval(timer); timer = null; return; }
+                await Promise.all(cells.map(async cell => {
+                    try {
+                        const resp = await fetch(`/configs/${cell.dataset.configId}/history`);
+                        if (!resp.ok) return;
+                        const data = await resp.json();
+                        const latest = (data.builds || [])[0];
+                        if (latest && latest.status !== cell.dataset.status) {
+                            renderChip(cell, latest);
+                        }
+                    } catch (e) { /* transient; try again next tick */ }
+                }));
+            }
+
+            if (pending().length) {
+                timer = setInterval(tick, INTERVAL_MS);
+            }
+        })();
     </script>
 </body>
 </html>
