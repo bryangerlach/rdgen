@@ -446,6 +446,20 @@
             previewImage(event.target, 'privacy-preview');
         });
 
+        // Show previews for images already saved on this config (edit mode):
+        // the hidden base64 fields are pre-filled by the server.
+        (function showSavedImagePreviews() {
+            [["{{ form.iconbase64.id_for_label }}", 'icon-preview'],
+             ["{{ form.logobase64.id_for_label }}", 'logo-preview'],
+             ["{{ form.privacybase64.id_for_label }}", 'privacy-preview']].forEach(([fieldId, previewId]) => {
+                const field = document.getElementById(fieldId);
+                const preview = document.getElementById(previewId);
+                if (field && preview && field.value && field.value.startsWith('data:image')) {
+                    preview.innerHTML = `<img src="${field.value}" style="max-width:300px;max-height:60px;">`;
+                }
+            });
+        })();
+
         document.getElementById("{{ form.hidecm.id_for_label }}").addEventListener('change',function() {
             if (this.checked) {
                 document.getElementById("passwordRequirement").style.display = 'block';

@@ -48,8 +48,16 @@ def config_edit(request, cfg):
     record = store.read_config(cfg)
     if record is None:
         raise Http404('Config not found')
+    initial = dict(record.get('params', {}))
+    # Surface persisted images as base64 so they display and round-trip on the
+    # next save (params intentionally omits the image blobs; the PNGs live in
+    # assets/). Without this the edit form shows blank image fields.
+    for _name, (_upload_field, b64_field) in store.ASSETS.items():
+        b64 = store.load_asset_b64(cfg, _name)
+        if b64:
+            initial[b64_field] = b64
     return render(request, 'generator.html', {
-        'form': GenerateForm(initial=record.get('params', {})),
+        'form': GenerateForm(initial=initial),
         'save_mode': True,
         'config_id': cfg,
         'note': record.get('note', ''),
