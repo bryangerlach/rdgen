@@ -31,8 +31,30 @@ def _persist_assets(cfg, form, request):
             store.save_asset_from_b64(cfg, name, b64)
 
 
+def _reconcile_last_build(row):
+    """Refresh a config row's last_build status from GitHub if it's non-terminal.
+
+    Mirrors the check config_history already does per-build: the landing page
+    otherwise only shows a stale 'in_progress' until something else (like
+    opening History) happens to poll GitHub and write the real status back.
+    """
+    last = row.get('last_build')
+    if not last:
+        return
+    build_uuid = last.get('build_uuid')
+    if not build_uuid or last.get('status') in TERMINAL_STATUSES:
+        return
+    info = _get_run_status(build_uuid)
+    if info.get('found'):
+        store.update_build_status(build_uuid, info['status'])
+        last['status'] = info['status']
+
+
 def configs_list(request):
-    return render(request, 'configs_list.html', {'configs': store.list_configs()})
+    configs = store.list_configs()
+    for row in configs:
+        _reconcile_last_build(row)
+    return render(request, 'configs_list.html', {'configs': configs})
 
 
 def config_new(request):
