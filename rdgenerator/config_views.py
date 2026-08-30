@@ -153,10 +153,7 @@ def config_history(request, cfg):
             if info.get('found'):
                 status = info['status']
                 store.update_build_status(build_uuid, status)
-        log_url = None
-        if run_id:
-            log_url = (f"https://github.com/{settings.GHUSER}/"
-                       f"{settings.REPONAME}/actions/runs/{run_id}")
+        log_url = store.github_run_url(run_id)
         builds.append({
             'timestamp': b.get('timestamp'),
             'status': status,
