@@ -1205,8 +1205,20 @@ jobs:
           sudo pip3 install git+https://github.com/rustdesk-org/appimage-builder.git
           pushd appimage
           sudo appimage-builder --skip-tests --recipe ./AppImageBuilder-${{ matrix.job.arch }}.yml
-          # recipe output is <name>-<version>-<arch>.AppImage (name = rustdesk or custom)
-          sudo mv ./*-${{ env.VERSION }}-${{ matrix.job.arch }}.AppImage ./${{ env.filename }}-${{ matrix.job.arch }}.AppImage
+          # recipe output is <name>-<version>-<arch>.AppImage, where <version> is the
+          # version stamped in AppImageBuilder-<arch>.yml -- NOT the workflow's VERSION
+          # input. They coincide for a tagged build, which is why globbing on VERSION
+          # worked there, but a master build passes VERSION=master while the recipe
+          # still carries a release number, so the glob matched nothing:
+          #   mv: cannot stat './*-master-x86_64.AppImage': No such file or directory
+          # Match on the arch suffix instead, and exclude the destination name so this
+          # can never try to move a file onto itself.
+          dest="${{ env.filename }}-${{ matrix.job.arch }}.AppImage"
+          src=$(find . -maxdepth 1 -name "*-${{ matrix.job.arch }}.AppImage" ! -name "$dest" | head -1)
+          if [ -z "$src" ]; then
+            echo "::error::no *-${{ matrix.job.arch }}.AppImage produced by appimage-builder"; ls -l; exit 1
+          fi
+          sudo mv "$src" "./$dest"
           popd
 
       - name: send file to rdgen server
