@@ -1224,8 +1224,15 @@ jobs:
         shell: bash
         run: |
           if [ "${{ env.appname }}" != "rustdesk" ] && [ "${{ env.appname }}" != "RustDesk" ]; then
+            # The recipe's script does `bsdtar -zxvf rustdesk.deb`, so after the sed
+            # below it looks for <appname>.deb -- the deb must end up under exactly
+            # that name. Renaming it to <filename>.deb only matched when appname and
+            # filename happened to be equal. The deb is moved out of the way first
+            # because `appimage/*` globs it too, and sed over an ar archive rewrites
+            # bytes inside it.
+            mv appimage/rustdesk.deb "${RUNNER_TEMP}/appimage-payload.deb"
             sed -ie "s|rustdesk|${{ env.appname }}|g" appimage/*
-            mv appimage/rustdesk.deb "appimage/${{ env.filename }}.deb" 2>/dev/null || true
+            mv "${RUNNER_TEMP}/appimage-payload.deb" "appimage/${{ env.appname }}.deb"
           fi
           sudo apt-get update -y
           sudo apt-get install -y libarchive-tools libfuse2
@@ -1340,9 +1347,18 @@ jobs:
             apt-get install -y git flatpak flatpak-builder
           run: |
             if [ "${{ env.appname }}" != "rustdesk" ] && [ "${{ env.appname }}" != "RustDesk" ]; then
+              # Same as the AppImage job: the manifest's source path is rewritten to
+              # <appname>.deb by the seds below, so the file must carry that name, and
+              # the deb is moved aside first because `flatpak/*` globs it too.
+              mv flatpak/rustdesk.deb /tmp/flatpak-payload.deb
               sed -ie "s|rustdesk|${{ env.appname }}|g" flatpak/*
               sed -ie "s|RustDesk|${{ env.appname }}|g" flatpak/*
-              mv flatpak/rustdesk.deb "flatpak/${{ env.filename }}.deb" 2>/dev/null || true
+              mv /tmp/flatpak-payload.deb "flatpak/${{ env.appname }}.deb"
+              # The manifest's other source is the metainfo file. Those same seds rewrote
+              # the REFERENCE to it without renaming the file on disk, so only the name
+              # is left to fix; its contents are already rewritten.
+              mv flatpak/com.rustdesk.RustDesk.metainfo.xml \
+                 "flatpak/com.${{ env.appname }}.${{ env.appname }}.metainfo.xml"
             fi
             # disable git safe.directory
             git config --global --add safe.directory "*"
