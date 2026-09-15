@@ -521,6 +521,25 @@ jobs:
                 sed -ie "s|\(cp .* \)tmpdeb/usr/share/rustdesk/files/systemd/|\1tmpdeb/usr/share/rustdesk/files/systemd/${{ env.appname }}.service|g" build.py
                 sed -ie "s|cp -r \(.\+\)\* \([^ ]\+\)/rustdesk|mv \1rustdesk \1${{ env.appname }}; cp -r \1\* \2/${{ env.appname }}|g" build.py
                 sed -ie "s|\(tmpdeb/[^ ]*\)rustdesk|\1${{ env.appname }}|g" build.py
+                # The rename above is greedy in \1, so it rewrites only the LAST
+                # "rustdesk" of each path and leaves build.py's globs pointing where the
+                # staging tree never exists. Three corrections, all confined to the drm
+                # code paths (assert_staged_binary_is_drm, measured_glibc_floor); the
+                # stock packaging path never executes those lines.
+                #
+                # 1. Directory component: the cp -r rename above stages into
+                #    tmpdeb/usr/share/<appname>/, but the globs kept usr/share/rustdesk/.
+                sed -ie "s|tmpdeb/usr/share/rustdesk/|tmpdeb/usr/share/${{ env.appname }}/|g" build.py
+                # 2. Library filename: build.py renames only the executable and copies the
+                #    bundle verbatim, so the cdylib stays librustdesk.so. The greedy sed
+                #    renamed it to lib<appname>.so, and that is the file carrying the drm
+                #    marker -- the thin Flutter launcher does not.
+                sed -ie "s|lib/lib${{ env.appname }}\.so|lib/librustdesk.so|g" build.py
+                # 3. libdrmtap must NOT be renamed: drmtap_dl.rs dlopens the absolute path
+                #    /usr/lib/rustdesk/libdrmtap.so.0, compiled into the binary and
+                #    rewritten by nothing here. Staging it under /usr/lib/<appname>/
+                #    packages and installs cleanly, then never loads on the user's machine.
+                sed -ie "s|tmpdeb/usr/lib/${{ env.appname }}|tmpdeb/usr/lib/rustdesk|g" build.py
                 sed -ie "s|Package: rustdesk|Package: ${{ env.appname }}|g" build.py
                 sed -ie "s|RustDesk|${{ env.appname }}|g" res/rustdesk.desktop
                 FILES=$(sed -ne "s~.*cp\s\(../\)\?\+\(.\+\.\(desktop\|service\)\)\s\+tmpdeb/.*~\2~p" build.py | sort | uniq)
@@ -1055,6 +1074,25 @@ jobs:
                 sed -ie "s|\(cp .* \)tmpdeb/usr/share/rustdesk/files/systemd/|\1tmpdeb/usr/share/rustdesk/files/systemd/${{ env.appname }}.service|g" build.py
                 sed -ie "s|cp -r \(.\+\)\* \([^ ]\+\)/rustdesk|mv \1rustdesk \1${{ env.appname }}; cp -r \1\* \2/${{ env.appname }}|g" build.py
                 sed -ie "s|\(tmpdeb/[^ ]*\)rustdesk|\1${{ env.appname }}|g" build.py
+                # The rename above is greedy in \1, so it rewrites only the LAST
+                # "rustdesk" of each path and leaves build.py's globs pointing where the
+                # staging tree never exists. Three corrections, all confined to the drm
+                # code paths (assert_staged_binary_is_drm, measured_glibc_floor); the
+                # stock packaging path never executes those lines.
+                #
+                # 1. Directory component: the cp -r rename above stages into
+                #    tmpdeb/usr/share/<appname>/, but the globs kept usr/share/rustdesk/.
+                sed -ie "s|tmpdeb/usr/share/rustdesk/|tmpdeb/usr/share/${{ env.appname }}/|g" build.py
+                # 2. Library filename: build.py renames only the executable and copies the
+                #    bundle verbatim, so the cdylib stays librustdesk.so. The greedy sed
+                #    renamed it to lib<appname>.so, and that is the file carrying the drm
+                #    marker -- the thin Flutter launcher does not.
+                sed -ie "s|lib/lib${{ env.appname }}\.so|lib/librustdesk.so|g" build.py
+                # 3. libdrmtap must NOT be renamed: drmtap_dl.rs dlopens the absolute path
+                #    /usr/lib/rustdesk/libdrmtap.so.0, compiled into the binary and
+                #    rewritten by nothing here. Staging it under /usr/lib/<appname>/
+                #    packages and installs cleanly, then never loads on the user's machine.
+                sed -ie "s|tmpdeb/usr/lib/${{ env.appname }}|tmpdeb/usr/lib/rustdesk|g" build.py
                 sed -ie "s|Package: rustdesk|Package: ${{ env.appname }}|g" build.py
                 sed -ie "s|RustDesk|${{ env.appname }}|g" res/rustdesk.desktop
                 FILES=$(sed -ne "s~.*cp\s\(../\)\?\+\(.\+\.\(desktop\|service\)\)\s\+tmpdeb/.*~\2~p" build.py | sort | uniq)
