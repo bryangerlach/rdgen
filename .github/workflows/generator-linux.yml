@@ -650,6 +650,16 @@ jobs:
     needs: [generate-bridge-linux, setup]
     name: build rustdesk linux drm x86_64
     runs-on: ubuntu-22.04
+    # Only rustdesk's master branch carries the drm/libdrmtap support this job
+    # drives: build.py at tag 1.4.9 has neither build_libdrmtap_so nor
+    # assert_staged_binary_is_drm, so a versioned build dies at
+    #   AttributeError: module 'b' has no attribute 'build_libdrmtap_so'
+    # One failed job marks the whole run failed, so a client that was in fact
+    # built got reported as a build failure. No other job consumes this one's
+    # artifacts (deploy needs only build-rustdesk-linux, build-flatpak and
+    # build-appimage). Gated the way bridge.yml already tells the two sources
+    # apart.
+    if: ${{ inputs.version == 'master' }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
