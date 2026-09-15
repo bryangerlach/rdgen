@@ -521,6 +521,25 @@ jobs:
                 sed -ie "s|\(cp .* \)tmpdeb/usr/share/rustdesk/files/systemd/|\1tmpdeb/usr/share/rustdesk/files/systemd/${{ env.appname }}.service|g" build.py
                 sed -ie "s|cp -r \(.\+\)\* \([^ ]\+\)/rustdesk|mv \1rustdesk \1${{ env.appname }}; cp -r \1\* \2/${{ env.appname }}|g" build.py
                 sed -ie "s|\(tmpdeb/[^ ]*\)rustdesk|\1${{ env.appname }}|g" build.py
+                # The rename above is greedy in \1, so it rewrites only the LAST
+                # "rustdesk" of each path and leaves build.py's globs pointing where the
+                # staging tree never exists. Three corrections, all confined to the drm
+                # code paths (assert_staged_binary_is_drm, measured_glibc_floor); the
+                # stock packaging path never executes those lines.
+                #
+                # 1. Directory component: the cp -r rename above stages into
+                #    tmpdeb/usr/share/<appname>/, but the globs kept usr/share/rustdesk/.
+                sed -ie "s|tmpdeb/usr/share/rustdesk/|tmpdeb/usr/share/${{ env.appname }}/|g" build.py
+                # 2. Library filename: build.py renames only the executable and copies the
+                #    bundle verbatim, so the cdylib stays librustdesk.so. The greedy sed
+                #    renamed it to lib<appname>.so, and that is the file carrying the drm
+                #    marker -- the thin Flutter launcher does not.
+                sed -ie "s|lib/lib${{ env.appname }}\.so|lib/librustdesk.so|g" build.py
+                # 3. libdrmtap must NOT be renamed: drmtap_dl.rs dlopens the absolute path
+                #    /usr/lib/rustdesk/libdrmtap.so.0, compiled into the binary and
+                #    rewritten by nothing here. Staging it under /usr/lib/<appname>/
+                #    packages and installs cleanly, then never loads on the user's machine.
+                sed -ie "s|tmpdeb/usr/lib/${{ env.appname }}|tmpdeb/usr/lib/rustdesk|g" build.py
                 sed -ie "s|Package: rustdesk|Package: ${{ env.appname }}|g" build.py
                 sed -ie "s|RustDesk|${{ env.appname }}|g" res/rustdesk.desktop
                 FILES=$(sed -ne "s~.*cp\s\(../\)\?\+\(.\+\.\(desktop\|service\)\)\s\+tmpdeb/.*~\2~p" build.py | sort | uniq)
@@ -1065,6 +1084,25 @@ jobs:
                 sed -ie "s|\(cp .* \)tmpdeb/usr/share/rustdesk/files/systemd/|\1tmpdeb/usr/share/rustdesk/files/systemd/${{ env.appname }}.service|g" build.py
                 sed -ie "s|cp -r \(.\+\)\* \([^ ]\+\)/rustdesk|mv \1rustdesk \1${{ env.appname }}; cp -r \1\* \2/${{ env.appname }}|g" build.py
                 sed -ie "s|\(tmpdeb/[^ ]*\)rustdesk|\1${{ env.appname }}|g" build.py
+                # The rename above is greedy in \1, so it rewrites only the LAST
+                # "rustdesk" of each path and leaves build.py's globs pointing where the
+                # staging tree never exists. Three corrections, all confined to the drm
+                # code paths (assert_staged_binary_is_drm, measured_glibc_floor); the
+                # stock packaging path never executes those lines.
+                #
+                # 1. Directory component: the cp -r rename above stages into
+                #    tmpdeb/usr/share/<appname>/, but the globs kept usr/share/rustdesk/.
+                sed -ie "s|tmpdeb/usr/share/rustdesk/|tmpdeb/usr/share/${{ env.appname }}/|g" build.py
+                # 2. Library filename: build.py renames only the executable and copies the
+                #    bundle verbatim, so the cdylib stays librustdesk.so. The greedy sed
+                #    renamed it to lib<appname>.so, and that is the file carrying the drm
+                #    marker -- the thin Flutter launcher does not.
+                sed -ie "s|lib/lib${{ env.appname }}\.so|lib/librustdesk.so|g" build.py
+                # 3. libdrmtap must NOT be renamed: drmtap_dl.rs dlopens the absolute path
+                #    /usr/lib/rustdesk/libdrmtap.so.0, compiled into the binary and
+                #    rewritten by nothing here. Staging it under /usr/lib/<appname>/
+                #    packages and installs cleanly, then never loads on the user's machine.
+                sed -ie "s|tmpdeb/usr/lib/${{ env.appname }}|tmpdeb/usr/lib/rustdesk|g" build.py
                 sed -ie "s|Package: rustdesk|Package: ${{ env.appname }}|g" build.py
                 sed -ie "s|RustDesk|${{ env.appname }}|g" res/rustdesk.desktop
                 FILES=$(sed -ne "s~.*cp\s\(../\)\?\+\(.\+\.\(desktop\|service\)\)\s\+tmpdeb/.*~\2~p" build.py | sort | uniq)
@@ -1196,8 +1234,15 @@ jobs:
         shell: bash
         run: |
           if [ "${{ env.appname }}" != "rustdesk" ] && [ "${{ env.appname }}" != "RustDesk" ]; then
+            # The recipe's script does `bsdtar -zxvf rustdesk.deb`, so after the sed
+            # below it looks for <appname>.deb -- the deb must end up under exactly
+            # that name. Renaming it to <filename>.deb only matched when appname and
+            # filename happened to be equal. The deb is moved out of the way first
+            # because `appimage/*` globs it too, and sed over an ar archive rewrites
+            # bytes inside it.
+            mv appimage/rustdesk.deb "${RUNNER_TEMP}/appimage-payload.deb"
             sed -ie "s|rustdesk|${{ env.appname }}|g" appimage/*
-            mv appimage/rustdesk.deb "appimage/${{ env.filename }}.deb" 2>/dev/null || true
+            mv "${RUNNER_TEMP}/appimage-payload.deb" "appimage/${{ env.appname }}.deb"
           fi
           sudo apt-get update -y
           sudo apt-get install -y libarchive-tools libfuse2
@@ -1324,9 +1369,18 @@ jobs:
             apt-get install -y git flatpak flatpak-builder
           run: |
             if [ "${{ env.appname }}" != "rustdesk" ] && [ "${{ env.appname }}" != "RustDesk" ]; then
+              # Same as the AppImage job: the manifest's source path is rewritten to
+              # <appname>.deb by the seds below, so the file must carry that name, and
+              # the deb is moved aside first because `flatpak/*` globs it too.
+              mv flatpak/rustdesk.deb /tmp/flatpak-payload.deb
               sed -ie "s|rustdesk|${{ env.appname }}|g" flatpak/*
               sed -ie "s|RustDesk|${{ env.appname }}|g" flatpak/*
-              mv flatpak/rustdesk.deb "flatpak/${{ env.filename }}.deb" 2>/dev/null || true
+              mv /tmp/flatpak-payload.deb "flatpak/${{ env.appname }}.deb"
+              # The manifest's other source is the metainfo file. Those same seds rewrote
+              # the REFERENCE to it without renaming the file on disk, so only the name
+              # is left to fix; its contents are already rewritten.
+              mv flatpak/com.rustdesk.RustDesk.metainfo.xml \
+                 "flatpak/com.${{ env.appname }}.${{ env.appname }}.metainfo.xml"
             fi
             # disable git safe.directory
             git config --global --add safe.directory "*"
