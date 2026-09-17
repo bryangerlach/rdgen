@@ -1368,19 +1368,31 @@ jobs:
             apt-get update -y
             apt-get install -y git flatpak flatpak-builder
           run: |
+            # Flatpak app IDs are reverse-DNS without spaces, and the two seds
+            # below would re-match an inserted name containing "RustDesk"
+            # (e.g. MyRustDesk -> MyMyRustDesk), so rewrite via placeholders
+            # and keep a space-free ID for the manifest and the bundle.
+            BUNDLE_ID="com.rustdesk.RustDesk"
             if [ "${{ env.appname }}" != "rustdesk" ] && [ "${{ env.appname }}" != "RustDesk" ]; then
               # Same as the AppImage job: the manifest's source path is rewritten to
               # <appname>.deb by the seds below, so the file must carry that name, and
               # the deb is moved aside first because `flatpak/*` globs it too.
               mv flatpak/rustdesk.deb /tmp/flatpak-payload.deb
-              sed -ie "s|rustdesk|${{ env.appname }}|g" flatpak/*
-              sed -ie "s|RustDesk|${{ env.appname }}|g" flatpak/*
+              sed -ie "s|rustdesk|@@RDGEN_FLAT_0@@|g" flatpak/*
+              sed -ie "s|RustDesk|@@RDGEN_FLAT_1@@|g" flatpak/*
+              sed -ie "s|@@RDGEN_FLAT_0@@|${{ env.appname }}|g" flatpak/*
+              sed -ie "s|@@RDGEN_FLAT_1@@|${{ env.appname }}|g" flatpak/*
               mv /tmp/flatpak-payload.deb "flatpak/${{ env.appname }}.deb"
               # The manifest's other source is the metainfo file. Those same seds rewrote
               # the REFERENCE to it without renaming the file on disk, so only the name
               # is left to fix; its contents are already rewritten.
+              FLAT="$(echo "${{ env.appname }}" | tr -d ' ')"
+              BUNDLE_ID="com.${FLAT}.${FLAT}"
+              sed -ie "s|\"id\": \"com[^\"]*\"|\"id\": \"${BUNDLE_ID}\"|" flatpak/rustdesk.json
+              sed -ie "s|\"path\": \"com[^\"]*\.metainfo\.xml\"|\"path\": \"${BUNDLE_ID}.metainfo.xml\"|" flatpak/rustdesk.json
+              sed -ie "s|<id>com[^<]*</id>|<id>${BUNDLE_ID}</id>|" flatpak/*.metainfo.xml
               mv flatpak/com.rustdesk.RustDesk.metainfo.xml \
-                 "flatpak/com.${{ env.appname }}.${{ env.appname }}.metainfo.xml"
+                 "flatpak/${BUNDLE_ID}.metainfo.xml"
             fi
             # disable git safe.directory
             git config --global --add safe.directory "*"
@@ -1391,7 +1403,7 @@ jobs:
             pushd flatpak
             git clone https://github.com/flathub/shared-modules.git --depth=1
             flatpak-builder --user --install-deps-from=flathub -y --force-clean --repo=repo ./build ./rustdesk.json
-            flatpak build-bundle ./repo ${{ env.filename }}-${{ matrix.job.arch }}.flatpak com.${{ env.appname }}.${{ env.appname }}
+            flatpak build-bundle ./repo ${{ env.filename }}-${{ matrix.job.arch }}.flatpak "$BUNDLE_ID"
 
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
