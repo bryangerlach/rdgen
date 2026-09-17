@@ -27,7 +27,7 @@ BOOL_FIELDS = [
 
 # Optional string fields (no validation needed, just accept as-is)
 OPTIONAL_STR_FIELDS = [
-    'sh_secret_field', 'serverIP', 'key', 'apiServer', 'urlLink', 'downloadLink',
+    'sh_secret_field', 'serverIP', 'serverPort', 'key', 'apiServer', 'urlLink', 'downloadLink',
     'appname', 'compname', 'androidappid', 'permanentPassword',
     'defaultManual', 'overrideManual',
     'iconbase64', 'logobase64', 'privacybase64',

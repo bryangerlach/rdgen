@@ -263,6 +263,55 @@ jobs:
           sed -i -e 's|Purslane Ltd.|${{ env.compname }}|' ./src/ui/index.tis
           sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./src/main.rs
           
+      - name: set server, serverPort, key, and apiserver
+        continue-on-error: true
+        shell: bash
+        env:
+          SERVER_DOMAIN: ${{ env.server }}
+          SERVER_PORT_INPUT: ${{ env.serverPort }}
+          SERVER_KEY: ${{ env.key }}
+          API_SERVER: ${{ env.apiServer }}
+        run: |
+          # Pass secrets via bash env vars to avoid quoting issues
+          if [ ! -f "./libs/hbb_common/src/config.rs" ]; then
+            echo "Error: config.rs not found!"
+            exit 1
+          fi
+          if [ ! -f "./src/common.rs" ]; then
+            echo "Error: common.rs not found!"
+            exit 1
+          fi
+
+          # Port must be a number; views.py defaults it to 21116
+          if ! [[ "$SERVER_PORT_INPUT" =~ ^[0-9]+$ ]]; then
+            echo "Error: serverPort must be a number, got: '$SERVER_PORT_INPUT'"
+            exit 1
+          fi
+
+          # Derive the port block from the rendezvous port
+          # (defaults 21116/21117/21118/21119)
+          SERVER_PORT=$SERVER_PORT_INPUT
+          RELAY_PORT=$((SERVER_PORT + 1))
+          WS_RENDEZVOUS_PORT=$((RELAY_PORT + 1))
+          WS_RELAY_PORT=$((WS_RENDEZVOUS_PORT + 1))
+
+          echo "Setting server: $SERVER_DOMAIN"
+          echo "Setting ports: $SERVER_PORT, $RELAY_PORT, $WS_RENDEZVOUS_PORT, $WS_RELAY_PORT"
+
+          sed -i -e "s|rs-ny.rustdesk.com|$SERVER_DOMAIN|" ./libs/hbb_common/src/config.rs
+
+          # Match on numeric value so the step is independent of defaults
+          sed -i -e "s|pub const RENDEZVOUS_PORT: i32 = [0-9][0-9]*;|pub const RENDEZVOUS_PORT: i32 = $SERVER_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const RELAY_PORT: i32 = [0-9][0-9]*;|pub const RELAY_PORT: i32 = $RELAY_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const WS_RENDEZVOUS_PORT: i32 = [0-9][0-9]*;|pub const WS_RENDEZVOUS_PORT: i32 = $WS_RENDEZVOUS_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const WS_RELAY_PORT: i32 = [0-9][0-9]*;|pub const WS_RELAY_PORT: i32 = $WS_RELAY_PORT;|" ./libs/hbb_common/src/config.rs
+
+          sed -i -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|$SERVER_KEY|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|https://admin.rustdesk.com|$API_SERVER|" ./src/common.rs
+
+          echo "=== Verification ==="
+          grep -nE "RENDEZVOUS_PORT|RELAY_PORT|WS_" ./libs/hbb_common/src/config.rs
+
       - name: allow custom.txt
         uses: nick-fields/retry@v3
         with:
@@ -271,14 +320,11 @@ jobs:
           retry_wait_seconds: 15
           shell: bash
           command: |
-            sed -i -e 's|rs-ny.rustdesk.com|${{ env.server }}|' ./libs/hbb_common/src/config.rs
-            sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.key }}|' ./libs/hbb_common/src/config.rs
             wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/allowCustom.py
             python allowCustom.py
             wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeSetupServerTip.diff
             git apply removeSetupServerTip.diff
             # sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
-            sed -i -e 's|https://admin.rustdesk.com|${{ env.apiServer }}|' ./src/common.rs
             echo -n '${{ env.custom }}' > ./custom_.txt
           
       - name: change url to custom
@@ -872,6 +918,55 @@ jobs:
           sed -i -e 's|Purslane Ltd.|${{ env.compname }}|' ./src/ui/index.tis
           sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./src/main.rs
           
+      - name: set server, serverPort, key, and apiserver
+        continue-on-error: true
+        shell: bash
+        env:
+          SERVER_DOMAIN: ${{ env.server }}
+          SERVER_PORT_INPUT: ${{ env.serverPort }}
+          SERVER_KEY: ${{ env.key }}
+          API_SERVER: ${{ env.apiServer }}
+        run: |
+          # Pass secrets via bash env vars to avoid quoting issues
+          if [ ! -f "./libs/hbb_common/src/config.rs" ]; then
+            echo "Error: config.rs not found!"
+            exit 1
+          fi
+          if [ ! -f "./src/common.rs" ]; then
+            echo "Error: common.rs not found!"
+            exit 1
+          fi
+
+          # Port must be a number; views.py defaults it to 21116
+          if ! [[ "$SERVER_PORT_INPUT" =~ ^[0-9]+$ ]]; then
+            echo "Error: serverPort must be a number, got: '$SERVER_PORT_INPUT'"
+            exit 1
+          fi
+
+          # Derive the port block from the rendezvous port
+          # (defaults 21116/21117/21118/21119)
+          SERVER_PORT=$SERVER_PORT_INPUT
+          RELAY_PORT=$((SERVER_PORT + 1))
+          WS_RENDEZVOUS_PORT=$((RELAY_PORT + 1))
+          WS_RELAY_PORT=$((WS_RENDEZVOUS_PORT + 1))
+
+          echo "Setting server: $SERVER_DOMAIN"
+          echo "Setting ports: $SERVER_PORT, $RELAY_PORT, $WS_RENDEZVOUS_PORT, $WS_RELAY_PORT"
+
+          sed -i -e "s|rs-ny.rustdesk.com|$SERVER_DOMAIN|" ./libs/hbb_common/src/config.rs
+
+          # Match on numeric value so the step is independent of defaults
+          sed -i -e "s|pub const RENDEZVOUS_PORT: i32 = [0-9][0-9]*;|pub const RENDEZVOUS_PORT: i32 = $SERVER_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const RELAY_PORT: i32 = [0-9][0-9]*;|pub const RELAY_PORT: i32 = $RELAY_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const WS_RENDEZVOUS_PORT: i32 = [0-9][0-9]*;|pub const WS_RENDEZVOUS_PORT: i32 = $WS_RENDEZVOUS_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|pub const WS_RELAY_PORT: i32 = [0-9][0-9]*;|pub const WS_RELAY_PORT: i32 = $WS_RELAY_PORT;|" ./libs/hbb_common/src/config.rs
+
+          sed -i -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|$SERVER_KEY|" ./libs/hbb_common/src/config.rs
+          sed -i -e "s|https://admin.rustdesk.com|$API_SERVER|" ./src/common.rs
+
+          echo "=== Verification ==="
+          grep -nE "RENDEZVOUS_PORT|RELAY_PORT|WS_" ./libs/hbb_common/src/config.rs
+
       - name: allow custom.txt
         uses: nick-fields/retry@v3
         with:
@@ -880,13 +975,10 @@ jobs:
           retry_wait_seconds: 15
           shell: bash
           command: |
-            sed -i -e 's|rs-ny.rustdesk.com|${{ env.server }}|' ./libs/hbb_common/src/config.rs
-            sed -i -e 's|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|${{ env.key }}|' ./libs/hbb_common/src/config.rs
             wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/allowCustom.py
             python allowCustom.py
             wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeSetupServerTip.diff
             git apply removeSetupServerTip.diff
-            sed -i -e 's|https://admin.rustdesk.com|${{ env.apiServer }}|' ./src/common.rs
             echo -n '${{ env.custom }}' > ./custom_.txt
           
       - name: change url to custom
