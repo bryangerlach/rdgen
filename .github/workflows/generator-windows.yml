@@ -183,7 +183,7 @@ jobs:
           fi
           find ./src/lang -name "*.rs" -exec sed -i -e 's|RustDesk|${{ env.appname }}|' {} \;
           sed -i -e 's|RustDesk|${{ env.appname }}|' ./res/msi/Package/License.rtf
-
+          sed -i -e '/pub static ref APP_NAME/s/"RustDesk"/"${{ env.appname }}"/' ./libs/hbb_common/src/config.rs
       - name: fix registry if appname has a space
         if: contains(env.appname, ' ')
         continue-on-error: true
