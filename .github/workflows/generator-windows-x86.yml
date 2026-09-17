@@ -192,7 +192,7 @@ jobs:
           sed -i -e 's|Homepage: https://rustdesk.com|Homepage: ${{ env.urlLink }}|' ./build.py
           sed -i -e "s|<div .link .custom-event url='https://rustdesk.com'>|<div .link .custom-event url='${{ env.urlLink }}'>|" ./src/ui/index.tis
           sed -i -e "s|<div .link .custom-event url='https://rustdesk.com/privacy.html'>|<div .link .custom-event url='${{ env.urlLink }}/privacy.html'>|" ./src/ui/index.tis
-          sed -i -e "s|https://rustdesk.com/|${{env.urlLink }}|" ./res/setup.nsi
+          if [ -f ./res/setup.nsi ]; then sed -i -e "s|https://rustdesk.com/|${{env.urlLink }}|" ./res/setup.nsi; else echo "res/setup.nsi not present in this rustdesk version, skipped"; fi
 
       - name: change download link to custom
         if: env.downloadLink != 'https://rustdesk.com/download'
@@ -224,16 +224,15 @@ jobs:
             git apply allowCustom.diff
 
       - name: Install LLVM and Clang
-        uses: rustdesk-org/install-llvm-action-32bit@master
+        uses: KyleMayes/install-llvm-action@v1
         with:
           version: ${{ env.LLVM_VERSION }}
 
       - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@v1
-        with:
-          toolchain: nightly-2023-10-13-${{ matrix.job.target }} # must use nightly here, because of abi_thiscall feature required
-          targets: ${{ matrix.job.target }}
-          components: "rustfmt"
+        run: |
+          rustup toolchain install nightly-2023-10-13-x86_64-pc-windows-msvc --component rustfmt --profile minimal --no-self-update
+          rustup target add ${{ matrix.job.target }} --toolchain nightly-2023-10-13-x86_64-pc-windows-msvc
+          rustup default nightly-2023-10-13-x86_64-pc-windows-msvc
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -250,19 +249,28 @@ jobs:
         env:
           VCPKG_DEFAULT_HOST_TRIPLET: ${{ matrix.job.vcpkg-triplet }}
         run: |
-          if ! $VCPKG_ROOT/vcpkg \
-            install \
-            --triplet ${{ matrix.job.vcpkg-triplet }} \
-            --x-install-root="$VCPKG_ROOT/installed"; then
-            find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
-              echo "$_1:"
-              echo "======"
-              cat "$_1"
-              echo "======"
-              echo ""
-            done
-            exit 1
-          fi
+          for attempt in 1 2 3; do
+            echo "vcpkg install attempt $attempt/3"
+            if $VCPKG_ROOT/vcpkg \
+              install \
+              --triplet ${{ matrix.job.vcpkg-triplet }} \
+              --x-install-root="$VCPKG_ROOT/installed"; then
+              break
+            fi
+            echo "vcpkg install failed (attempt $attempt/3)"
+            if [ "$attempt" -lt 3 ]; then
+              sleep 15
+            else
+              find "${VCPKG_ROOT}/" -name "*.log" | while read -r _1; do
+                echo "$_1:"
+                echo "======"
+                cat "$_1"
+                echo "======"
+                echo ""
+              done
+              exit 1
+            fi
+          done
           head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-${{ matrix.job.vcpkg-triplet }}-rel-out.log" || true
         shell: bash
 
@@ -329,9 +337,49 @@ jobs:
           python3 res/inline-sciter.py
           # Patch sciter x86
           sed -i 's/branch = "dyn"/branch = "dyn_x86"/g' ./Cargo.toml
-          cargo build --features inline,vram,hwcodec --release --bins
+          # libsodium-sys 0.2.7 build.rs selects its prebuilt lib via HOST cfg
+          # (target_pointer_width): cross host-x64 -> target-x86 wrongly links
+          # msvc/x64 (LNK2019 x132). SODIUM_LIB_DIR is global and breaks the
+          # host build-script link, so scope the Win32 lib to the i686 target
+          # via per-target rustflags (-L from rustflags precedes build-script
+          # paths in the link line; host keeps the default x64 prebuilt).
+          # NOTE: rustdesk ships .cargo/config.toml with its own
+          # [target.i686-pc-windows-msvc] rustflags -> MERGE into the array.
+          cargo fetch
+          SODIUM_WIN32_DIR="$(ls -d "$HOME"/.cargo/registry/src/*/libsodium-sys-0.2.7/msvc/Win32/Release/v142 | head -n 1)"
+          echo "SODIUM_WIN32_DIR=$SODIUM_WIN32_DIR"
+          ls "$SODIUM_WIN32_DIR/libsodium.lib"
+          mkdir -p .cargo
+          SODIUM_WIN32_NATIVE="$(cygpath -m "$SODIUM_WIN32_DIR")"
+          SODIUM_WIN32_NATIVE="$SODIUM_WIN32_NATIVE" python3 - <<'PYEOF'
+          import os, re
+          native = os.environ['SODIUM_WIN32_NATIVE']
+          entry = f'"-L", "native={native}"'
+          p = '.cargo/config.toml'
+          s = open(p, encoding='utf-8').read() if os.path.exists(p) else ''
+          if f'native={native}' in s:
+              print('sodium Win32 -L already configured')
+          else:
+              m = re.search(r'\[target\.i686-pc-windows-msvc\](.*?)(?=^\[|\Z)', s, re.S | re.M)
+              if m:
+                  sec = m.group(1)
+                  rm = re.search(r'rustflags\s*=\s*\[(.*?)\]', sec, re.S)
+                  if rm:
+                      inner = rm.group(1).rstrip()
+                      sep = '' if inner.strip() == '' else ', '
+                      sec = sec[:rm.start(1)] + inner + sep + entry + sec[rm.end(1):]
+                  else:
+                      sec = sec + f'rustflags = [{entry}]\n'
+                  s = s[:m.start(1)] + sec + s[m.end(1):]
+              else:
+                  s += f'\n[target.i686-pc-windows-msvc]\nrustflags = [{entry}]\n'
+              open(p, 'w', encoding='utf-8').write(s)
+              print('sodium Win32 -L injected')
+          PYEOF
+          cat .cargo/config.toml
+          cargo build --target ${{ matrix.job.target }} --features inline,vram,hwcodec --release --bins
           mkdir -p ./Release
-          mv ./target/release/rustdesk.exe ./Release/rustdesk.exe
+          mv ./target/${{ matrix.job.target }}/release/rustdesk.exe ./Release/rustdesk.exe
           curl -LJ -o ./Release/sciter.dll https://github.com/c-smile/sciter-sdk/raw/master/bin.win/x32/sciter.dll
           echo "output_folder=./Release" >> $GITHUB_OUTPUT
           curl -LJ -o ./usbmmidd_v2.zip https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip
@@ -400,8 +448,13 @@ jobs:
           pip3 install -r requirements.txt
           python3 ./generate.py -f ../../Release/ -o . -e "../../Release/${{ env.appname }}.exe"
           popd
+          # rustdesk-portable-packer is a separate workspace member (root
+          # `cargo build --bins` does not build it) and it embeds
+          # libs/portable/app_metadata.toml via include_bytes!, so compile it
+          # explicitly AFTER generate.py creates that file.
+          cargo build --target ${{ matrix.job.target }} --package rustdesk-portable-packer --release
           mkdir -p ./SignOutput
-          mv ./target/release/rustdesk-portable-packer.exe "./SignOutput/rustdesk.exe"
+          mv ./target/${{ matrix.job.target }}/release/rustdesk-portable-packer.exe "./SignOutput/rustdesk.exe"
 
       - name: zip exe
         continue-on-error: true
