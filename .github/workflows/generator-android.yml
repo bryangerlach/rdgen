@@ -567,7 +567,26 @@ jobs:
           keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
         env:
           # override default build-tools version (29.0.3) -- optional
-          BUILD_TOOLS_VERSION: "30.0.2"
+          # 30.0.2 no longer ships on ubuntu-24.04 runners (34.0.0 does);
+          # missing dir made the sign step fail silently via continue-on-error
+          BUILD_TOOLS_VERSION: "34.0.0"
+
+      - name: Prefer signed APK when available
+        shell: bash
+        run: |
+          # sign-android-release writes *-signed.apk next to the input but the
+          # send steps below use the plain name: promote the signed file so the
+          # server always receives the best available signature (release key
+          # when present, debug fallback otherwise). Server-side names unchanged.
+          plain="./signed-apk/${{ env.filename }}-${{ matrix.job.arch }}.apk"
+          signed="./signed-apk/${{ env.filename }}-${{ matrix.job.arch }}-signed.apk"
+          if [ -f "$signed" ]; then
+            mv "$signed" "$plain"
+            echo "Using release-signed APK: $plain"
+          else
+            echo "No signed APK found, keeping unsigned/debug APK: $plain"
+          fi
+          ls -l ./signed-apk/
 
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
