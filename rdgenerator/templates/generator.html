@@ -559,6 +559,11 @@
             const formDataObj = new FormData(form);  // Create a FormData object
 
             formDataObj.forEach((value, key) => {
+                // File objects stringify to {} and poison saved configs;
+                // fresh uploads are read as base64 separately below.
+                if (value instanceof File) {
+                    return;
+                }
                 formData[key] = value; // Add each key/value pair to the formData object.
             });
 
@@ -611,6 +616,13 @@
                 }
             }
 
+            // Carry over unknown fields from the loaded config (see loadFormData).
+            for (const k in carriedUnknownFields) {
+                if (!formData.hasOwnProperty(k)) {
+                    formData[k] = carriedUnknownFields[k];
+                }
+            }
+
             const jsonData = JSON.stringify(formData, null, 2);
             const blob = new Blob([jsonData], { type: "application/json" });
             const url = URL.createObjectURL(blob);
@@ -634,6 +646,29 @@
         }
 
 
+        // Keys from a loaded config that have no matching form field are
+        // carried over verbatim on save (e.g. cycleMonitor from another
+        // form version) instead of being silently dropped.
+        let carriedUnknownFields = {};
+
+        function showLoadWarnings(keys) {
+            let banner = document.getElementById('loadWarnings');
+            if (!keys.length) {
+                if (banner) {
+                    banner.remove();
+                }
+                return;
+            }
+            if (!banner) {
+                banner = document.createElement('div');
+                banner.id = 'loadWarnings';
+                banner.style.cssText = 'background:#5a1a1a;color:#ffd7d7;padding:8px 12px;margin-bottom:10px;border:1px solid #a33;border-radius:4px;';
+                const form = document.getElementById('myForm');
+                form.parentNode.insertBefore(banner, form);
+            }
+            banner.textContent = 'Warning: ignored invalid (non-text) values for: ' + keys.join(', ') + '. They were dropped.';
+        }
+
         function loadFormData() {
             const fileInput = document.getElementById("fileInput");
             fileInput.click();
@@ -645,12 +680,25 @@
                     reader.onload = (e) => {
                         try {
                             const formData = JSON.parse(e.target.result);
+                            carriedUnknownFields = {};
+                            const skippedKeys = [];
                             for (const key in formData) {
                                 // More robust selector: checks for name OR id
                                 const elements = document.querySelectorAll(`[name="${key}"], [id="${key}"]`);
 
                                 if (elements.length > 0) { // Check if any element(s) exist
                                     elements.forEach(element => { // Loop through all matching elements (important for radios)
+                                        // Skip fossil values from old saves: objects (e.g. File
+                                        // serialized as {}) coerce to "[object Object]" on
+                                        // assignment, and that literal string is never legit.
+                                        if ((typeof formData[key] === 'object' && formData[key] !== null) ||
+                                            formData[key] === '[object Object]') {
+                                            console.warn('loadFormData: ignoring invalid value for key "' + key + '"');
+                                            if (!skippedKeys.includes(key)) {
+                                                skippedKeys.push(key);
+                                            }
+                                            return;
+                                        }
                                         if (element.type === 'radio') {
                                             if (element.value === String(formData[key])) { // Compare value, crucial for radios
                                                 element.checked = true;
@@ -677,8 +725,16 @@
                                             document.getElementById('privacy-preview').innerHTML = `<img src="${formData[key]}" style="max-width: 300px; max-height: 60px;">`;
                                         }
                                     });
+                                } else {
+                                    // Unknown key (e.g. from another form version): carry
+                                    // scalars over so a later save does not lose them.
+                                    const v = formData[key];
+                                    if (['string', 'number', 'boolean'].includes(typeof v)) {
+                                        carriedUnknownFields[key] = v;
+                                    }
                                 }
                             }
+                            showLoadWarnings(skippedKeys);
                         } catch (error) {
                             alert("Error loading data. Invalid JSON file.");
                         }
