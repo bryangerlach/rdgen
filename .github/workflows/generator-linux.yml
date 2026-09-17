@@ -787,6 +787,16 @@ jobs:
           repository: rustdesk/rustdesk
           submodules: recursive
 
+      - name: Detect DRM support
+        run: |
+          if grep -q "'--drm'" build.py; then
+            echo "DRM_SUPPORTED=true" >> $GITHUB_ENV
+            echo "::notice::DRM/KMS capture backend detected in this RustDesk version"
+          else
+            echo "DRM_SUPPORTED=false" >> $GITHUB_ENV
+            echo "::notice::DRM/KMS capture backend not present in this RustDesk version, skipping DRM build"
+          fi
+
       - name: Set Swap Space
         uses: pierotofy/set-swap-space@master
         with:
@@ -847,6 +857,7 @@ jobs:
         shell: bash
 
       - name: Build libdrmtap
+        if: env.DRM_SUPPORTED == 'true'
         run: |
           sudo apt-get install -y meson ninja-build pkg-config \
             libdrm-dev libegl1-mesa-dev libgles2-mesa-dev
@@ -856,7 +867,13 @@ jobs:
           b = importlib.util.module_from_spec(spec)
           sys.argv = ["build.py"]
           spec.loader.exec_module(b)
-          print(f"::notice::built {b.build_libdrmtap_so()}")
+          # build_libdrmtap_so() exists only in recent RustDesk sources
+          # (master); tagged 1.4.x releases don't have it - skip gracefully
+          # instead of failing the whole drm job.
+          if hasattr(b, 'build_libdrmtap_so'):
+              print(f"::notice::built {b.build_libdrmtap_so()}")
+          else:
+              print("::notice::build_libdrmtap_so not present in this RustDesk version, skipping")
           PY
         shell: bash
 
@@ -1056,6 +1073,7 @@ jobs:
           path: ./
 
       - uses: rustdesk-org/run-on-arch-action@d3fcfbb632b84cf7f6bc772bfaaa2c2f4f8789a8
+        if: env.DRM_SUPPORTED == 'true'
         name: Build rustdesk
         id: vcpkg
         with:
@@ -1218,7 +1236,7 @@ jobs:
             done
 
       - name: send file to rdgen server
-        if: ${{ env.rdgen == 'true' }}
+        if: ${{ env.rdgen == 'true' && env.DRM_SUPPORTED == 'true' }}
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 10
@@ -1229,7 +1247,7 @@ jobs:
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./output/${{ env.filename }}-unattended-wayland-x86_64.deb" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client
 
       - name: send file to api server
-        if: ${{ env.rdgen == 'false' }}
+        if: ${{ env.rdgen == 'false' && env.DRM_SUPPORTED == 'true' }}
         uses: nick-fields/retry@v3
         with:
           timeout_minutes: 10
@@ -1241,7 +1259,7 @@ jobs:
 
       - name: Upload deb
         uses: actions/upload-artifact@master
-        if: env.UPLOAD_ARTIFACT == 'true'
+        if: ${{ env.UPLOAD_ARTIFACT == 'true' && env.DRM_SUPPORTED == 'true' }}
         with:
           name: ${{ env.filename }}-unattended-wayland-x86_64.deb
           path: ./output/${{ env.filename }}-unattended-wayland-x86_64.deb
