@@ -634,7 +634,7 @@ jobs:
         if: ${{ env.rdgen == 'true' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 10
           max_attempts: 3
           retry_wait_seconds: 15
           shell: bash
@@ -648,7 +648,7 @@ jobs:
         if: ${{ env.rdgen == 'false' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 10
           max_attempts: 3
           retry_wait_seconds: 15
           shell: bash
@@ -1121,7 +1121,7 @@ jobs:
         if: ${{ env.rdgen == 'true' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 10
           max_attempts: 3
           retry_wait_seconds: 15
           shell: bash
@@ -1132,7 +1132,7 @@ jobs:
         if: ${{ env.rdgen == 'false' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 10
           max_attempts: 3
           retry_wait_seconds: 15
           shell: bash
@@ -1270,7 +1270,7 @@ jobs:
         if: ${{ env.rdgen == 'true' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 10
           max_attempts: 3
           retry_wait_seconds: 15
           shell: bash
@@ -1281,7 +1281,7 @@ jobs:
         if: ${{ env.rdgen == 'false' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 10
           max_attempts: 3
           retry_wait_seconds: 15
           shell: bash
@@ -1397,7 +1397,7 @@ jobs:
         if: ${{ env.rdgen == 'true' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 10
           max_attempts: 3
           retry_wait_seconds: 15
           shell: bash
@@ -1408,7 +1408,7 @@ jobs:
         if: ${{ env.rdgen == 'false' }}
         uses: nick-fields/retry@v3
         with:
-          timeout_minutes: 5
+          timeout_minutes: 10
           max_attempts: 3
           retry_wait_seconds: 15
           shell: bash
