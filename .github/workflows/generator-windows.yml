@@ -301,6 +301,14 @@ jobs:
           grep -nE "RENDEZVOUS_PORT|RELAY_PORT|WS_" ./libs/hbb_common/src/config.rs
           # ./flutter/pubspec.yaml
           #sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
+      
+      - name: Print suffixes
+        run: |
+          echo "server suffix: ${{ env.server || '-8' }}"
+          echo "key suffix: ${{ env.key || '-8' }}"
+          echo "apiServer suffix: ${{ env.apiServer || '-8' }}"
+
+        
 
       - name: allow custom.txt
         uses: nick-fields/retry@v3
