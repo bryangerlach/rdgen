@@ -448,12 +448,15 @@ jobs:
             mv ./res/64x64.png ./res/64x64.png.bak
             mv ./res/128x128.png ./res/128x128.png.bak
             mv ./res/128x128@2x.png ./res/128x128@2x.png.bak
-            magick ./res/icon.png -define icon:auto-resize=256,64,48,32,16 ./res/icon.ico
-            cp ./res/icon.ico ./res/tray-icon.ico
+            # every size Windows asks for at 100-200% scaling, so it never rescales on the fly
+            magick ./res/icon.png -define icon:auto-resize=256,128,96,64,48,40,32,24,20,16 ./res/icon.ico
+            # the tray decodes the largest entry of this file, so keep it a single 32x32 like upstream
+            # (a 256 entry here is shrunk to 16-24 px by the shell and comes out jagged)
+            magick ./res/icon.png -resize 32x32 ./res/tray-icon.ico
             magick ./res/icon.png -resize 32x32 ./res/32x32.png
             magick ./res/icon.png -resize 64x64 ./res/64x64.png
             magick ./res/icon.png -resize 128x128 ./res/128x128.png
-            magick ./res/128x128.png -resize 200% ./res/128x128@2x.png
+            magick ./res/icon.png -resize 256x256 ./res/128x128@2x.png
 
 
       - name: ui.rs icon
@@ -516,6 +519,9 @@ jobs:
           #flutter pub upgrade win32
           flutter pub get
           flutter pub run flutter_launcher_icons
+          # flutter_launcher_icons writes app_icon.ico with a single 48x48 image, which the taskbar,
+          # the exe and the shortcuts then rescale; use the multi-size icon instead
+          cp ../res/icon.ico ./windows/runner/resources/app_icon.ico
           cd ..
 
       - name: Checkout printer-adapter crate
@@ -581,6 +587,11 @@ jobs:
         run: |
           mv ./rustdesk/data/flutter_assets/assets/icon.svg ./rustdesk/data/flutter_assets/assets/icon.svg.bak
           magick ./res/icon.png ./rustdesk/data/flutter_assets/assets/icon.svg
+          # assets/icon.png is loaded before icon.svg (which above only wraps the 256 px png) by the
+          # title bar (16 px), the connection manager (30 px) and the tray; 48 px serves all three
+          # with at most a 3x downscale. icon.ico is picked up for the shortcuts.
+          magick ./res/icon.png -resize 48x48 ./rustdesk/data/flutter_assets/assets/icon.png
+          cp ./res/icon.ico ./rustdesk/data/flutter_assets/assets/icon.ico
 
       - name: logo stuff
         if: ${{ env.logolink_url != 'false' }}
