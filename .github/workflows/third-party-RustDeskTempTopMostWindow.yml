@@ -3,6 +3,10 @@ name: build RustDeskTempTopMostWindow
 on:
   workflow_call:
     inputs:
+        rustdesk-version:
+            description: 'RustDesk version, used to select a compatible privacy DLL'
+            type: string
+            default: ''
         upload-artifact:
           type: boolean
           default: true
@@ -67,7 +71,8 @@ jobs:
         run: |
           git clone https://github.com/rustdesk-org/RustDeskTempTopMostWindow RustDeskTempTopMostWindow
 
-        # Build. commit 53b548a5398624f7149a382000397993542ad796 is tag v0.3
+        # RustDesk 1.4.9 requires the show/hide messages absent from v0.3.
+        # Match its official workflow; retain the existing pin for other versions.
       - name: Build the project
         uses: nick-fields/retry@v3
         with:
@@ -76,11 +81,13 @@ jobs:
           retry_wait_seconds: 15
           shell: pwsh
           command: |
-            cd RustDeskTempTopMostWindow && git checkout 53b548a5398624f7149a382000397993542ad796
+            cd RustDeskTempTopMostWindow
+            git checkout ${{ inputs.rustdesk-version == '1.4.9' && 'ecd8d6a139eee76845ea66423fb739af450fda90' || '53b548a5398624f7149a382000397993542ad796' }}
+            if ($LASTEXITCODE -ne 0) { throw "Failed to checkout privacy DLL source" }
             if ($env:privacylink_url-ne "false") {
               Invoke-WebRequest -Uri ${{ env.privacylink_url }}/get_png?filename=${{ env.privacylink_file }}"&"uuid=${{ env.privacylink_uuid }} -OutFile privacy.png
-              Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/privacyScreen.py -OutFile privacyScreen.py
-              python privacyScreen.py
+              python "$env:GITHUB_WORKSPACE/.github/patches/privacyScreen.py"
+              if ($LASTEXITCODE -ne 0) { throw "Failed to convert privacy image" }
               rm ./WindowInjection/img.cpp
               mv img.cpp ./WindowInjection/img.cpp
             }
