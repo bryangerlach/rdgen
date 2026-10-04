@@ -399,23 +399,29 @@ jobs:
       # native side. Both the server (Kotlin FFI.startServer) and the FFI init
       # (Dart main_init) pass "" by default; embed the base64 config there so
       # read_custom_client() runs and presets the password + permissions.
+      # 1.5.0 added a homePath argument before the config, so match both
+      # signatures and fail the job rather than ship a client without its config.
       - name: Embed custom config for Android
         shell: bash
         run: |
           KOTLIN=./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/MainService.kt
           DART=./flutter/lib/models/native_model.dart
-          sed -i "s|FFI.startServer(configPath, \"\")|FFI.startServer(configPath, \"${{ env.custom }}\")|" "$KOTLIN"
+          sed -i -E "s|FFI\.startServer\(configPath, (homePath, )?\"\"\)|FFI.startServer(configPath, \1\"${{ env.custom }}\")|" "$KOTLIN"
           sed -i "s|customClientConfig: '',|customClientConfig: '${{ env.custom }}',|" "$DART"
           echo "--- verify ---"
           grep -n 'FFI.startServer(configPath' "$KOTLIN" | sed 's/\(.\{80\}\).*/\1.../'
           grep -n 'customClientConfig:' "$DART" | sed 's/\(.\{80\}\).*/\1.../'
+          grep -qF "\"${{ env.custom }}\")" "$KOTLIN" || { echo "::error::custom config not embedded in $KOTLIN"; exit 1; }
+          grep -qF "customClientConfig: '${{ env.custom }}'," "$DART" || { echo "::error::custom config not embedded in $DART"; exit 1; }
 
       - name: change app id to custom
         if: env.androidappid != 'com.carriez.flutter_hbb'
         continue-on-error: true
         shell: bash
         run: |
-          sed -i -e 's|com.carriez.flutter_hbb|${{ env.androidappid }}|' ./flutter/android/app/build.gradle
+          # only the applicationId: 1.5.0 also declares namespace "com.carriez.flutter_hbb",
+          # which must keep matching the Kotlin package / manifest (R class) or the build fails
+          sed -i -e 's|applicationId "com.carriez.flutter_hbb"|applicationId "${{ env.androidappid }}"|' ./flutter/android/app/build.gradle
 
       - name: change download link to custom
         if: env.downloadLink != 'https://rustdesk.com/download'
