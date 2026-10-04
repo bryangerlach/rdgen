@@ -173,6 +173,15 @@ jobs:
           name: bridge-artifact
           path: ./
 
+      # vcpkg 2026.07.29's SPDX scripts require CMake 4.3+, but this ARM64 runner selects CMake 3.31.
+      - name: Install CMake for vcpkg on Linux ARM64
+        if: matrix.job.arch == 'aarch64' && env.UPLOAD_ARTIFACT == 'true'
+        run: |
+          python3 -m pip install --user "cmake==${VCPKG_CMAKE_VERSION}"
+          user_base="$(python3 -m site --user-base)"
+          "${user_base}/bin/cmake" --version
+          echo "${user_base}/bin" >> "${GITHUB_PATH}"
+
       - name: Setup vcpkg with Github Actions binary cache
         if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
         uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11
