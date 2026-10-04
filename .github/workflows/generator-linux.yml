@@ -1137,6 +1137,7 @@ jobs:
             pushd /workspace
             export VCPKG_ROOT=/opt/artifacts/vcpkg
             export DRMTAP_PREBUILT_DIR=/workspace/third_party/libdrmtap/build-pkg
+            export DRMTAP_ALLOW_UNPINNED=1
             FEATURES=$(python3 ./build.py --flutter --drm --hwcodec --unix-file-copy-paste --print-features)
             for want in drm drm-wake; do
               case ",$FEATURES," in
