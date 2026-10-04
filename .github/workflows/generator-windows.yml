@@ -349,7 +349,7 @@ jobs:
                           f.write(t.replace(old, new, 1))
                       print("Successfully patched Rust printer port")
                   else:
-                      print("Warning: get_port_name() signature not matched in Rust source")
+                      print("::warning::get_port_name() signature not matched in Rust source")
 
           # patch C++ MSI Custom Action
           cpp = os.path.join(src, "res", "msi", "CustomActions", "RemotePrinter.cpp")
@@ -361,12 +361,19 @@ jobs:
               else:
                   pattern = r'(RD_PRINTER_PORT\s*=\s*)L"[^"]*"'
                   new_t, n = re.subn(pattern, lambda m: m.group(1) + 'L"%s"' % literal, t, count=1)
+                  if n == 0:  # 1.5.0+: the port is named at runtime from [ProductName]
+                      a = 'const LPCWCH RD_PRINTER_PORT = printerName.c_str();'
+                      b = 'checkDeleteLocalPort(printerName.c_str());'
+                      if a in t and b in t:
+                          new_t = t.replace(a, 'const LPCWCH RD_PRINTER_PORT = L"%s";' % literal, 1)
+                          new_t = new_t.replace(b, 'checkDeleteLocalPort(L"%s");' % literal, 1)
+                          n = 1
                   if n == 1:
                       with open(cpp, "w", encoding="utf-8") as f:
                           f.write(new_t)
                       print("Successfully patched MSI CustomAction printer port")
                   else:
-                      print("Warning: RD_PRINTER_PORT not matched in RemotePrinter.cpp")
+                      print("::warning::RD_PRINTER_PORT not matched in RemotePrinter.cpp")
 
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v1
