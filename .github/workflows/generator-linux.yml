@@ -738,7 +738,6 @@ jobs:
     # artifacts (deploy needs only build-rustdesk-linux, build-flatpak and
     # build-appimage). Gated the way bridge.yml already tells the two sources
     # apart.
-    if: ${{ inputs.version == 'master' }}
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
