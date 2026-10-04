@@ -192,7 +192,7 @@ jobs:
 
           # Update slogan - About in nl.rs
           sed -i '' -e 's/("Slogan_tip", "Ontwikkeld met het hart voor deze chaotische wereld!")/("Slogan_tip", "Powered by ${{ env.appname }}")/' ./src/lang/nl.rs
-          sed -i '' -e 's/("Your Desktop", "Uw Bureaublad")/("Your Desktop", "Uw ${{ env.appname }}")/' ./src/lang/nl.rs
+          sed -i '' -e 's/("Your Desktop", "Uw [Bb]ureaublad")/("Your Desktop", "Uw ${{ env.appname }}")/' ./src/lang/nl.rs
           sed -i '' -e 's/("About RustDesk", "Over RustDesk")/("About RustDesk", "Over ${{ env.appname }}")/' ./src/lang/nl.rs
           sed -i '' -e 's/("About", "Over")/("About", "Over ${{ env.appname }}")/' ./src/lang/nl.rs
             
@@ -494,7 +494,8 @@ jobs:
         if: env.removeNewVersionNotif == 'true'
         run: | 
           sed -i -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
-          sed -i '/let (request, url) =/,/Ok(())/{/Ok(())/!d}' ./src/common.rs
+          # BSD sed: -i needs an explicit (empty) suffix and a ';' before '}'
+          sed -i '' -e '/let (request, url) =/,/Ok(())/{/Ok(())/!d;}' ./src/common.rs
 
       - name: Restore bridge files
         uses: actions/download-artifact@master
@@ -549,8 +550,10 @@ jobs:
         run: |
           APP=$(find ./flutter/build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n 1)
           echo "App bundle: $APP"
-          echo -n '${{ env.custom }}' > "$APP/Contents/MacOS/custom_.txt"
-          ls -l "$APP/Contents/MacOS/custom_.txt"
+          # load_custom_client() reads <exe dir>/../Resources/custom_.txt on macOS
+          echo -n '${{ env.custom }}' > "$APP/Contents/Resources/custom_.txt"
+          ls -l "$APP/Contents/Resources/custom_.txt"
+          [ -s "$APP/Contents/Resources/custom_.txt" ] || { echo "::error::custom config not embedded"; exit 1; }
       
       - name: Install rcodesign tool
         if: env.MACOS_P12_BASE64 != null
@@ -603,7 +606,10 @@ jobs:
         continue-on-error: false
         shell: bash
         run: |
-          ASSETS_DIR="build/macos/Build/Products/Release/RustDesk.app/Contents/Frameworks/App.framework/Versions/Current/Resources/flutter_assets/assets"
+          # the built app (OFIBER.app) under flutter/, re-signed with --deep afterwards
+          APP=$(find ./flutter/build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n 1)
+          ASSETS_DIR="$APP/Contents/Frameworks/App.framework/Versions/Current/Resources/flutter_assets/assets"
+          [ -n "$APP" ] && [ -d "$ASSETS_DIR" ] || echo "::warning::flutter assets dir not found: $ASSETS_DIR"
           mkdir -p "$ASSETS_DIR"
           curl -k -L --tlsv1.2 --proto =https --ssl-reqd \
             -H "User-Agent: Mozilla/5.0" \
