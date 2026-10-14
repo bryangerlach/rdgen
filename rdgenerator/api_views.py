@@ -76,6 +76,10 @@ def validate_generate_params(data):
     # Boolean fields
     for field in BOOL_FIELDS:
         value = data.get(field, False)
+        
+        if isinstance(value, str) and value.lower() == 'on':
+            value = True
+            
         if not isinstance(value, bool):
             errors[field] = 'Must be a boolean value.'
         else:
