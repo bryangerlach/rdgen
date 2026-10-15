@@ -238,16 +238,18 @@ def api_status(request):
     if platform:
         response_data['platform'] = platform
 
-    # When generation completed successfully, expose the filenames that were
-    # actually uploaded/saved for this run so API consumers can download them.
-    if result.get('status') == 'success' and _UUID_RE.match(uuid_val or ''):
-        created_files = []
+    # Expose the filenames that were actually uploaded/saved for this run so
+    # API consumers can download them. The directory is scanned regardless of
+    # the run status so that any (possibly partial) files are still reported,
+    # including on failure.
+    created_files = []
+    if _UUID_RE.match(uuid_val or ''):
         run_dir = os.path.join('exe', uuid_val)
         if os.path.isdir(run_dir):
             for name in sorted(os.listdir(run_dir)):
                 full_path = os.path.join(run_dir, name)
                 if os.path.isfile(full_path):
                     created_files.append(name)
-        response_data['files'] = created_files
+    response_data['files'] = created_files
 
     return JsonResponse(response_data)
