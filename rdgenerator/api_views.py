@@ -1,8 +1,9 @@
 import json
+import os
 import re
 from django.http import JsonResponse
 from django.conf import settings as _settings
-from .views import generate_custom_client, _get_run_status
+from .views import generate_custom_client, _get_run_status, _UUID_RE
 
 
 # Field validation constraints (mirrored from GenerateForm)
@@ -151,6 +152,8 @@ def api_status(request):
 
     Checks the generation status for a given UUID.
     Returns JSON with status, uuid, and optional log_url/filename/platform.
+    On a success status, also returns "files": a list of filenames that were
+    created/saved for this run.
     """
     if request.method != 'GET':
         return JsonResponse({"success": False, "error": "Method not allowed. Use GET."}, status=405)
@@ -176,5 +179,17 @@ def api_status(request):
         response_data['filename'] = filename
     if platform:
         response_data['platform'] = platform
+
+    # When generation completed successfully, expose the filenames that were
+    # actually uploaded/saved for this run so API consumers can download them.
+    if result.get('status') == 'success' and _UUID_RE.match(uuid_val or ''):
+        created_files = []
+        run_dir = os.path.join('exe', uuid_val)
+        if os.path.isdir(run_dir):
+            for name in sorted(os.listdir(run_dir)):
+                full_path = os.path.join(run_dir, name)
+                if os.path.isfile(full_path):
+                    created_files.append(name)
+        response_data['files'] = created_files
 
     return JsonResponse(response_data)
