@@ -856,7 +856,6 @@ jobs:
         shell: bash
 
       - name: Build libdrmtap
-        if: env.DRM_SUPPORTED == 'true'
         run: |
           sudo apt-get install -y meson ninja-build pkg-config \
             libdrm-dev libegl1-mesa-dev libgles2-mesa-dev
