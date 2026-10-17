@@ -188,6 +188,24 @@ jobs:
           repository: rustdesk/rustdesk
           submodules: recursive
 
+      - name: Patch Android Manifest and Gradle for AGP 8+
+        run: |
+          MANIFEST_PATH="flutter/android/app/src/main/AndroidManifest.xml"
+          BUILD_GRADLE_PATH="flutter/android/app/build.gradle"
+
+          echo "Removing package attribute from AndroidManifest.xml..."
+          # This uses sed to safely strip out package="com.carriez.flutter_hbb"
+          sed -i 's/package="com.carriez.flutter_hbb"//g' "$MANIFEST_PATH"
+
+          echo "Ensuring namespace is set in build.gradle..."
+          # This checks if 'namespace' already exists; if not, it injects it under the android { block
+          if ! grep -q "namespace" "$BUILD_GRADLE_PATH"; then
+            sed -i '/android {/a \    namespace "com.carriez.flutter_hbb"' "$BUILD_GRADLE_PATH"
+            echo "Namespace injected successfully."
+          else
+            echo "Namespace already exists in build.gradle."
+          fi
+
       - name: Install flutter
         uses: subosito/flutter-action@v2
         with:
