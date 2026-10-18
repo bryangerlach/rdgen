@@ -2,8 +2,9 @@
 """
 allow_custom_update.py
 
-Apply the RustDesk client source changes needed for fully self-hosted auto-updates.
-Run this against a checkout of the RustDesk client (desktop) source tree.
+Apply the RustDesk client source changes needed for fully self-hosted auto-updates,
+including support for build-metadata versions like 1.5.0+20 (where
+1.5.0+20 > 1.5.0+10 > 1.5.0).
 
 Usage:
     python scripts/allow_custom_update.py \
@@ -13,8 +14,10 @@ Usage:
 
 What it changes:
   1. libs/hbb_common/src/lib.rs        - hardcoded update check URL -> your server
+                                         get_version_number() -> support +build metadata
   2. src/common.rs                     - relax github.com-only host check in
                                          release_id_from_update_url()
+                                         display_version_from_release_id() -> accept +build
   3. src/updater/artifact.rs           - relax github.com-only host check in
                                          get_update_download_file_from_url()
   4. src/update_metadata.rs            - add your ed25519 public key to
@@ -71,6 +74,131 @@ def change_update_url(root: Path, update_url: str) -> None:
     if not changed:
         print(f"[WARN] {target}: could not find UPDATE_URL pattern to replace")
 
+
+def modify_get_version_number(root: Path) -> None:
+    """Update get_version_number() in hbb_common to order +build metadata.
+
+    Makes 1.5.0+20 > 1.5.0+10 > 1.5.0 while leaving plain versions unchanged.
+    """
+    target = root / "libs" / "hbb_common" / "src" / "lib.rs"
+    if not target.exists():
+        print(f"[WARN] {target} not found, skipping get_version_number change")
+        return
+
+    text = target.read_text(encoding="utf-8")
+
+    old_block = '''// Support 1.1.10-1, the number after - is a patch version.
+pub fn get_version_number(v: &str) -> i64 {
+    let mut versions = v.split('-');
+
+    let mut n = 0;
+
+    // The first part is the version number.
+    // 1.1.10 -> 1001100, 1.2.3 -> 1001030, multiple the last number by 10
+    // to leave space for patch version.
+    if let Some(v) = versions.next() {
+        let mut last = 0;
+        for x in v.split('.') {
+            last = x.parse::<i64>().unwrap_or(0);
+            n = n * 1000 + last;
+        }
+        n -= last;
+        n += last * 10;
+    }
+
+    if let Some(v) = versions.next() {
+        n += v.parse::<i64>().unwrap_or(0);
+    }
+
+    // Ignore the rest
+
+    n
+}'''
+
+    new_block = '''// Support 1.1.10-1, the number after - is a patch version.
+// Build metadata after `+` (e.g. 1.5.0+20) is an ordered build number, so
+// 1.5.0+20 > 1.5.0+10 > 1.5.0.
+pub fn get_version_number(v: &str) -> i64 {
+    let mut versions = v.split('-');
+
+    let mut n = 0;
+
+    // The first part is the version number.
+    // 1.1.10 -> 1001100, 1.2.3 -> 1001030, multiple the last number by 10
+    // to leave space for patch version.
+    if let Some(v) = versions.next() {
+        let (base, build) = v.split_once('+').unwrap_or((v, ""));
+        let mut last = 0;
+        for x in base.split('.') {
+            last = x.parse::<i64>().unwrap_or(0);
+            n = n * 1000 + last;
+        }
+        n -= last;
+        n += last * 10;
+
+        if !build.is_empty() {
+            n += build.parse::<i64>().unwrap_or(0);
+        }
+    }
+
+    if let Some(v) = versions.next() {
+        n += v.parse::<i64>().unwrap_or(0);
+    }
+
+    // Ignore the rest
+
+    n
+}'''
+
+    count = text.count(old_block)
+    if count > 0:
+        new_text = text.replace(old_block, new_block)
+        target.write_text(new_text, encoding="utf-8")
+        print(f"[OK] {target}: updated get_version_number() for +build metadata ({count} substitution(s))")
+    else:
+        print(f"[WARN] {target}: could not find get_version_number() block to replace")
+
+
+def modify_get_version_number_tests(root: Path) -> None:
+    """Add +build metadata assertions to test_get_version_number in hbb_common."""
+    target = root / "libs" / "hbb_common" / "src" / "lib.rs"
+    if not target.exists():
+        print(f"[WARN] {target} not found, skipping test change")
+        return
+
+    text = target.read_text(encoding="utf-8")
+
+    old_block = '''    #[test]
+    fn test_get_version_number() {
+        assert_eq!(get_version_number("1.1.10"), 1001100);
+        assert_eq!(get_version_number("1.1.10-1"), 1001101);
+        assert_eq!(get_version_number("1.1.11-1"), 1001111);
+        assert_eq!(get_version_number("1.2.3"), 1002030);
+    }'''
+
+    new_block = '''    #[test]
+    fn test_get_version_number() {
+        assert_eq!(get_version_number("1.1.10"), 1001100);
+        assert_eq!(get_version_number("1.1.10-1"), 1001101);
+        assert_eq!(get_version_number("1.1.11-1"), 1001111);
+        assert_eq!(get_version_number("1.2.3"), 1002030);
+        // Build metadata is an ordered build number.
+        assert_eq!(get_version_number("1.5.0+20"), 1005020);
+        assert_eq!(get_version_number("1.5.0+10"), 1005010);
+        assert_eq!(get_version_number("1.5.0"), 1005000);
+        assert!(get_version_number("1.5.0+20") > get_version_number("1.5.0+10"));
+        assert!(get_version_number("1.5.0+10") > get_version_number("1.5.0"));
+    }'''
+
+    count = text.count(old_block)
+    if count > 0:
+        new_text = text.replace(old_block, new_block)
+        target.write_text(new_text, encoding="utf-8")
+        print(f"[OK] {target}: updated test_get_version_number() ({count} substitution(s))")
+    else:
+        print(f"[WARN] {target}: could not find test_get_version_number() block to replace")
+
+
 def relax_common_rs(root: Path) -> None:
     """Relax the github.com-only host restriction in src/common.rs."""
     target = root / "src" / "common.rs"
@@ -90,6 +218,115 @@ def relax_common_rs(root: Path) -> None:
         print(f"[OK] {target}: relaxed host check ({count} substitution(s))")
     else:
         print(f"[WARN] {target}: could not find line to relax:\n  {old_line}")
+
+
+def modify_display_version_from_release_id(root: Path) -> None:
+    """Update display_version_from_release_id() in src/common.rs to accept +build.
+
+    Validates only the 3 numeric base segments but returns the full string
+    (including build metadata) so get_version_number() can order builds.
+    """
+    target = root / "src" / "common.rs"
+    if not target.exists():
+        print(f"[WARN] {target} not found, skipping display_version_from_release_id change")
+        return
+
+    text = target.read_text(encoding="utf-8")
+
+    old_block = '''pub(crate) fn display_version_from_release_id(release_id: &str) -> ResultType<String> {
+    let display_version = release_id.strip_prefix('v').unwrap_or(release_id);
+    let segments = display_version.split('.').collect::<Vec<_>>();
+    if segments.len() != 3
+        || segments.iter().any(|segment| {
+            segment.is_empty()
+                || !segment.chars().all(|c| c.is_ascii_digit())
+                || segment.parse::<u16>().is_err()
+        })
+    {
+        bail!("Release id is not a stable display version: {}", release_id);
+    }
+    if get_version_number(display_version) <= 0 {
+        bail!("Release id has invalid display version: {}", release_id);
+    }
+    Ok(display_version.to_owned())
+}'''
+
+    new_block = '''pub(crate) fn display_version_from_release_id(release_id: &str) -> ResultType<String> {
+    let display_version = release_id.strip_prefix('v').unwrap_or(release_id);
+    // Validate the base version (3 dot-separated numeric components). Build
+    // metadata after `+` (e.g. 1.5.0+20) is allowed and kept in the returned
+    // version so get_version_number() can order builds.
+    let (base, _build) = display_version.split_once('+').unwrap_or((display_version, ""));
+    let segments = base.split('.').collect::<Vec<_>>();
+    if segments.len() != 3
+        || segments.iter().any(|segment| {
+            segment.is_empty()
+                || !segment.chars().all(|c| c.is_ascii_digit())
+                || segment.parse::<u16>().is_err()
+        })
+    {
+        bail!("Release id is not a stable display version: {}", release_id);
+    }
+    if get_version_number(display_version) <= 0 {
+        bail!("Release id has invalid display version: {}", release_id);
+    }
+    Ok(display_version.to_owned())
+}'''
+
+    count = text.count(old_block)
+    if count > 0:
+        new_text = text.replace(old_block, new_block)
+        target.write_text(new_text, encoding="utf-8")
+        print(f"[OK] {target}: updated display_version_from_release_id() for +build metadata ({count} substitution(s))")
+    else:
+        print(f"[WARN] {target}: could not find display_version_from_release_id() block to replace")
+
+
+def modify_display_version_from_release_id_tests(root: Path) -> None:
+    """Add +build acceptance assertion to parses_stable_rustdesk_release_url in src/common.rs."""
+    target = root / "src" / "common.rs"
+    if not target.exists():
+        print(f"[WARN] {target} not found, skipping test change")
+        return
+
+    text = target.read_text(encoding="utf-8")
+
+    old_block = '''    #[test]
+    fn parses_stable_rustdesk_release_url() {
+        let update_url = "https://github.com/rustdesk/rustdesk/releases/tag/v1.4.6";
+
+        assert_eq!(release_id_from_update_url(update_url).unwrap(), "v1.4.6");
+        assert_eq!(display_version_from_release_id("v1.4.6").unwrap(), "1.4.6");
+        assert_eq!(
+            release_id_from_update_url(&format!("{update_url}/")).unwrap(),
+            "v1.4.6"
+        );
+    }'''
+
+    new_block = '''    #[test]
+    fn parses_stable_rustdesk_release_url() {
+        let update_url = "https://github.com/rustdesk/rustdesk/releases/tag/v1.4.6";
+
+        assert_eq!(release_id_from_update_url(update_url).unwrap(), "v1.4.6");
+        assert_eq!(display_version_from_release_id("v1.4.6").unwrap(), "1.4.6");
+        assert_eq!(
+            release_id_from_update_url(&format!("{update_url}/")).unwrap(),
+            "v1.4.6"
+        );
+        // Build metadata after `+` is accepted and preserved.
+        assert_eq!(
+            display_version_from_release_id("v1.5.0+20").unwrap(),
+            "1.5.0+20"
+        );
+    }'''
+
+    count = text.count(old_block)
+    if count > 0:
+        new_text = text.replace(old_block, new_block)
+        target.write_text(new_text, encoding="utf-8")
+        print(f"[OK] {target}: updated parses_stable_rustdesk_release_url() ({count} substitution(s))")
+    else:
+        print(f"[WARN] {target}: could not find parses_stable_rustdesk_release_url() block to replace")
 
 
 def relax_artifact_rs(root: Path) -> None:
@@ -224,7 +461,11 @@ def main() -> None:
     print()
 
     change_update_url(root, args.update_url)
+    modify_get_version_number(root)
+    modify_get_version_number_tests(root)
     relax_common_rs(root)
+    modify_display_version_from_release_id(root)
+    modify_display_version_from_release_id_tests(root)
     relax_artifact_rs(root)
     if args.ed25519_public_key:
         add_trusted_key(root, args.ed25519_public_key)
