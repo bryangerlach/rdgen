@@ -34,6 +34,7 @@ OPTIONAL_STR_FIELDS = [
     'defaultManual', 'overrideManual',
     'iconbase64', 'logobase64', 'privacybase64',
     'update_public_key',
+    'app_version',
 ]
 
 

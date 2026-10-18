@@ -47,6 +47,10 @@ def generate_custom_client(params, full_url):
     selfhosted = (_settings.SH_SECRET == user_secret)
     platform = params.get('platform', 'windows')
     version = params.get('version', '1.4.9')
+    app_version = params.get('app_version', '')
+    # app_version overrides the version string embedded in the built client
+    # without changing the git tag that version selects. If left empty, the
+    # RustDesk build's own version (from the checked-out tag) is used.
     delayFix = params.get('delayFix', True)
     xOffline = params.get('xOffline', False)
     hidecm = params.get('hidecm', False)
@@ -318,6 +322,7 @@ def generate_custom_client(params, full_url):
         "ref":_settings.GHBRANCH,
         "inputs":{
             "version":version,
+            "app_version":app_version,
             "zip_url":zip_url
         },
         "return_run_details": True

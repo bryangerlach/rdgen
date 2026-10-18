@@ -121,6 +121,14 @@ jobs:
             repository: rustdesk/rustdesk
             submodules: recursive
 
+      - name: Set custom app version
+        continue-on-error: true
+        if: ${{ env.app_version != '' }}
+        shell: bash
+        run: |
+          sed -i -e 's|^version = ".*"|version = "${{ env.app_version }}"|' ./Cargo.toml
+          grep '^version = ' ./Cargo.toml
+
       - name: Apply allow_custom_update patch
         continue-on-error: true
         if: ${{ env.update_public_key != '' }}
