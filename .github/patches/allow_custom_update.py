@@ -8,7 +8,7 @@ Run this against a checkout of the RustDesk client (desktop) source tree.
 Usage:
     python scripts/allow_custom_update.py \
         --rustdesk-root /path/to/rustdesk \
-        --update-url https://updates.example.com/version/latest \
+        --update-url https://updates.example.com/api/version/latest \
         --ed25519-public-key "<base64-or-hex-public-key>"
 
 What it changes:
@@ -36,7 +36,7 @@ import re
 import sys
 from pathlib import Path
 
-DEFAULT_UPDATE_URL = "https://updates.example.com/version/latest"
+DEFAULT_UPDATE_URL = "https://updates.example.com/api/version/latest"
 
 
 def replace_in_file(path: Path, pattern: str, replacement: str, count: int = 1) -> int:
