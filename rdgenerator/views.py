@@ -51,6 +51,12 @@ def generate_custom_client(params, full_url):
     xOffline = params.get('xOffline', False)
     hidecm = params.get('hidecm', False)
     removeNewVersionNotif = params.get('removeNewVersionNotif', False)
+    update_public_key = params.get('update_public_key', '')
+    # If a custom update public key is provided, force the "remove new version
+    # notification" behaviour off so the client keeps checking for updates via
+    # the self-hosted update URL instead.
+    if update_public_key:
+        removeNewVersionNotif = False
     server = params.get('serverIP', '')
     serverPort = params.get('serverPort', '')
     key = params.get('key', '')
@@ -281,6 +287,7 @@ def generate_custom_client(params, full_url):
         "rdgen":'true',
         "xOffline": 'true' if xOffline else 'false',
         "removeNewVersionNotif": 'true' if removeNewVersionNotif else 'false',
+        "update_public_key": update_public_key,
         "compname": compname,
         "androidappid":androidappid,
         "filename":filename

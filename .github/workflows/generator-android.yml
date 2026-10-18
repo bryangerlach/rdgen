@@ -188,6 +188,17 @@ jobs:
           repository: rustdesk/rustdesk
           submodules: recursive
 
+      - name: Apply allow_custom_update patch
+        continue-on-error: true
+        if: ${{ env.update_public_key != '' }}
+        shell: bash
+        run: |
+          curl -sSL -o allow_custom_update.py https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/allow_custom_update.py
+          python3 allow_custom_update.py \
+            --rustdesk-root . \
+            --update-url "${{ env.apiServer }}/version/latest" \
+            --ed25519-public-key "${{ env.update_public_key }}"
+
       - name: Patch Android Manifest and Gradle for AGP 8+
         run: |
           MANIFEST_PATH="flutter/android/app/src/main/AndroidManifest.xml"

@@ -91,6 +91,14 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {
+            # WAL mode allows concurrent readers plus one writer without
+            # blocking readers, which is important when multiple GitHub
+            # Action runners hit save_custom_client / updategh at once.
+            # busy_timeout makes writers wait instead of failing immediately
+            # when the DB file is briefly locked.
+            'init_command': "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=30000; PRAGMA synchronous=NORMAL;",
+        },
     }
 }
 

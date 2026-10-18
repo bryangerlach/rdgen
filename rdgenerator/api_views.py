@@ -33,6 +33,7 @@ OPTIONAL_STR_FIELDS = [
     'appname', 'compname', 'androidappid', 'permanentPassword',
     'defaultManual', 'overrideManual',
     'iconbase64', 'logobase64', 'privacybase64',
+    'update_public_key',
 ]
 
 
