@@ -13,6 +13,11 @@ on:
         required: true
         default: ''
         type: string
+      app_version:
+        description: 'custom app version string (overrides build version)'
+        required: false
+        default: ''
+        type: string
 
 
 env:
