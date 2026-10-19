@@ -32,7 +32,7 @@ env:
   # for arm64 linux because official Dart SDK does not work
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  VCPKG_BINARY_SOURCES: "clear"
   # vcpkg version: 2024.07.12
   VCPKG_COMMIT_ID: "9e593bb18ea69cc5095e012465dcd675a822ed0d"
   ARMV7_VCPKG_COMMIT_ID: "6f29f12e82a8293156836ad81cc9bf5af41fe836"
@@ -250,7 +250,15 @@ jobs:
           ndk-version: ${{ env.NDK_VERSION }}
           add-to-path: true
 
-      - name: Setup vcpkg with Github Actions binary cache
+      - name: Restore vcpkg installed cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/artifacts/vcpkg/installed
+          key: vcpkg-android-${{ env.VCPKG_COMMIT_ID }}-${{ matrix.job.target }}
+          restore-keys: |
+            vcpkg-android-${{ env.VCPKG_COMMIT_ID }}-
+
+      - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: /opt/artifacts/vcpkg
@@ -285,6 +293,13 @@ jobs:
           fi
         shell: bash
 
+      - name: Save vcpkg installed cache
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: /opt/artifacts/vcpkg/installed
+          key: vcpkg-android-${{ env.VCPKG_COMMIT_ID }}-${{ matrix.job.target }}
+        
       - name: Restore bridge files
         uses: actions/download-artifact@master
         with:

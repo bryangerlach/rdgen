@@ -32,7 +32,7 @@ env:
   # for arm64 linux because official Dart SDK does not work
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
-  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+  VCPKG_BINARY_SOURCES: "clear"
   # vcpkg version: 2024.07.12
   VCPKG_COMMIT_ID: "9e593bb18ea69cc5095e012465dcd675a822ed0d"
   VCPKG_CMAKE_VERSION: "4.3.0"
@@ -208,7 +208,16 @@ jobs:
           "${user_base}/bin/cmake" --version
           echo "${user_base}/bin" >> "${GITHUB_PATH}"
 
-      - name: Setup vcpkg with Github Actions binary cache
+      - name: Restore vcpkg installed cache
+        if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
+        uses: actions/cache@v4
+        with:
+          path: /opt/artifacts/vcpkg/installed
+          key: vcpkg-linux-${{ env.VCPKG_COMMIT_ID }}-${{ matrix.job.vcpkg-triplet }}
+          restore-keys: |
+            vcpkg-linux-${{ env.VCPKG_COMMIT_ID }}-
+
+      - name: Setup vcpkg
         if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
         uses: lukka/run-vcpkg@b1a0dd252f06b9e25b3c022a9a03bd7a427fb6a2 # v11
         with:
@@ -235,6 +244,14 @@ jobs:
           fi
           head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-${{ matrix.job.vcpkg-triplet }}-rel-out.log" || true
         shell: bash
+
+      - name: Save vcpkg installed cache
+        if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: /opt/artifacts/vcpkg/installed
+          key: vcpkg-linux-${{ env.VCPKG_COMMIT_ID }}-${{ matrix.job.vcpkg-triplet }}
 
       - name: icon stuff
         if: ${{ env.iconlink_url != 'false' }}
@@ -874,7 +891,15 @@ jobs:
           name: bridge-artifact
           path: ./
 
-      - name: Setup vcpkg with Github Actions binary cache
+      - name: Restore vcpkg installed cache
+        uses: actions/cache@v4
+        with:
+          path: /opt/artifacts/vcpkg/installed
+          key: vcpkg-linux-${{ env.VCPKG_COMMIT_ID }}-x64-linux
+          restore-keys: |
+            vcpkg-linux-${{ env.VCPKG_COMMIT_ID }}-
+
+      - name: Setup vcpkg
         uses: lukka/run-vcpkg@v11
         with:
           vcpkgDirectory: /opt/artifacts/vcpkg
@@ -899,6 +924,13 @@ jobs:
           fi
           head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-x64-linux-rel-out.log" || true
         shell: bash
+
+      - name: Save vcpkg installed cache
+        uses: actions/cache/save@v4
+        continue-on-error: true
+        with:
+          path: /opt/artifacts/vcpkg/installed
+          key: vcpkg-linux-${{ env.VCPKG_COMMIT_ID }}-x64-linux
 
       - name: Build libdrmtap
         run: |
