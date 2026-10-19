@@ -149,6 +149,7 @@ jobs:
         shell: bash
         run: |
           sed -i -e 's|^version = ".*"|version = "${{ inputs.app_version }}"|' ./Cargo.toml
+          cargo generate-lockfile
           grep '^version = ' ./Cargo.toml
 
       - name: Apply allow_custom_update patch
@@ -826,6 +827,7 @@ jobs:
         shell: bash
         run: |
           sed -i -e 's|^version = ".*"|version = "${{ inputs.app_version }}"|' ./Cargo.toml
+          cargo generate-lockfile
           grep '^version = ' ./Cargo.toml
 
       - name: Apply allow_custom_update patch
@@ -1193,7 +1195,7 @@ jobs:
             sed -ie 's|\({home}/{p}/{app_name0}2\?.toml\)|\\"\1\\"|g' src/platform/linux.rs
             sed -ie 's|\(/root/{p}/\)|\\"\1\\"|g' src/platform/linux.rs
 
-            cargo build --offline --lib --features "$FEATURES" --release
+            cargo build --locked --lib --features "$FEATURES" --release
             rm -rf target/release/deps target/release/build
             rm -rf ~/.cargo
 
@@ -1343,6 +1345,7 @@ jobs:
         shell: bash
         run: |
           sed -i -e 's|^version = ".*"|version = "${{ inputs.app_version }}"|' ./Cargo.toml
+          cargo generate-lockfile
           grep '^version = ' ./Cargo.toml
 
       - name: Apply allow_custom_update patch
@@ -1518,6 +1521,7 @@ jobs:
         shell: bash
         run: |
           sed -i -e 's|^version = ".*"|version = "${{ inputs.app_version }}"|' ./Cargo.toml
+          cargo generate-lockfile
           grep '^version = ' ./Cargo.toml
 
       - name: Apply allow_custom_update patch
