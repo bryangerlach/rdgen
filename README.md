@@ -3,6 +3,14 @@
 The client generator is currently hosted [here](https://rdgen.crayoneater.org).
 If you would like to host the generator yourself, see [here](setup.md)
 
+## rustdesk api server integration
+
+The rdgen client generator is integrated into my fork of the [rustdesk-api](https://github.com/bryangerlach/rustdesk-api). This is currently a work in progress, and might have bugs.
+
+## rdgen local build alternative
+
+If you would prefer to build rustdesk on your own computer, check out the [DVForge](https://github.com/VenimK/DVForge) project.
+
 ## Features
 
 - Embed server and key into client

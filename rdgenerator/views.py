@@ -6,6 +6,7 @@ from django.core.files.base import ContentFile
 import os
 import secrets
 import re
+import unicodedata
 import requests
 import base64
 import json
@@ -85,6 +86,7 @@ def generate_custom_client(params, full_url):
     appname = params.get('appname', '')
     if not appname:
         appname = "rustdesk"
+    slug_appname = slugify(appname)
     filename = params.get('exename', 'rustdesk')
     compname = params.get('compname', '')
     if not compname:
@@ -284,6 +286,7 @@ def generate_custom_client(params, full_url):
         "privacylink_uuid":privacylink_uuid,
         "privacylink_file":privacylink_file,
         "appname":appname,
+        "slug_appname":slug_appname,
         "genurl":_settings.GENURL,
         "urlLink":urlLink,
         "downloadLink":downloadLink,
@@ -434,6 +437,42 @@ def generator_view(request):
     return render(request, 'generator.html', {'form': form})
 
 
+def _expected_files_for_platform(filename, platform):
+    """Return the list of expected output filenames for a given platform."""
+    if platform == 'windows':
+        return [f"{filename}.exe", f"{filename}.msi"]
+    elif platform == 'windows-x86':
+        return [f"{filename}.exe"]
+    elif platform == 'linux':
+        return [
+            f"{filename}-x86_64.deb",
+            f"{filename}-unattended-wayland-x86_64.deb",
+            f"{filename}-x86_64.rpm",
+            f"{filename}-suse-x86_64.rpm",
+            f"{filename}-x86_64.pkg.tar.zst",
+            f"{filename}-aarch64.deb",
+            f"{filename}-aarch64.rpm",
+            f"{filename}-suse-aarch64.rpm",
+            f"{filename}-aarch64.pkg.tar.zst",
+            f"{filename}-x86_64.AppImage",
+            f"{filename}-aarch64.AppImage",
+            f"{filename}-x86_64.flatpak",
+            f"{filename}-aarch64.flatpak",
+        ]
+    elif platform == 'android':
+        return [
+            f"{filename}-aarch64.apk",
+            f"{filename}-x86_64.apk",
+            f"{filename}-armv7.apk",
+        ]
+    elif platform == 'macos':
+        return [
+            f"{filename}-x86_64.dmg",
+            f"{filename}-aarch64.dmg",
+        ]
+    return []
+
+
 def check_for_file(request):
     filename = request.GET.get('filename')
     uuid = request.GET.get('uuid')
@@ -448,10 +487,23 @@ def check_for_file(request):
     github_log_url = result['github_log_url']
 
     if gh_run.status == "success":
+        expected = _expected_files_for_platform(filename, platform)
+        existing_files = []
+        missing_files = []
+        for f in expected:
+            file_path = os.path.join('exe', uuid, f)
+            if os.path.isfile(file_path):
+                existing_files.append(f)
+            else:
+                missing_files.append(f)
+
         return render(request, 'generated.html', {
-            'filename': filename, 
-            'uuid': uuid, 
-            'platform': platform
+            'filename': filename,
+            'uuid': uuid,
+            'platform': platform,
+            'existing_files': existing_files,
+            'missing_files': missing_files,
+            'github_log_url': github_log_url,
         })
         
     elif gh_run.status in ['failure', 'cancelled', 'timed_out', 'skipped', 'action_required']:
@@ -659,3 +711,13 @@ def get_zip(request):
         })
 
     return response
+
+def slugify(text):
+  # Normalize unicode characters (e.g., 'é' -> 'e')
+  text = (
+      unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("utf-8")
+  )
+  # Convert to lowercase, remove non-word/non-space/non-hyphen characters, and strip
+  text = re.sub(r"[^\w\s-]", "", text.lower()).strip()
+  # Replace whitespace and hyphens with a single hyphen
+  return re.sub(r"[-\s]+", "-", text)

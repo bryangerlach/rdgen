@@ -290,12 +290,12 @@ jobs:
           sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ env.appname }}"|' ./Cargo.toml
           sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ env.appname }}"|' ./Cargo.toml
           sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ env.appname }}"|' ./Cargo.toml
-          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.appname }}.exe"|' ./Cargo.toml
+          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.slug_appname }}.exe"|' ./Cargo.toml
           sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
           sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
           sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
-          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.appname }}.exe"|' ./libs/portable/Cargo.toml
-          sed -i -e 's|const APP_PREFIX: \&str = "rustdesk";|const APP_PREFIX: \&str = "${{ env.appname }}";|' ./libs/portable/src/main.rs
+          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.slug_appname }}.exe"|' ./libs/portable/Cargo.toml
+          sed -i -e 's|const APP_PREFIX: \&str = "rustdesk";|const APP_PREFIX: \&str = "${{ env.slug_appname }}";|' ./libs/portable/src/main.rs
           find ./src/lang -name "*.rs" -exec sed -i -e 's|RustDesk|${{ env.appname }}|' {} \;
           sed -i -e '/-p tmpdeb\/usr\/lib\/rustdesk/d' ./build.py
 
@@ -535,7 +535,7 @@ jobs:
             echo $JOBS
 
             # Make the right unit stop when the services is stopped by tray
-            sed -ie "s|\(systemctl\s\+\S\+\s\){app_name}|\1${{ env.appname }}|g" src/platform/linux.rs
+            sed -ie "s|\(systemctl\s\+\S\+\s\){app_name}|\1${{ env.slug_appname }}|g" src/platform/linux.rs
             sed -ie 's|\({home}/{p}/{app_name0}2\?.toml\)|\\"\1\\"|g' src/platform/linux.rs
             sed -ie 's|\(/root/{p}/\)|\\"\1\\"|g' src/platform/linux.rs
 
@@ -620,9 +620,9 @@ jobs:
             # Only run the whitelabeling steps if the custom app name is actually different
             if [ "${{ env.appname }}" != "rustdesk" ]; then
                 # Change files names in the output .deb
-                sed -ie "s|\(cp .* \)tmpdeb/usr/share/rustdesk/files/systemd/|\1tmpdeb/usr/share/rustdesk/files/systemd/${{ env.appname }}.service|g" build.py
-                sed -ie "s|cp -r \(.\+\)\* \([^ ]\+\)/rustdesk|mv \1rustdesk \1${{ env.appname }}; cp -r \1\* \2/${{ env.appname }}|g" build.py
-                sed -ie "s|\(tmpdeb/[^ ]*\)rustdesk|\1${{ env.appname }}|g" build.py
+                sed -ie "s|\(cp .* \)tmpdeb/usr/share/rustdesk/files/systemd/|\1tmpdeb/usr/share/rustdesk/files/systemd/${{ env.slug_appname }}.service|g" build.py
+                sed -ie "s|cp -r \(.\+\)\* \([^ ]\+\)/rustdesk|mv \1rustdesk \1${{ env.slug_appname }}; cp -r \1\* \2/${{ env.slug_appname }}|g" build.py
+                sed -ie "s|\(tmpdeb/[^ ]*\)rustdesk|\1${{ env.slug_appname }}|g" build.py
                 # The rename above is greedy in \1, so it rewrites only the LAST
                 # "rustdesk" of each path and leaves build.py's globs pointing where the
                 # staging tree never exists. Three corrections, all confined to the drm
@@ -631,34 +631,34 @@ jobs:
                 #
                 # 1. Directory component: the cp -r rename above stages into
                 #    tmpdeb/usr/share/<appname>/, but the globs kept usr/share/rustdesk/.
-                sed -ie "s|tmpdeb/usr/share/rustdesk/|tmpdeb/usr/share/${{ env.appname }}/|g" build.py
+                sed -ie "s|tmpdeb/usr/share/rustdesk/|tmpdeb/usr/share/${{ env.slug_appname }}/|g" build.py
                 # 2. Library filename: build.py renames only the executable and copies the
                 #    bundle verbatim, so the cdylib stays librustdesk.so. The greedy sed
                 #    renamed it to lib<appname>.so, and that is the file carrying the drm
                 #    marker -- the thin Flutter launcher does not.
-                sed -ie "s|lib/lib${{ env.appname }}\.so|lib/librustdesk.so|g" build.py
+                sed -ie "s|lib/lib${{ env.slug_appname }}\.so|lib/librustdesk.so|g" build.py
                 # 3. libdrmtap must NOT be renamed: drmtap_dl.rs dlopens the absolute path
                 #    /usr/lib/rustdesk/libdrmtap.so.0, compiled into the binary and
                 #    rewritten by nothing here. Staging it under /usr/lib/<appname>/
                 #    packages and installs cleanly, then never loads on the user's machine.
-                sed -ie "s|tmpdeb/usr/lib/${{ env.appname }}|tmpdeb/usr/lib/rustdesk|g" build.py
-                sed -ie "s|Package: rustdesk|Package: ${{ env.appname }}|g" build.py
+                sed -ie "s|tmpdeb/usr/lib/${{ env.slug_appname }}|tmpdeb/usr/lib/rustdesk|g" build.py
+                sed -ie "s|Package: rustdesk|Package: ${{ env.slug_appname }}|g" build.py
                 sed -ie "s|RustDesk|${{ env.appname }}|g" res/rustdesk.desktop
                 FILES=$(sed -ne "s~.*cp\s\(../\)\?\+\(.\+\.\(desktop\|service\)\)\s\+tmpdeb/.*~\2~p" build.py | sort | uniq)
                 FILES=$(echo -e "$FILES\n$(ls --color=never res/DEBIAN/*)")
                 for FILE in $(echo $FILES | sed "s/\n/ /g"); do
-                  sed -ie "s|rustdesk|${{ env.appname }}|g" $FILE
+                  sed -ie "s|rustdesk|${{ env.slug_appname }}|g" $FILE
                 done
                 for file in "./res/rpm-flutter.spec" "./res/rpm-flutter-suse.spec"; do
                   sed -ie "s|^\(URL:\s*\).*|\1${{ env.downloadLink }}|g" "$file"
                   sed -ie "s|^\(Vendor:\s*\).*|\1${{ env.compname }}|g" "$file"
-                  sed -ie '/\${\?HBB}\?/!{/\(^Name:\|\/usr\|\/etc\|systemctl\)/s|rustdesk|${{ env.appname }}|g}' "$file"
-                  sed -ie '/\${\?HBB}\?/{/^install/s|\(\/usr\/.*\/\)rustdesk|\1${{ env.appname }}|g}' "$file"
-                  sed -ie '/\${\?HBB}\?/{/^mkdir/s|rustdesk|${{ env.appname }}|g}' "$file"
+                  sed -ie '/\${\?HBB}\?/!{/\(^Name:\|\/usr\|\/etc\|systemctl\)/s|rustdesk|${{ env.slug_appname }}|g}' "$file"
+                  sed -ie '/\${\?HBB}\?/{/^install/s|\(\/usr\/.*\/\)rustdesk|\1${{ env.slug_appname }}|g}' "$file"
+                  sed -ie '/\${\?HBB}\?/{/^mkdir/s|rustdesk|${{ env.slug_appname }}|g}' "$file"
                   for extension in ".desktop" "-link.desktop" ".service"; do
-                    sed -ie "/^%files$/i\mv %{buildroot}/usr/share/${{ env.appname }}/files/rustdesk$extension %{buildroot}/usr/share/${{ env.appname }}/files/${{ env.appname }}$extension" "$file"
-                    sed -ie "/^%files$/i\sed -ie 's|RustDesk|${{ env.appname }}|g' %{buildroot}/usr/share/${{ env.appname }}/files/${{ env.appname }}$extension" "$file"
-                    sed -ie "/^%files$/i\sed -ie 's|rustdesk|${{ env.appname }}|g' %{buildroot}/usr/share/${{ env.appname }}/files/${{ env.appname }}$extension" "$file"
+                    sed -ie "/^%files$/i\mv %{buildroot}/usr/share/${{ env.slug_appname }}/files/rustdesk$extension %{buildroot}/usr/share/${{ env.slug_appname }}/files/${{ env.slug_appname }}$extension" "$file"
+                    sed -ie "/^%files$/i\sed -ie 's|RustDesk|${{ env.slug_appname }}|g' %{buildroot}/usr/share/${{ env.slug_appname }}/files/${{ env.slug_appname }}$extension" "$file"
+                    sed -ie "/^%files$/i\sed -ie 's|rustdesk|${{ env.slug_appname }}|g' %{buildroot}/usr/share/${{ env.slug_appname }}/files/${{ env.slug_appname }}$extension" "$file"
                   done
                   sed -ie '/^%files$/i\\n' "$file"
                 done
@@ -983,12 +983,12 @@ jobs:
           sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ env.appname }}"|' ./Cargo.toml
           sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ env.appname }}"|' ./Cargo.toml
           sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ env.appname }}"|' ./Cargo.toml
-          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.appname }}.exe"|' ./Cargo.toml
+          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.slug_appname }}.exe"|' ./Cargo.toml
           sed -i -e 's|description = "RustDesk Remote Desktop"|description = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
           sed -i -e 's|ProductName = "RustDesk"|ProductName = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
           sed -i -e 's|FileDescription = "RustDesk Remote Desktop"|FileDescription = "${{ env.appname }}"|' ./libs/portable/Cargo.toml
-          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.appname }}.exe"|' ./libs/portable/Cargo.toml
-          sed -i -e 's|const APP_PREFIX: \&str = "rustdesk";|const APP_PREFIX: \&str = "${{ env.appname }}";|' ./libs/portable/src/main.rs
+          sed -i -e 's|OriginalFilename = "rustdesk.exe"|OriginalFilename = "${{ env.slug_appname }}.exe"|' ./libs/portable/Cargo.toml
+          sed -i -e 's|const APP_PREFIX: \&str = "rustdesk";|const APP_PREFIX: \&str = "${{ env.slug_appname }}";|' ./libs/portable/src/main.rs
           find ./src/lang -name "*.rs" -exec sed -i -e 's|RustDesk|${{ env.appname }}|' {} \;
           sed -i -e '/-p tmpdeb\/usr\/lib\/rustdesk/d' ./build.py
 
@@ -1223,7 +1223,7 @@ jobs:
               esac
             done
 
-            sed -ie "s|\(systemctl\s\+\S\+\s\){app_name}|\1${{ env.appname }}|g" src/platform/linux.rs
+            sed -ie "s|\(systemctl\s\+\S\+\s\){app_name}|\1${{ env.slug_appname }}|g" src/platform/linux.rs
             sed -ie 's|\({home}/{p}/{app_name0}2\?.toml\)|\\"\1\\"|g' src/platform/linux.rs
             sed -ie 's|\(/root/{p}/\)|\\"\1\\"|g' src/platform/linux.rs
 
@@ -1268,9 +1268,9 @@ jobs:
             fi
 
             if [ "${{ env.appname }}" != "rustdesk" ]; then
-                sed -ie "s|\(cp .* \)tmpdeb/usr/share/rustdesk/files/systemd/|\1tmpdeb/usr/share/rustdesk/files/systemd/${{ env.appname }}.service|g" build.py
-                sed -ie "s|cp -r \(.\+\)\* \([^ ]\+\)/rustdesk|mv \1rustdesk \1${{ env.appname }}; cp -r \1\* \2/${{ env.appname }}|g" build.py
-                sed -ie "s|\(tmpdeb/[^ ]*\)rustdesk|\1${{ env.appname }}|g" build.py
+                sed -ie "s|\(cp .* \)tmpdeb/usr/share/rustdesk/files/systemd/|\1tmpdeb/usr/share/rustdesk/files/systemd/${{ env.slug_appname }}.service|g" build.py
+                sed -ie "s|cp -r \(.\+\)\* \([^ ]\+\)/rustdesk|mv \1rustdesk \1${{ env.slug_appname }}; cp -r \1\* \2/${{ env.slug_appname }}|g" build.py
+                sed -ie "s|\(tmpdeb/[^ ]*\)rustdesk|\1${{ env.slug_appname }}|g" build.py
                 # The rename above is greedy in \1, so it rewrites only the LAST
                 # "rustdesk" of each path and leaves build.py's globs pointing where the
                 # staging tree never exists. Three corrections, all confined to the drm
@@ -1279,23 +1279,23 @@ jobs:
                 #
                 # 1. Directory component: the cp -r rename above stages into
                 #    tmpdeb/usr/share/<appname>/, but the globs kept usr/share/rustdesk/.
-                sed -ie "s|tmpdeb/usr/share/rustdesk/|tmpdeb/usr/share/${{ env.appname }}/|g" build.py
+                sed -ie "s|tmpdeb/usr/share/rustdesk/|tmpdeb/usr/share/${{ env.slug_appname }}/|g" build.py
                 # 2. Library filename: build.py renames only the executable and copies the
                 #    bundle verbatim, so the cdylib stays librustdesk.so. The greedy sed
                 #    renamed it to lib<appname>.so, and that is the file carrying the drm
                 #    marker -- the thin Flutter launcher does not.
-                sed -ie "s|lib/lib${{ env.appname }}\.so|lib/librustdesk.so|g" build.py
+                sed -ie "s|lib/lib${{ env.slug_appname }}\.so|lib/librustdesk.so|g" build.py
                 # 3. libdrmtap must NOT be renamed: drmtap_dl.rs dlopens the absolute path
                 #    /usr/lib/rustdesk/libdrmtap.so.0, compiled into the binary and
                 #    rewritten by nothing here. Staging it under /usr/lib/<appname>/
                 #    packages and installs cleanly, then never loads on the user's machine.
-                sed -ie "s|tmpdeb/usr/lib/${{ env.appname }}|tmpdeb/usr/lib/rustdesk|g" build.py
-                sed -ie "s|Package: rustdesk|Package: ${{ env.appname }}|g" build.py
+                sed -ie "s|tmpdeb/usr/lib/${{ env.slug_appname }}|tmpdeb/usr/lib/rustdesk|g" build.py
+                sed -ie "s|Package: rustdesk|Package: ${{ env.slug_appname }}|g" build.py
                 sed -ie "s|RustDesk|${{ env.appname }}|g" res/rustdesk.desktop
                 FILES=$(sed -ne "s~.*cp\s\(../\)\?\+\(.\+\.\(desktop\|service\)\)\s\+tmpdeb/.*~\2~p" build.py | sort | uniq)
                 FILES=$(echo -e "$FILES\n$(ls --color=never res/DEBIAN/*)")
                 for FILE in $(echo $FILES | sed "s/\n/ /g"); do
-                  sed -ie "s|rustdesk|${{ env.appname }}|g" $FILE
+                  sed -ie "s|rustdesk|${{ env.slug_appname }}|g" $FILE
                 done
             fi
 
@@ -1448,8 +1448,8 @@ jobs:
             # because `appimage/*` globs it too, and sed over an ar archive rewrites
             # bytes inside it.
             mv appimage/rustdesk.deb "${RUNNER_TEMP}/appimage-payload.deb"
-            sed -ie "s|rustdesk|${{ env.appname }}|g" appimage/*
-            mv "${RUNNER_TEMP}/appimage-payload.deb" "appimage/${{ env.appname }}.deb"
+            sed -ie "s|rustdesk|${{ env.slug_appname }}|g" appimage/*
+            mv "${RUNNER_TEMP}/appimage-payload.deb" "appimage/${{ env.slug_appname }}.deb"
           fi
           sudo apt-get update -y
           sudo apt-get install -y libarchive-tools libfuse2
@@ -1607,13 +1607,13 @@ jobs:
               mv flatpak/rustdesk.deb /tmp/flatpak-payload.deb
               sed -ie "s|rustdesk|@@RDGEN_FLAT_0@@|g" flatpak/*
               sed -ie "s|RustDesk|@@RDGEN_FLAT_1@@|g" flatpak/*
-              sed -ie "s|@@RDGEN_FLAT_0@@|${{ env.appname }}|g" flatpak/*
-              sed -ie "s|@@RDGEN_FLAT_1@@|${{ env.appname }}|g" flatpak/*
-              mv /tmp/flatpak-payload.deb "flatpak/${{ env.appname }}.deb"
+              sed -ie "s|@@RDGEN_FLAT_0@@|${{ env.slug_appname }}|g" flatpak/*
+              sed -ie "s|@@RDGEN_FLAT_1@@|${{ env.slug_appname }}|g" flatpak/*
+              mv /tmp/flatpak-payload.deb "flatpak/${{ env.slug_appname }}.deb"
               # The manifest's other source is the metainfo file. Those same seds rewrote
               # the REFERENCE to it without renaming the file on disk, so only the name
               # is left to fix; its contents are already rewritten.
-              FLAT="$(echo "${{ env.appname }}" | tr -d ' ')"
+              FLAT="$(echo "${{ env.slug_appname }}" | tr -d ' ')"
               BUNDLE_ID="com.${FLAT}.${FLAT}"
               sed -ie "s|\"id\": \"com[^\"]*\"|\"id\": \"${BUNDLE_ID}\"|" flatpak/rustdesk.json
               sed -ie "s|\"path\": \"com[^\"]*\.metainfo\.xml\"|\"path\": \"${BUNDLE_ID}.metainfo.xml\"|" flatpak/rustdesk.json
