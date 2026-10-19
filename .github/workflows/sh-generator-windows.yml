@@ -150,19 +150,19 @@ jobs:
         run: |
           sed -i -e 's|^version = ".*"|version = "${{ inputs.app_version }}"|' ./Cargo.toml
           APP_VERSION="${{ inputs.app_version }}" python3 -c "
-import re, os
-ver = os.environ['APP_VERSION']
-with open('./Cargo.toml', 'r') as f:
-    toml = f.read()
-m = re.search(r'^\s*name\s*=\s*\"([^\"]+)\"', toml, re.MULTILINE)
-pkg = m.group(1) if m else 'rustdesk'
-with open('./Cargo.lock', 'r') as f:
-    content = f.read()
-pattern = r'(\[\[package\]\]\s+name = \"' + re.escape(pkg) + r'\"\s+version = \")[^\"]*(\"])'
-content = re.sub(pattern, r'\g<1>' + ver + r'\g<2>', content, count=1)
-with open('./Cargo.lock', 'w') as f:
-    f.write(content)
-"
+          import re, os
+          ver = os.environ['APP_VERSION']
+          with open('./Cargo.toml', 'r') as f:
+              toml = f.read()
+          m = re.search(r'^\s*name\s*=\s*\"([^\"]+)\"', toml, re.MULTILINE)
+          pkg = m.group(1) if m else 'rustdesk'
+          with open('./Cargo.lock', 'r') as f:
+              content = f.read()
+          pattern = r'(\[\[package\]\]\s+name = \"' + re.escape(pkg) + r'\"\s+version = \")[^\"]*(\"])'
+          content = re.sub(pattern, r'\g<1>' + ver + r'\g<2>', content, count=1)
+          with open('./Cargo.lock', 'w') as f:
+              f.write(content)
+          "
           grep '^version = ' ./Cargo.toml
 
       - name: Apply allow_custom_update patch
