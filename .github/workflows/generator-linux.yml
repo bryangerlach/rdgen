@@ -1193,7 +1193,7 @@ jobs:
             sed -ie 's|\({home}/{p}/{app_name0}2\?.toml\)|\\"\1\\"|g' src/platform/linux.rs
             sed -ie 's|\(/root/{p}/\)|\\"\1\\"|g' src/platform/linux.rs
 
-            cargo build --locked --lib --features "$FEATURES" --release
+            cargo build --offline --lib --features "$FEATURES" --release
             rm -rf target/release/deps target/release/build
             rm -rf ~/.cargo
 
