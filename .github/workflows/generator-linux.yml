@@ -149,7 +149,7 @@ jobs:
         shell: bash
         run: |
           sed -i -e 's|^version = ".*"|version = "${{ inputs.app_version }}"|' ./Cargo.toml
-          cargo generate-lockfile
+          cargo generate-lockfile --offline
           grep '^version = ' ./Cargo.toml
 
       - name: Apply allow_custom_update patch
@@ -827,7 +827,7 @@ jobs:
         shell: bash
         run: |
           sed -i -e 's|^version = ".*"|version = "${{ inputs.app_version }}"|' ./Cargo.toml
-          cargo generate-lockfile
+          cargo generate-lockfile --offline
           grep '^version = ' ./Cargo.toml
 
       - name: Apply allow_custom_update patch
@@ -1345,7 +1345,7 @@ jobs:
         shell: bash
         run: |
           sed -i -e 's|^version = ".*"|version = "${{ inputs.app_version }}"|' ./Cargo.toml
-          cargo generate-lockfile
+          cargo generate-lockfile --offline
           grep '^version = ' ./Cargo.toml
 
       - name: Apply allow_custom_update patch
@@ -1521,7 +1521,7 @@ jobs:
         shell: bash
         run: |
           sed -i -e 's|^version = ".*"|version = "${{ inputs.app_version }}"|' ./Cargo.toml
-          cargo generate-lockfile
+          cargo generate-lockfile --offline
           grep '^version = ' ./Cargo.toml
 
       - name: Apply allow_custom_update patch
