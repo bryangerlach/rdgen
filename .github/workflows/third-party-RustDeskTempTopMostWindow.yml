@@ -71,8 +71,6 @@ jobs:
         run: |
           git clone https://github.com/rustdesk-org/RustDeskTempTopMostWindow RustDeskTempTopMostWindow
 
-        # RustDesk 1.4.9 requires the show/hide messages absent from v0.3.
-        # Match its official workflow; retain the existing pin for other versions.
       - name: Build the project
         uses: nick-fields/retry@v3
         with:
@@ -82,7 +80,7 @@ jobs:
           shell: pwsh
           command: |
             cd RustDeskTempTopMostWindow
-            git checkout ${{ inputs.rustdesk-version == '1.4.9' && 'ecd8d6a139eee76845ea66423fb739af450fda90' || '53b548a5398624f7149a382000397993542ad796' }}
+            git checkout ecd8d6a139eee76845ea66423fb739af450fda90
             if ($LASTEXITCODE -ne 0) { throw "Failed to checkout privacy DLL source" }
             if ($env:privacylink_url-ne "false") {
               Invoke-WebRequest -Uri ${{ env.privacylink_url }}/get_png?filename=${{ env.privacylink_file }}"&"uuid=${{ env.privacylink_uuid }} -OutFile privacy.png

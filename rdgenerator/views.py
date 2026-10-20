@@ -47,7 +47,7 @@ def generate_custom_client(params, full_url):
     user_secret = params.get('sh_secret_field', '')
     selfhosted = (_settings.SH_SECRET == user_secret)
     platform = params.get('platform', 'windows')
-    version = params.get('version', '1.4.9')
+    version = params.get('version', '1.5.0')
     app_version = params.get('app_version', '')
     # app_version overrides the version string embedded in the built client
     # without changing the git tag that version selects. If left empty, the

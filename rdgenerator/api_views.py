@@ -8,7 +8,7 @@ from .views import generate_custom_client, _get_run_status, _UUID_RE
 
 # Field validation constraints (mirrored from GenerateForm)
 PLATFORM_CHOICES = ['windows', 'windows-x86', 'linux', 'android', 'macos']
-VERSION_CHOICES = ['master', '1.5.0', '1.4.9', '1.4.8', '1.4.7', '1.4.6', '1.4.5', '1.4.4', '1.4.3', '1.4.2', '1.4.1', '1.4.0']
+VERSION_CHOICES = ['master', '1.5.0']
 DIRECTION_CHOICES = ['incoming', 'outgoing', 'both']
 INSTALLATION_CHOICES = ['installationY', 'installationN']
 SETTINGS_CHOICES = ['settingsY', 'settingsN']
@@ -59,7 +59,7 @@ def validate_generate_params(data):
     # Choice fields
     choice_validations = {
         'platform': (PLATFORM_CHOICES, 'windows'),
-        'version': (VERSION_CHOICES, '1.4.9'),
+        'version': (VERSION_CHOICES, '1.5.0'),
         'direction': (DIRECTION_CHOICES, 'both'),
         'installation': (INSTALLATION_CHOICES, 'installationY'),
         'settings': (SETTINGS_CHOICES, 'settingsY'),
