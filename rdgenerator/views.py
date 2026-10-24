@@ -6,7 +6,6 @@ from django.core.files.base import ContentFile
 import os
 import secrets
 import re
-import unicodedata
 import requests
 import base64
 import json
@@ -86,7 +85,10 @@ def generate_custom_client(params, full_url):
     appname = params.get('appname', '')
     if not appname:
         appname = "rustdesk"
-    slug_appname = slugify(appname)
+    # Use appname directly as the build-safe name: keep the original
+    # capitalization, replace spaces with hyphens, and drop characters that are
+    # unsafe in file paths and shell commands (e.g. : | \ /).
+    appname = re.sub(r"[:|\\/]", "", appname).replace(" ", "-")
     filename = params.get('exename', 'rustdesk')
     compname = params.get('compname', '')
     if not compname:
@@ -286,7 +288,6 @@ def generate_custom_client(params, full_url):
         "privacylink_uuid":privacylink_uuid,
         "privacylink_file":privacylink_file,
         "appname":appname,
-        "slug_appname":slug_appname,
         "genurl":_settings.GENURL,
         "urlLink":urlLink,
         "downloadLink":downloadLink,
@@ -712,12 +713,4 @@ def get_zip(request):
 
     return response
 
-def slugify(text):
-  # Normalize unicode characters (e.g., 'é' -> 'e')
-  text = (
-      unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("utf-8")
-  )
-  # Convert to lowercase, remove non-word/non-space/non-hyphen characters, and strip
-  text = re.sub(r"[^\w\s-]", "", text.lower()).strip()
-  # Replace whitespace and hyphens with a single hyphen
-  return re.sub(r"[-\s]+", "-", text)
+
