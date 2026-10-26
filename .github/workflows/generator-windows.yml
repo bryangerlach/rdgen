@@ -1,6 +1,6 @@
 name: Custom Windows Client Generator
 run-name: ${{ inputs.label && format('{0} - {1}', 'Windows', inputs.label) || 'Custom Windows Client Generator' }}
-on: 
+on:
   workflow_dispatch:
     inputs:
       version:
@@ -28,7 +28,7 @@ env:
   SCITER_NASM_DEBVERSION: "2.15.05-1"
   LLVM_VERSION: "15.0.6"
   FLUTTER_VERSION: "3.24.5"
-  ANDROID_FLUTTER_VERSION: "3.24.5" 
+  ANDROID_FLUTTER_VERSION: "3.24.5"
   # for arm64 linux because official Dart SDK does not work
   FLUTTER_ELINUX_VERSION: "3.16.9"
   TAG_NAME: "${{ inputs.upload-tag }}"
@@ -93,7 +93,7 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
-        
+
       - uses: actions/download-artifact@v4
         with:
           name: encrypted-secrets-zip
@@ -119,7 +119,7 @@ jobs:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
-      
+
       - name: Set rdgen value
         if: ${{ env.rdgen == 'true' }}
         run: |
@@ -161,7 +161,7 @@ jobs:
         run: |
           sed -i -e 's|2ded7f146437a761ffe6981e2f742038f85ca68d|08a471bb8ceccdd50483c81cdfa8b81b07b14b87|' ./flutter/pubspec.lock
           sed -i -e 's|2ded7f146437a761ffe6981e2f742038f85ca68d|08a471bb8ceccdd50483c81cdfa8b81b07b14b87|' ./flutter/pubspec.yaml
-      
+
       - name: Apply GL!TCH controller patches (force-login, no-ID-box)
         shell: bash
         env:
@@ -247,7 +247,7 @@ jobs:
           sed -i -e 's|{subkey}|\\\"{subkey}\\\"|' ./src/platform/windows.rs
           sed -i -e 's|reg delete HKEY_CLASSES_ROOT\\\\.{ext} /f|reg delete \\\"HKEY_CLASSES_ROOT\\\\.{ext}\\\" /f|' ./src/platform/windows.rs
           sed -i -e 's|reg delete HKEY_CLASSES_ROOT\\\\{ext} /f|reg delete \\\"HKEY_CLASSES_ROOT\\\\{ext}\\\" /f|' ./src/platform/windows.rs
-          
+
       - name: change company name
         if: env.compname != 'Purslane Ltd'
         continue-on-error: true
@@ -269,7 +269,7 @@ jobs:
           sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./libs/portable/Cargo.toml
           sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./res/msi/Package/License.rtf
           sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./src/main.rs
-             
+
       - name: change url to custom
         if: env.urlLink != 'https://rustdesk.com'
         continue-on-error: true
@@ -363,51 +363,159 @@ jobs:
       - name: Patch remote printer port to spool file
         shell: python
         run: |
-          import os, re
+          import glob, os, sys
+
+          # GL!TCH printer patch, run from the RustDesk source root before the build.
+          #  1. The printer prints to C:\ProgramData\<app>\printer-spool\job.prn, the file the open
+          #     printer adapter reads (Rust side, and the MSI's InstallPrinter custom action).
+          #  2. The MSI removes hidden leftover copies of the printer that a reinstall leaves behind.
+          #  3. The MSI installs Microsoft's VC++ runtime (merge module), which the printer driver's
+          #     render filter needs.
+          # Any step that no longer matches the RustDesk source stops the build: a build without it
+          # installs a printer that silently prints nothing.
 
           src = "."
           app = os.environ.get("appname") or "RustDesk"
-          literal = "C:\\\\ProgramData\\\\%s\\\\printer-spool\\\\job.prn" % app
+          failed = []
 
-          # atch Rust remote_printer lib.rs
-          rs = os.path.join(src, "libs", "remote_printer", "src", "lib.rs")
-          if os.path.isfile(rs):
-              with open(rs, "r", encoding="utf-8") as f:
+          def patch(path, label, pairs):
+              if not os.path.isfile(path):
+                  failed.append("%s: %s not found" % (label, path))
+                  return
+              with open(path, "r", encoding="utf-8-sig") as f:
                   t = f.read()
-              if "printer-spool" in t:
-                  print("Rust printer port already points to spool file")
-              else:
-                  old = ('fn get_port_name(app_name: &str) -> Vec<u16> {\n'
-                         '    format!("{} Printer", app_name)')
-                  new = ('fn get_port_name(app_name: &str) -> Vec<u16> {\n'
-                         '    let base = std::env::var("ProgramData")\n'
-                         '        .unwrap_or_else(|_| "C:\\\\ProgramData".to_string());\n'
-                         '    let dir = format!("{}\\\\{}\\\\printer-spool", base, app_name);\n'
-                         '    let _ = std::fs::create_dir_all(&dir);\n'
-                         '    format!("{}\\\\job.prn", dir)')
-                  if old in t:
-                      with open(rs, "w", encoding="utf-8") as f:
-                          f.write(t.replace(old, new, 1))
-                      print("Successfully patched Rust printer port")
-                  else:
-                      print("Warning: get_port_name() signature not matched in Rust source")
+              if "GL!TCH" in t:
+                  print("%s: already patched" % label)
+                  return
+              for old, new in pairs:
+                  if t.count(old) != 1:
+                      failed.append("%s: expected text found %d times: %r" % (label, t.count(old), old[:80]))
+                      return
+                  t = t.replace(old, new, 1)
+              with open(path, "w", encoding="utf-8") as f:
+                  f.write(t)
+              print("%s: patched" % label)
 
-          # patch C++ MSI Custom Action
-          cpp = os.path.join(src, "res", "msi", "CustomActions", "RemotePrinter.cpp")
-          if os.path.isfile(cpp):
-              with open(cpp, "r", encoding="utf-8") as f:
-                  t = f.read()
-              if "printer-spool" in t:
-                  print("MSI printer port already points to spool file")
-              else:
-                  pattern = r'(RD_PRINTER_PORT\s*=\s*)L"[^"]*"'
-                  new_t, n = re.subn(pattern, lambda m: m.group(1) + 'L"%s"' % literal, t, count=1)
-                  if n == 1:
-                      with open(cpp, "w", encoding="utf-8") as f:
-                          f.write(new_t)
-                      print("Successfully patched MSI CustomAction printer port")
-                  else:
-                      print("Warning: RD_PRINTER_PORT not matched in RemotePrinter.cpp")
+          # 1a. Rust (the app installing its printer itself from its settings)
+          patch(os.path.join(src, "libs", "remote_printer", "src", "lib.rs"), "Rust printer port", [(
+              'fn get_port_name(app_name: &str) -> Vec<u16> {\n'
+              '    format!("{} Printer", app_name)',
+              'fn get_port_name(app_name: &str) -> Vec<u16> {\n'
+              '    // GL!TCH: print to the file the open printer adapter reads\n'
+              '    let base = std::env::var("ProgramData")\n'
+              '        .unwrap_or_else(|_| "C:\\\\ProgramData".to_string());\n'
+              '    let dir = format!("{}\\\\{}\\\\printer-spool", base, app_name);\n'
+              '    let _ = std::fs::create_dir_all(&dir);\n'
+              '    format!("{}\\\\job.prn", dir)',
+          )])
+
+          # 1b + 2. MSI custom action
+          HELPERS = r'''
+              // GL!TCH: the printer prints to this file; the open printer adapter reads it
+              static std::wstring spoolPortOf(const std::wstring &appName, bool create)
+              {
+                  wchar_t base[MAX_PATH] = {0};
+                  DWORD n = GetEnvironmentVariableW(L"ProgramData", base, MAX_PATH);
+                  std::wstring dir = (n > 0 && n < MAX_PATH) ? std::wstring(base) : std::wstring(L"C:\\ProgramData");
+                  dir += L"\\" + (appName.empty() ? std::wstring(RD_DEFAULT_APP_NAME) : appName);
+                  if (create) CreateDirectoryW(dir.c_str(), NULL);
+                  dir += L"\\printer-spool";
+                  if (create) CreateDirectoryW(dir.c_str(), NULL);
+                  return dir + L"\\job.prn";
+              }
+
+              // GL!TCH: Windows keeps a deleted printer as a hidden device, and the Windows 11 print
+              // dialog can still list it, so every reinstall showed one more printer. Remove the hidden
+              // (not present) print queues of our driver; present ones are left alone.
+              static void removeHiddenQueues()
+              {
+                  static const GUID printQueueClass = {0x1ed2bbf9, 0x11f0, 0x4084, {0xb2, 0x1f, 0xad, 0x83, 0xa8, 0xe6, 0xdc, 0xdc}};
+                  const wchar_t *driverHwid = L"PRINTENUM\\{1217A442-8AF3-472E-A347-161FC1B3DB22}";
+                  HDEVINFO devs = SetupDiGetClassDevsW(&printQueueClass, NULL, NULL, 0);
+                  if (devs == INVALID_HANDLE_VALUE)
+                  {
+                      return;
+                  }
+                  std::vector<SP_DEVINFO_DATA> hidden;
+                  SP_DEVINFO_DATA dev;
+                  dev.cbSize = sizeof(SP_DEVINFO_DATA);
+                  for (DWORD i = 0; SetupDiEnumDeviceInfo(devs, i, &dev); i++)
+                  {
+                      ULONG status = 0, problem = 0;
+                      if (CM_Get_DevNode_Status(&status, &problem, dev.DevInst, 0) != CR_NO_SUCH_DEVINST)
+                      {
+                          continue;
+                      }
+                      wchar_t ids[2048] = {0};
+                      if (!SetupDiGetDeviceRegistryPropertyW(devs, &dev, SPDRP_HARDWAREID, NULL, (PBYTE)ids, (DWORD)(sizeof(ids) - 2 * sizeof(wchar_t)), NULL))
+                      {
+                          continue;
+                      }
+                      for (const wchar_t *p = ids; *p; p += wcslen(p) + 1)
+                      {
+                          if (_wcsicmp(p, driverHwid) == 0)
+                          {
+                              hidden.push_back(dev);
+                              break;
+                          }
+                      }
+                  }
+                  for (auto &d : hidden)
+                  {
+                      if (SetupDiRemoveDevice(devs, &d))
+                      {
+                          WcaLog(LOGMSG_STANDARD, "Removed a hidden copy of the printer\n");
+                      }
+                  }
+                  SetupDiDestroyDeviceInfoList(devs);
+              }
+          '''
+
+          patch(os.path.join(src, "res", "msi", "CustomActions", "RemotePrinter.cpp"), "MSI printer", [
+              ('#pragma comment(lib, "setupapi.lib")\n',
+               '#pragma comment(lib, "setupapi.lib")\n'
+               '#include <cfgmgr32.h>\n'
+               '#pragma comment(lib, "cfgmgr32.lib") // GL!TCH\n'),
+              ('        return (appName.empty() ? std::wstring(RD_DEFAULT_APP_NAME) : appName) + L" Printer";\n'
+               '    }\n',
+               '        return (appName.empty() ? std::wstring(RD_DEFAULT_APP_NAME) : appName) + L" Printer";\n'
+               '    }\n' + HELPERS),
+              ('        const LPCWCH RD_PRINTER_PORT = printerName.c_str();\n',
+               '        const std::wstring printerPort = spoolPortOf(appName, true);\n'
+               '        const LPCWCH RD_PRINTER_PORT = printerPort.c_str();\n'),
+              ('        if (FALSE == addPrinter(RD_PRINTER_NAME, RD_PRINTER_DRIVER_NAME, RD_PRINTER_PORT))\n',
+               '        removeHiddenQueues();\n\n'
+               '        if (FALSE == addPrinter(RD_PRINTER_NAME, RD_PRINTER_DRIVER_NAME, RD_PRINTER_PORT))\n'),
+              ('        checkDeleteLocalPort(printerName.c_str());\n',
+               '        checkDeleteLocalPort(printerName.c_str());\n'
+               '        checkDeleteLocalPort(spoolPortOf(appName, false).c_str());\n'
+               '        removeHiddenQueues();\n'),
+          ])
+
+          # 3. VC++ runtime merge module from the runner's Visual Studio
+          msms = sorted(glob.glob(r"C:\Program Files\Microsoft Visual Studio\2022\*\VC\Redist\MSVC\*\MergeModules\Microsoft_VC14*_CRT_x64.msm"))
+          if not msms:
+              failed.append("VC++ runtime: no Microsoft_VC14*_CRT_x64.msm on this runner")
+          else:
+              msm = msms[-1]
+              print("VC++ runtime merge module: %s" % msm)
+              patch(os.path.join(src, "res", "msi", "Package", "Package.wxs"), "MSI VC++ runtime", [
+                  ('\t\t<Feature Id="App" ',
+                   '\t\t<!-- GL!TCH: the printer driver needs the VC++ runtime -->\n'
+                   '\t\t<StandardDirectory Id="TARGETDIR">\n'
+                   '\t\t\t<Merge Id="VCRedist" SourceFile="%s" DiskId="1" Language="0" />\n'
+                   '\t\t</StandardDirectory>\n\n'
+                   '\t\t<Feature Id="App" ' % msm),
+                  ('\t\t\t<ComponentGroupRef Id="Components" />\n',
+                   '\t\t\t<ComponentGroupRef Id="Components" />\n'
+                   '\t\t\t<MergeRef Id="VCRedist" />\n'),
+              ])
+
+          if failed:
+              print("GL!TCH printer patch FAILED - the RustDesk source changed; update this step:")
+              for f in failed:
+                  print("  " + f)
+              sys.exit(1)
 
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v1
@@ -475,7 +583,7 @@ jobs:
           fi
           head -n 100 "${VCPKG_ROOT}/buildtrees/ffmpeg/build-${{ matrix.job.vcpkg-triplet }}-rel-out.log" || true
         shell: bash
-          
+
       - name: magick stuff
         if: ${{ env.iconlink_url != 'false' }}
         uses: nick-fields/retry@v3
@@ -485,7 +593,7 @@ jobs:
           retry_wait_seconds: 15
           shell: pwsh
           command: |
-            Invoke-WebRequest -Uri ${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}"&"uuid=${{ env.iconlink_uuid }} -OutFile ./res/iconx.png 
+            Invoke-WebRequest -Uri ${{ env.iconlink_url }}/get_png?filename=${{ env.iconlink_file }}"&"uuid=${{ env.iconlink_uuid }} -OutFile ./res/iconx.png
             mv ./res/icon.ico ./res/icon.ico.bak
             mv ./res/icon.png ./res/icon.png.bak
             mv ./res/tray-icon.ico ./res/tray-icon.ico.bak
@@ -543,7 +651,7 @@ jobs:
         continue-on-error: true
         if: env.removeNewVersionNotif == 'true'
         shell: bash
-        run: | 
+        run: |
           sed -i -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
           sed -i '/let (request, url) =/,/Ok(())/{/Ok(())/!d}' ./src/common.rs
 
@@ -593,13 +701,13 @@ jobs:
           # Windows: build RustDesk
           python3 .\build.py --portable --flutter --skip-portable-pack --hwcodec ${{ matrix.job.build-args }}
           mv ./flutter/build/windows/x64/runner/Release ./rustdesk
- 
+
           # Download usbmmidd_v2.zip and extract it to ./rustdesk
           Invoke-WebRequest -Uri https://github.com/rustdesk-org/rdev/releases/download/usbmmidd_v2/usbmmidd_v2.zip -OutFile usbmmidd_v2.zip
           Expand-Archive usbmmidd_v2.zip -DestinationPath . -Force
           Remove-Item -Path usbmmidd_v2\Win32 -Recurse
           Remove-Item -Path "usbmmidd_v2\deviceinstaller64.exe", "usbmmidd_v2\deviceinstaller.exe", "usbmmidd_v2\usbmmidd.bat"
-          mv -Force .\usbmmidd_v2 ./rustdesk   
+          mv -Force .\usbmmidd_v2 ./rustdesk
 
           # Download and install driver package
           try {
@@ -673,7 +781,7 @@ jobs:
         with:
           name: topmostwindow-artifacts
           path: "./rustdesk"
-      
+
       - name: zip dlls
         continue-on-error: true
         shell: pwsh
