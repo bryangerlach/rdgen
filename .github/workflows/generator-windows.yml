@@ -371,6 +371,7 @@ jobs:
           #  2. The MSI removes hidden leftover copies of the printer that a reinstall leaves behind.
           #  3. The MSI installs Microsoft's VC++ runtime (merge module), which the printer driver's
           #     render filter needs.
+          #  4. The MSI sets the Ctrl+Alt+Del policy without starting reg.exe (antivirus flagged it).
           # Any step that no longer matches the RustDesk source stops the build: a build without it
           # installs a printer that silently prints nothing.
 
@@ -510,6 +511,28 @@ jobs:
                    '\t\t\t<ComponentGroupRef Id="Components" />\n'
                    '\t\t\t<MergeRef Id="VCRedist" />\n'),
               ])
+
+          # 4. The MSI's last step set SoftwareSASGeneration (lets the service send Ctrl+Alt+Del) by
+          #    starting "reg add HKLM\...\Policies\System" as SYSTEM, which antivirus flags (Avast
+          #    IDP.HELU.PSE95). Write the value directly instead; upstream's direct write passed the
+          #    number 1 as a pointer, which is why it always failed and the reg.exe call was added.
+          patch(os.path.join(src, "res", "msi", "CustomActions", "CustomActions.cpp"), "MSI Ctrl+Alt+Del setting", [
+              ('    HINSTANCE hi = 0;\n\n    hr = WcaInitialize(hInstall, "AddRegSoftwareSASGeneration");\n',
+               '    hr = WcaInitialize(hInstall, "AddRegSoftwareSASGeneration");\n'),
+              ('    hi = ShellExecuteW(NULL, L"open", L"reg", L" add HKEY_LOCAL_MACHINE\\\\Software\\\\Microsoft\\\\Windows\\\\CurrentVersion\\\\Policies\\\\System /f /v SoftwareSASGeneration /t REG_DWORD /d 1", NULL, SW_HIDE);\n'
+               '    // https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shellexecutew\n'
+               '    if ((int)hi <= 32) {\n'
+               '        WcaLog(LOGMSG_STANDARD, "Failed to add registry name \\"%ls\\", %d, %d", valueName, (int)hi, GetLastError());\n'
+               '    }\n'
+               '    else {\n'
+               '        WcaLog(LOGMSG_STANDARD, "Registry name \\"%ls\\" is added", valueName);\n'
+               '    }\n',
+               '    // GL!TCH: no reg.exe command line (antivirus flags it); the value is written directly below\n'),
+              ('    result = RegCreateKeyExW(HKEY_LOCAL_MACHINE, subKey, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hKey, NULL);\n',
+               '    result = RegCreateKeyExW(HKEY_LOCAL_MACHINE, subKey, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE | KEY_WOW64_64KEY, NULL, &hKey, NULL);\n'),
+              ('    result = RegSetValueExW(hKey, valueName, 0, valueType, reinterpret_cast<const BYTE*>(valueData), valueDataSize);\n',
+               '    result = RegSetValueExW(hKey, valueName, 0, valueType, reinterpret_cast<const BYTE*>(&valueData), valueDataSize);\n'),
+          ])
 
           if failed:
               print("GL!TCH printer patch FAILED - the RustDesk source changed; update this step:")
