@@ -376,7 +376,6 @@ jobs:
             python allowCustom.py
             wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeSetupServerTip.diff
             git apply removeSetupServerTip.diff
-            # sed -i '/intl:/a \ \ archive: ^3.6.1' ./flutter/pubspec.yaml
             echo -n '${{ env.custom }}' > ./custom_.txt
           
       - name: change url to custom
