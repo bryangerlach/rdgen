@@ -88,7 +88,7 @@ def generate_custom_client(params, full_url):
     # Use appname directly as the build-safe name: keep the original
     # capitalization, replace spaces with hyphens, and drop characters that are
     # unsafe in file paths and shell commands (e.g. : | \ /).
-    appname = re.sub(r"[:|\\/]", "", appname).replace(" ", "-")
+    appname = re.sub(r"[:|\\/]", "", appname).replace(" ", "_")
     filename = params.get('exename', 'rustdesk')
     compname = params.get('compname', '')
     if not compname:
