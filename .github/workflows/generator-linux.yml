@@ -1287,6 +1287,7 @@ jobs:
                 for FILE in $(echo $FILES | sed "s/\n/ /g"); do
                   sed -ie "s|rustdesk|${{ env.appname }}|g" $FILE
                 done
+                mkdir -p %{buildroot}/tmpdeb/usr/lib/rustdesk
                 for file in "./res/rpm-flutter.spec" "./res/rpm-flutter-suse.spec"; do
                   sed -ie "s|^\(URL:\s*\).*|\1${{ env.downloadLink }}|g" "$file"
                   sed -ie "s|^\(Vendor:\s*\).*|\1${{ env.compname }}|g" "$file"
