@@ -540,6 +540,33 @@ jobs:
                   print("  " + f)
               sys.exit(1)
 
+      - name: Patch default view style to Adaptive
+        shell: python
+        run: |
+          # GL!TCH: desktop builds default a new connection's view style to "original" (no
+          # scaling); every GlitchTech/GlitchConnect session then needs a tech to switch it
+          # to Adaptive by hand. Mobile already defaults to "adaptive" - make desktop match.
+          path = "libs/hbb_common/src/config.rs"
+          old = (
+              '#[cfg(not(any(target_os = "android", target_os = "ios")))]\n'
+              '            keys::OPTION_VIEW_STYLE => self.get_string(key, "original", vec!["adaptive"]),'
+          )
+          new = (
+              '#[cfg(not(any(target_os = "android", target_os = "ios")))]\n'
+              '            keys::OPTION_VIEW_STYLE => self.get_string(key, "adaptive", vec!["original"]), // GL!TCH: default to Adaptive'
+          )
+          with open(path, "r", encoding="utf-8") as f:
+              t = f.read()
+          if "GL!TCH: default to Adaptive" in t:
+              print("view style default: already patched")
+          elif t.count(old) == 1:
+              with open(path, "w", encoding="utf-8") as f:
+                  f.write(t.replace(old, new, 1))
+              print("view style default: patched to Adaptive")
+          else:
+              print("view style default FAILED - expected text found %d times, RustDesk source changed; update this step" % t.count(old))
+              raise SystemExit(1)
+
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v1
         with:
