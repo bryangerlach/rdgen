@@ -1,0 +1,33 @@
+--- a/flutter/lib/desktop/pages/connection_page.dart
++++ b/flutter/lib/desktop/pages/connection_page.dart
+@@ -310,13 +310,23 @@
+         Expanded(
+             child: Column(
+           children: [
+-            Row(
+-              children: [
+-                Flexible(child: _buildRemoteIDTextField(context)),
+-              ],
+-            ).marginOnly(top: 22),
+-            SizedBox(height: 12),
+-            Divider().paddingOnly(right: 12),
++            // GL!TCH: one build, not two - the manual ID-entry box is shown
++            // only to Tech/Administrator accounts (it is only ever needed for
++            // ad-hoc SOS connects), checked live against who is signed in
++            // rather than baked in at build time.
++            Obx(() => gFFI.userModel.canSeeDeviceId
++                ? Column(
++                    children: [
++                      Row(
++                        children: [
++                          Flexible(child: _buildRemoteIDTextField(context)),
++                        ],
++                      ).marginOnly(top: 22),
++                      SizedBox(height: 12),
++                      Divider().paddingOnly(right: 12),
++                    ],
++                  )
++                : const SizedBox.shrink()),
+             Expanded(child: PeerTabPage()),
+           ],
+         ).paddingOnly(left: 12.0)),

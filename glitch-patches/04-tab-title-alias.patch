@@ -1,0 +1,21 @@
+--- a/flutter/lib/common.dart	2026-11-02 15:10:09.017497500 -0500
++++ b/flutter/lib/common.dart	2026-11-02 15:10:34.649040200 -0500
+@@ -3338,7 +3338,17 @@
+ }
+ 
+ String getDesktopTabLabel(String peerId, String alias) {
+-  String label = alias.isEmpty ? peerId : alias;
++  // GL!TCH: fall back to the CortenDesk address-book alias too - covers a
++  // peer the client has no local cached alias for yet (e.g. the first
++  // connection via GlitchDesk's own "Connect" button). Regular users never
++  // see the raw ID here either, same rule as the peer list (peer_card.dart);
++  // only Tech/Administrator need it, for ad-hoc SOS connections.
++  if (alias.isEmpty) {
++    alias = gFFI.abModel.find(peerId)?.alias ?? '';
++  }
++  String label = alias.isNotEmpty
++      ? alias
++      : (gFFI.userModel.canSeeDeviceId ? peerId : '—');
+   try {
+     String peer = bind.mainGetPeerSync(id: peerId);
+     Map<String, dynamic> config = jsonDecode(peer);

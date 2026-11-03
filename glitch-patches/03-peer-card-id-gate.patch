@@ -1,0 +1,36 @@
+--- a/flutter/lib/common/widgets/peer_card.dart	2026-11-02 15:10:08.867187800 -0500
++++ b/flutter/lib/common/widgets/peer_card.dart	2026-11-02 15:10:34.619384900 -0500
+@@ -27,6 +27,15 @@
+ 
+ bool? hideUsernameOnCard;
+ 
++// GL!TCH: Regular (non-Tech, non-Administrator) users never see the raw
++// RustDesk ID - it's only meaningful for ad-hoc SOS connections, which Tech
++// and Administrator accounts handle. Alias always wins when set, for everyone.
++String peerPrimaryLabel(Peer peer) {
++  if (peer.alias.isNotEmpty) return peer.alias;
++  if (gFFI.userModel.canSeeDeviceId) return formatID(peer.id);
++  return '—';
++}
++
+ class _PeerCard extends StatefulWidget {
+   final Peer peer;
+   final PeerTabIndex tab;
+@@ -190,7 +199,7 @@
+                         getOnline(isPortrait ? 4 : 8, peer.online),
+                         Expanded(
+                             child: Text(
+-                          peer.alias.isEmpty ? formatID(peer.id) : peer.alias,
++                          peerPrimaryLabel(peer),
+                           overflow: TextOverflow.ellipsis,
+                           style: Theme.of(context).textTheme.titleSmall,
+                         )),
+@@ -372,7 +381,7 @@
+                         getOnline(8, peer.online),
+                         Expanded(
+                             child: Text(
+-                          peer.alias.isEmpty ? formatID(peer.id) : peer.alias,
++                          peerPrimaryLabel(peer),
+                           overflow: TextOverflow.ellipsis,
+                           style: Theme.of(context).textTheme.titleSmall,
+                         )),

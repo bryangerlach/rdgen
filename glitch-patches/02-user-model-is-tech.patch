@@ -1,0 +1,25 @@
+--- a/flutter/lib/models/user_model.dart	2026-11-02 15:10:08.576377300 -0500
++++ b/flutter/lib/models/user_model.dart	2026-11-02 15:10:34.589013500 -0500
+@@ -19,6 +19,7 @@
+   final RxString displayName = ''.obs;
+   final RxString avatar = ''.obs;
+   final RxBool isAdmin = false.obs;
++  final RxBool isTech = false.obs;
+   final RxString networkError = ''.obs;
+   // True when networkError carries a server-reported error rather than a
+   // connectivity failure; netWorkErrorWidget hides the network tip then.
+@@ -147,11 +148,14 @@
+     avatar.value = '';
+   }
+ 
++  bool get canSeeDeviceId => isAdmin.value || isTech.value;
++
+   _parseAndUpdateUser(UserPayload user) {
+     userName.value = user.name;
+     displayName.value = user.displayName;
+     avatar.value = user.avatar;
+     isAdmin.value = user.isAdmin;
++    isTech.value = user.isTech;
+     bind.mainSetLocalOption(key: 'user_info', value: jsonEncode(user));
+     if (isWeb) {
+       // ugly here, tmp solution

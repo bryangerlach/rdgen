@@ -1,0 +1,20 @@
+--- a/flutter/lib/common/hbbs/hbbs.dart	2026-11-02 15:10:08.720550200 -0500
++++ b/flutter/lib/common/hbbs/hbbs.dart	2026-11-02 15:10:34.558562900 -0500
+@@ -32,6 +32,7 @@
+   String? verifier;
+   UserStatus status;
+   bool isAdmin = false;
++  bool isTech = false;
+ 
+   UserPayload.fromJson(Map<String, dynamic> json)
+       : name = json['name'] ?? '',
+@@ -45,7 +46,8 @@
+             : json['status'] == -1
+                 ? UserStatus.kUnverified
+                 : UserStatus.kNormal,
+-        isAdmin = json['is_admin'] == true;
++        isAdmin = json['is_admin'] == true,
++        isTech = json['is_tech'] == true;
+ 
+   Map<String, dynamic> toJson() {
+     final Map<String, dynamic> map = {
