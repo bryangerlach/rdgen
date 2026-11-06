@@ -982,7 +982,7 @@ jobs:
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
-                - name: zip exe and msi
+      - name: zip exe and msi
         continue-on-error: true
         shell: pwsh
         run: |
