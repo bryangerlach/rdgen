@@ -859,6 +859,21 @@ jobs:
           name: topmostwindow-artifacts
           path: "./rustdesk"
 
+      - name: sign dlls and exe (Artifact Signing)
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: https://eus.codesigning.azure.net/
+          signing-account-name: glitch-signing
+          certificate-profile-name: GlitchRemote
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          files-folder: ${{ github.workspace }}/rustdesk
+          files-folder-filter: dll,exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
       - name: zip dlls
         continue-on-error: true
         shell: pwsh
@@ -953,7 +968,21 @@ jobs:
           mv ./Package/bin/x64/Release/en-us/Package.msi ../../SignOutput/rustdesk.msi
           sha256sum ../../SignOutput/rustdesk.msi
 
-      - name: zip exe and msi
+      - name: sign exe and msi (Artifact Signing)
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: https://eus.codesigning.azure.net/
+          signing-account-name: glitch-signing
+          certificate-profile-name: GlitchRemote
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          files-folder: ${{ github.workspace }}/SignOutput
+          files-folder-filter: exe,msi
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+                - name: zip exe and msi
         continue-on-error: true
         shell: pwsh
         run: |
