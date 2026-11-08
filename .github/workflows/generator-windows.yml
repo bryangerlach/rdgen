@@ -1019,6 +1019,29 @@ jobs:
         run: |
           mv ./SignOutput/rustdesk.msi "./SignOutput/${{ env.filename }}.msi" || echo "rustdesk"
 
+      - name: Build GlitchHost install-link MSI (host-msi.ps1)
+        if: env.appname == 'GlitchHost'
+        shell: pwsh
+        run: |
+          powershell -ExecutionPolicy Bypass -File "${{ github.workspace }}\scripts\host-msi.ps1" -In "./SignOutput/${{ env.filename }}.msi" -Out "./SignOutput/${{ env.filename }}-host.msi"
+          python "${{ github.workspace }}\scripts\check-msi.py" "./SignOutput/${{ env.filename }}-host.msi"
+
+      - name: sign GlitchHost-host.msi (Artifact Signing)
+        if: env.appname == 'GlitchHost'
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: https://eus.codesigning.azure.net/
+          signing-account-name: glitch-signing
+          certificate-profile-name: GlitchRemote
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          files-folder: ${{ github.workspace }}/SignOutput
+          files-folder-filter: msi
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
         uses: nick-fields/retry@v3
@@ -1030,6 +1053,9 @@ jobs:
           command: |
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.exe" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.msi" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client || true
+            if [ -f "./SignOutput/${{ env.filename }}-host.msi" ]; then
+              curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}-host.msi" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client || true
+            fi
 
       - name: send file to api server
         if: ${{ env.rdgen == 'false' }}
