@@ -131,7 +131,7 @@ jobs:
           BUILDTAG="build $RUNNO, $(date -u +%b-%d' '%H:%M) UTC"
           echo "== GL!TCH controller patches (iOS); appname: '$GL_APP' filename: '$FNAME' =="
           echo "::notice title=GL!TCH patch step::run $RUNNO appname='$GL_APP' filename='$FNAME'"
-          LC="${GL_APP,,} ${FNAME,,}"
+          LC="$(printf '%s %s' "$GL_APP" "$FNAME" | tr '[:upper:]' '[:lower:]')"
           if [[ "$LC" == *connect* || "$LC" == *tech* ]]; then
             git config core.autocrlf false
             echo 'LS0tIGEvZmx1dHRlci9saWIvY29tbW9uL2hiYnMvaGJicy5kYXJ0CTIwMjYtMTEtMDIgMTU6MTA6MDguNzIwNTUwMjAwIC0wNTAwCisrKyBiL2ZsdXR0ZXIvbGliL2NvbW1vbi9oYmJzL2hiYnMuZGFydAkyMDI2LTExLTAyIDE1OjEwOjM0LjU1ODU2MjkwMCAtMDUwMApAQCAtMzIsNiArMzIsNyBAQAogICBTdHJpbmc/IHZlcmlmaWVyOwogICBVc2VyU3RhdHVzIHN0YXR1czsKICAgYm9vbCBpc0FkbWluID0gZmFsc2U7CisgIGJvb2wgaXNUZWNoID0gZmFsc2U7CiAKICAgVXNlclBheWxvYWQuZnJvbUpzb24oTWFwPFN0cmluZywgZHluYW1pYz4ganNvbikKICAgICAgIDogbmFtZSA9IGpzb25bJ25hbWUnXSA/PyAnJywKQEAgLTQ1LDcgKzQ2LDggQEAKICAgICAgICAgICAgIDoganNvblsnc3RhdHVzJ10gPT0gLTEKICAgICAgICAgICAgICAgICA/IFVzZXJTdGF0dXMua1VudmVyaWZpZWQKICAgICAgICAgICAgICAgICA6IFVzZXJTdGF0dXMua05vcm1hbCwKLSAgICAgICAgaXNBZG1pbiA9IGpzb25bJ2lzX2FkbWluJ10gPT0gdHJ1ZTsKKyAgICAgICAgaXNBZG1pbiA9IGpzb25bJ2lzX2FkbWluJ10gPT0gdHJ1ZSwKKyAgICAgICAgaXNUZWNoID0ganNvblsnaXNfdGVjaCddID09IHRydWU7CiAKICAgTWFwPFN0cmluZywgZHluYW1pYz4gdG9Kc29uKCkgewogICAgIGZpbmFsIE1hcDxTdHJpbmcsIGR5bmFtaWM+IG1hcCA9IHsK' | base64 -d > glitch-01-is-tech-field.diff
