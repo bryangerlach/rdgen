@@ -121,6 +121,58 @@ jobs:
             repository: rustdesk/rustdesk
             submodules: recursive
 
+      - name: Apply GL!TCH controller patches (force-login, Tech-tier ID visibility)
+        shell: bash
+        env:
+          GL_APP: ${{ env.appname }}
+          FNAME: ${{ env.filename }}
+          RUNNO: ${{ github.run_number }}
+        run: |
+          set -e
+          BUILDTAG="build $RUNNO, $(date -u +%b-%d' '%H:%M) UTC"
+          echo "== GL!TCH controller patches (macOS); appname: '$GL_APP' filename: '$FNAME' =="
+          echo "::notice title=GL!TCH patch step::run $RUNNO appname='$GL_APP' filename='$FNAME'"
+          LC="$(printf '%s %s' "$GL_APP" "$FNAME" | tr '[:upper:]' '[:lower:]')"
+          HOMEPAGE=flutter/lib/desktop/pages/desktop_home_page.dart
+          if [[ "$LC" == *connect* || "$LC" == *tech* ]]; then
+            git config core.autocrlf false
+            echo 'LS0tIGEvZmx1dHRlci9saWIvZGVza3RvcC9wYWdlcy9kZXNrdG9wX2hvbWVfcGFnZS5kYXJ0CisrKyBiL2ZsdXR0ZXIvbGliL2Rlc2t0b3AvcGFnZXMvZGVza3RvcF9ob21lX3BhZ2UuZGFydApAQCAtOCw2ICs4LDcgQEAKIGltcG9ydCAncGFja2FnZTpmbHV0dGVyX2hiYi9jb21tb24uZGFydCc7CiBpbXBvcnQgJ3BhY2thZ2U6Zmx1dHRlcl9oYmIvY29tbW9uL3dpZGdldHMvYW5pbWF0ZWRfcm90YXRpb25fd2lkZ2V0LmRhcnQnOwogaW1wb3J0ICdwYWNrYWdlOmZsdXR0ZXJfaGJiL2NvbW1vbi93aWRnZXRzL2N1c3RvbV9wYXNzd29yZC5kYXJ0JzsKK2ltcG9ydCAncGFja2FnZTpmbHV0dGVyX2hiYi9jb21tb24vd2lkZ2V0cy9sb2dpbi5kYXJ0JzsKIGltcG9ydCAncGFja2FnZTpmbHV0dGVyX2hiYi9jb25zdHMuZGFydCc7CiBpbXBvcnQgJ3BhY2thZ2U6Zmx1dHRlcl9oYmIvZGVza3RvcC9wYWdlcy9jb25uZWN0aW9uX3BhZ2UuZGFydCc7CiBpbXBvcnQgJ3BhY2thZ2U6Zmx1dHRlcl9oYmIvZGVza3RvcC9wYWdlcy9kZXNrdG9wX3NldHRpbmdfcGFnZS5kYXJ0JzsKQEAgLTYwLDE0ICs2MSwzOCBAQAogICAgIHN1cGVyLmJ1aWxkKGNvbnRleHQpOwogICAgIGZpbmFsIGlzSW5jb21pbmdPbmx5ID0gYmluZC5pc0luY29taW5nT25seSgpOwogICAgIHJldHVybiBfYnVpbGRCbG9jaygKLSAgICAgICAgY2hpbGQ6IFJvdygKLSAgICAgIGNyb3NzQXhpc0FsaWdubWVudDogQ3Jvc3NBeGlzQWxpZ25tZW50LnN0YXJ0LAotICAgICAgY2hpbGRyZW46IFsKLSAgICAgICAgYnVpbGRMZWZ0UGFuZShjb250ZXh0KSwKLSAgICAgICAgaWYgKCFpc0luY29taW5nT25seSkgY29uc3QgVmVydGljYWxEaXZpZGVyKHdpZHRoOiAxKSwKLSAgICAgICAgaWYgKCFpc0luY29taW5nT25seSkgRXhwYW5kZWQoY2hpbGQ6IGJ1aWxkUmlnaHRQYW5lKGNvbnRleHQpKSwKLSAgICAgIF0sCi0gICAgKSk7CisgICAgICAgIGNoaWxkOiBPYngoKCkgPT4gZ0ZGSS51c2VyTW9kZWwudXNlck5hbWUudmFsdWUuaXNFbXB0eQorICAgICAgICAgICAgPyBfZ2xpdGNoTG9naW5HYXRlKGNvbnRleHQpCisgICAgICAgICAgICA6IFJvdygKKyAgICAgICAgICAgICAgICBjcm9zc0F4aXNBbGlnbm1lbnQ6IENyb3NzQXhpc0FsaWdubWVudC5zdGFydCwKKyAgICAgICAgICAgICAgICBjaGlsZHJlbjogWworICAgICAgICAgICAgICAgICAgYnVpbGRMZWZ0UGFuZShjb250ZXh0KSwKKyAgICAgICAgICAgICAgICAgIGlmICghaXNJbmNvbWluZ09ubHkpIGNvbnN0IFZlcnRpY2FsRGl2aWRlcih3aWR0aDogMSksCisgICAgICAgICAgICAgICAgICBpZiAoIWlzSW5jb21pbmdPbmx5KQorICAgICAgICAgICAgICAgICAgICBFeHBhbmRlZChjaGlsZDogYnVpbGRSaWdodFBhbmUoY29udGV4dCkpLAorICAgICAgICAgICAgICAgIF0sCisgICAgICAgICAgICAgICkpKTsKKyAgfQorCisgIFdpZGdldCBfZ2xpdGNoTG9naW5HYXRlKEJ1aWxkQ29udGV4dCBjb250ZXh0KSB7CisgICAgcmV0dXJuIENlbnRlcigKKyAgICAgIGNoaWxkOiBDb2x1bW4oCisgICAgICAgIG1haW5BeGlzU2l6ZTogTWFpbkF4aXNTaXplLm1pbiwKKyAgICAgICAgY2hpbGRyZW46IFsKKyAgICAgICAgICBjb25zdCBUZXh0KCdHTCFUQ0ggUmVtb3RlJywKKyAgICAgICAgICAgICAgc3R5bGU6IFRleHRTdHlsZShmb250U2l6ZTogMjgsIGZvbnRXZWlnaHQ6IEZvbnRXZWlnaHQuYm9sZCkpLAorICAgICAgICAgIGNvbnN0IFNpemVkQm94KGhlaWdodDogMTIpLAorICAgICAgICAgIGNvbnN0IFRleHQoJ1BsZWFzZSBzaWduIGluIHRvIGNvbnRpbnVlJywKKyAgICAgICAgICAgICAgc3R5bGU6IFRleHRTdHlsZShmb250U2l6ZTogMTYpKSwKKyAgICAgICAgICBjb25zdCBTaXplZEJveChoZWlnaHQ6IDI0KSwKKyAgICAgICAgICBFbGV2YXRlZEJ1dHRvbi5pY29uKAorICAgICAgICAgICAgaWNvbjogY29uc3QgSWNvbihJY29ucy5sb2dpbiksCisgICAgICAgICAgICBsYWJlbDogY29uc3QgVGV4dCgnTG9naW4nKSwKKyAgICAgICAgICAgIG9uUHJlc3NlZDogKCkgPT4gbG9naW5EaWFsb2coKSwKKyAgICAgICAgICApLAorICAgICAgICBdLAorICAgICAgKSwKKyAgICApOwogICB9CiAKICAgV2lkZ2V0IF9idWlsZEJsb2NrKHtyZXF1aXJlZCBXaWRnZXQgY2hpbGR9KSB7Cg==' | base64 -d > glitch-force-login.diff
+            git apply --verbose glitch-force-login.diff
+            echo "force-login applied"
+            if [[ "$LC" != *tech* ]]; then
+              MSG="GlitchConnect enables you to connect remotely to your station. ($BUILDTAG)"
+            else
+              MSG="GlitchTech: technician console for connecting to client stations. ($BUILDTAG)"
+            fi
+            sed -i '' "s|translate(\"outgoing_only_desk_tip\")|'$MSG'|" "$HOMEPAGE"
+            grep -q "login.dart" "$HOMEPAGE" && grep -q "_glitchLoginGate" "$HOMEPAGE" || { echo "ERROR: force-login patch missing"; exit 1; }
+            grep -q "$MSG" "$HOMEPAGE" || { echo "ERROR: sidebar text patch missing"; exit 1; }
+            echo "sidebar text set: $MSG"
+
+            echo 'LS0tIGEvZmx1dHRlci9saWIvY29tbW9uL2hiYnMvaGJicy5kYXJ0CTIwMjYtMTEtMDIgMTU6MTA6MDguNzIwNTUwMjAwIC0wNTAwCisrKyBiL2ZsdXR0ZXIvbGliL2NvbW1vbi9oYmJzL2hiYnMuZGFydAkyMDI2LTExLTAyIDE1OjEwOjM0LjU1ODU2MjkwMCAtMDUwMApAQCAtMzIsNiArMzIsNyBAQAogICBTdHJpbmc/IHZlcmlmaWVyOwogICBVc2VyU3RhdHVzIHN0YXR1czsKICAgYm9vbCBpc0FkbWluID0gZmFsc2U7CisgIGJvb2wgaXNUZWNoID0gZmFsc2U7CiAKICAgVXNlclBheWxvYWQuZnJvbUpzb24oTWFwPFN0cmluZywgZHluYW1pYz4ganNvbikKICAgICAgIDogbmFtZSA9IGpzb25bJ25hbWUnXSA/PyAnJywKQEAgLTQ1LDcgKzQ2LDggQEAKICAgICAgICAgICAgIDoganNvblsnc3RhdHVzJ10gPT0gLTEKICAgICAgICAgICAgICAgICA/IFVzZXJTdGF0dXMua1VudmVyaWZpZWQKICAgICAgICAgICAgICAgICA6IFVzZXJTdGF0dXMua05vcm1hbCwKLSAgICAgICAgaXNBZG1pbiA9IGpzb25bJ2lzX2FkbWluJ10gPT0gdHJ1ZTsKKyAgICAgICAgaXNBZG1pbiA9IGpzb25bJ2lzX2FkbWluJ10gPT0gdHJ1ZSwKKyAgICAgICAgaXNUZWNoID0ganNvblsnaXNfdGVjaCddID09IHRydWU7CiAKICAgTWFwPFN0cmluZywgZHluYW1pYz4gdG9Kc29uKCkgewogICAgIGZpbmFsIE1hcDxTdHJpbmcsIGR5bmFtaWM+IG1hcCA9IHsK' | base64 -d > glitch-01-is-tech-field.diff
+            echo 'LS0tIGEvZmx1dHRlci9saWIvbW9kZWxzL3VzZXJfbW9kZWwuZGFydAkyMDI2LTExLTAyIDE1OjEwOjA4LjU3NjM3NzMwMCAtMDUwMAorKysgYi9mbHV0dGVyL2xpYi9tb2RlbHMvdXNlcl9tb2RlbC5kYXJ0CTIwMjYtMTEtMDIgMTU6MTA6MzQuNTg5MDEzNTAwIC0wNTAwCkBAIC0xOSw2ICsxOSw3IEBACiAgIGZpbmFsIFJ4U3RyaW5nIGRpc3BsYXlOYW1lID0gJycub2JzOwogICBmaW5hbCBSeFN0cmluZyBhdmF0YXIgPSAnJy5vYnM7CiAgIGZpbmFsIFJ4Qm9vbCBpc0FkbWluID0gZmFsc2Uub2JzOworICBmaW5hbCBSeEJvb2wgaXNUZWNoID0gZmFsc2Uub2JzOwogICBmaW5hbCBSeFN0cmluZyBuZXR3b3JrRXJyb3IgPSAnJy5vYnM7CiAgIC8vIFRydWUgd2hlbiBuZXR3b3JrRXJyb3IgY2FycmllcyBhIHNlcnZlci1yZXBvcnRlZCBlcnJvciByYXRoZXIgdGhhbiBhCiAgIC8vIGNvbm5lY3Rpdml0eSBmYWlsdXJlOyBuZXRXb3JrRXJyb3JXaWRnZXQgaGlkZXMgdGhlIG5ldHdvcmsgdGlwIHRoZW4uCkBAIC0xNDcsMTEgKzE0OCwxNCBAQAogICAgIGF2YXRhci52YWx1ZSA9ICcnOwogICB9CiAKKyAgYm9vbCBnZXQgY2FuU2VlRGV2aWNlSWQgPT4gaXNBZG1pbi52YWx1ZSB8fCBpc1RlY2gudmFsdWU7CisKICAgX3BhcnNlQW5kVXBkYXRlVXNlcihVc2VyUGF5bG9hZCB1c2VyKSB7CiAgICAgdXNlck5hbWUudmFsdWUgPSB1c2VyLm5hbWU7CiAgICAgZGlzcGxheU5hbWUudmFsdWUgPSB1c2VyLmRpc3BsYXlOYW1lOwogICAgIGF2YXRhci52YWx1ZSA9IHVzZXIuYXZhdGFyOwogICAgIGlzQWRtaW4udmFsdWUgPSB1c2VyLmlzQWRtaW47CisgICAgaXNUZWNoLnZhbHVlID0gdXNlci5pc1RlY2g7CiAgICAgYmluZC5tYWluU2V0TG9jYWxPcHRpb24oa2V5OiAndXNlcl9pbmZvJywgdmFsdWU6IGpzb25FbmNvZGUodXNlcikpOwogICAgIGlmIChpc1dlYikgewogICAgICAgLy8gdWdseSBoZXJlLCB0bXAgc29sdXRpb24K' | base64 -d > glitch-02-user-model-is-tech.diff
+            echo 'LS0tIGEvZmx1dHRlci9saWIvY29tbW9uL3dpZGdldHMvcGVlcl9jYXJkLmRhcnQJMjAyNi0xMS0wMiAxNToxMDowOC44NjcxODc4MDAgLTA1MDAKKysrIGIvZmx1dHRlci9saWIvY29tbW9uL3dpZGdldHMvcGVlcl9jYXJkLmRhcnQJMjAyNi0xMS0wMiAxNToxMDozNC42MTkzODQ5MDAgLTA1MDAKQEAgLTI3LDYgKzI3LDE1IEBACiAKIGJvb2w/IGhpZGVVc2VybmFtZU9uQ2FyZDsKIAorLy8gR0whVENIOiBSZWd1bGFyIChub24tVGVjaCwgbm9uLUFkbWluaXN0cmF0b3IpIHVzZXJzIG5ldmVyIHNlZSB0aGUgcmF3CisvLyBSdXN0RGVzayBJRCAtIGl0J3Mgb25seSBtZWFuaW5nZnVsIGZvciBhZC1ob2MgU09TIGNvbm5lY3Rpb25zLCB3aGljaCBUZWNoCisvLyBhbmQgQWRtaW5pc3RyYXRvciBhY2NvdW50cyBoYW5kbGUuIEFsaWFzIGFsd2F5cyB3aW5zIHdoZW4gc2V0LCBmb3IgZXZlcnlvbmUuCitTdHJpbmcgcGVlclByaW1hcnlMYWJlbChQZWVyIHBlZXIpIHsKKyAgaWYgKHBlZXIuYWxpYXMuaXNOb3RFbXB0eSkgcmV0dXJuIHBlZXIuYWxpYXM7CisgIGlmIChnRkZJLnVzZXJNb2RlbC5jYW5TZWVEZXZpY2VJZCkgcmV0dXJuIGZvcm1hdElEKHBlZXIuaWQpOworICByZXR1cm4gJ+KAlCc7Cit9CisKIGNsYXNzIF9QZWVyQ2FyZCBleHRlbmRzIFN0YXRlZnVsV2lkZ2V0IHsKICAgZmluYWwgUGVlciBwZWVyOwogICBmaW5hbCBQZWVyVGFiSW5kZXggdGFiOwpAQCAtMTkwLDcgKzE5OSw3IEBACiAgICAgICAgICAgICAgICAgICAgICAgICBnZXRPbmxpbmUoaXNQb3J0cmFpdCA/IDQgOiA4LCBwZWVyLm9ubGluZSksCiAgICAgICAgICAgICAgICAgICAgICAgICBFeHBhbmRlZCgKICAgICAgICAgICAgICAgICAgICAgICAgICAgICBjaGlsZDogVGV4dCgKLSAgICAgICAgICAgICAgICAgICAgICAgICAgcGVlci5hbGlhcy5pc0VtcHR5ID8gZm9ybWF0SUQocGVlci5pZCkgOiBwZWVyLmFsaWFzLAorICAgICAgICAgICAgICAgICAgICAgICAgICBwZWVyUHJpbWFyeUxhYmVsKHBlZXIpLAogICAgICAgICAgICAgICAgICAgICAgICAgICBvdmVyZmxvdzogVGV4dE92ZXJmbG93LmVsbGlwc2lzLAogICAgICAgICAgICAgICAgICAgICAgICAgICBzdHlsZTogVGhlbWUub2YoY29udGV4dCkudGV4dFRoZW1lLnRpdGxlU21hbGwsCiAgICAgICAgICAgICAgICAgICAgICAgICApKSwKQEAgLTM3Miw3ICszODEsNyBAQAogICAgICAgICAgICAgICAgICAgICAgICAgZ2V0T25saW5lKDgsIHBlZXIub25saW5lKSwKICAgICAgICAgICAgICAgICAgICAgICAgIEV4cGFuZGVkKAogICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNoaWxkOiBUZXh0KAotICAgICAgICAgICAgICAgICAgICAgICAgICBwZWVyLmFsaWFzLmlzRW1wdHkgPyBmb3JtYXRJRChwZWVyLmlkKSA6IHBlZXIuYWxpYXMsCisgICAgICAgICAgICAgICAgICAgICAgICAgIHBlZXJQcmltYXJ5TGFiZWwocGVlciksCiAgICAgICAgICAgICAgICAgICAgICAgICAgIG92ZXJmbG93OiBUZXh0T3ZlcmZsb3cuZWxsaXBzaXMsCiAgICAgICAgICAgICAgICAgICAgICAgICAgIHN0eWxlOiBUaGVtZS5vZihjb250ZXh0KS50ZXh0VGhlbWUudGl0bGVTbWFsbCwKICAgICAgICAgICAgICAgICAgICAgICAgICkpLAo=' | base64 -d > glitch-03-peer-card-id-gate.diff
+            echo 'LS0tIGEvZmx1dHRlci9saWIvY29tbW9uLmRhcnQJMjAyNi0xMS0wMiAxNToxMDowOS4wMTc0OTc1MDAgLTA1MDAKKysrIGIvZmx1dHRlci9saWIvY29tbW9uLmRhcnQJMjAyNi0xMS0wMiAxNToxMDozNC42NDkwNDAyMDAgLTA1MDAKQEAgLTMzMzgsNyArMzMzOCwxNyBAQAogfQogCiBTdHJpbmcgZ2V0RGVza3RvcFRhYkxhYmVsKFN0cmluZyBwZWVySWQsIFN0cmluZyBhbGlhcykgewotICBTdHJpbmcgbGFiZWwgPSBhbGlhcy5pc0VtcHR5ID8gcGVlcklkIDogYWxpYXM7CisgIC8vIEdMIVRDSDogZmFsbCBiYWNrIHRvIHRoZSBDb3J0ZW5EZXNrIGFkZHJlc3MtYm9vayBhbGlhcyB0b28gLSBjb3ZlcnMgYQorICAvLyBwZWVyIHRoZSBjbGllbnQgaGFzIG5vIGxvY2FsIGNhY2hlZCBhbGlhcyBmb3IgeWV0IChlLmcuIHRoZSBmaXJzdAorICAvLyBjb25uZWN0aW9uIHZpYSBHbGl0Y2hEZXNrJ3Mgb3duICJDb25uZWN0IiBidXR0b24pLiBSZWd1bGFyIHVzZXJzIG5ldmVyCisgIC8vIHNlZSB0aGUgcmF3IElEIGhlcmUgZWl0aGVyLCBzYW1lIHJ1bGUgYXMgdGhlIHBlZXIgbGlzdCAocGVlcl9jYXJkLmRhcnQpOworICAvLyBvbmx5IFRlY2gvQWRtaW5pc3RyYXRvciBuZWVkIGl0LCBmb3IgYWQtaG9jIFNPUyBjb25uZWN0aW9ucy4KKyAgaWYgKGFsaWFzLmlzRW1wdHkpIHsKKyAgICBhbGlhcyA9IGdGRkkuYWJNb2RlbC5maW5kKHBlZXJJZCk/LmFsaWFzID8/ICcnOworICB9CisgIFN0cmluZyBsYWJlbCA9IGFsaWFzLmlzTm90RW1wdHkKKyAgICAgID8gYWxpYXMKKyAgICAgIDogKGdGRkkudXNlck1vZGVsLmNhblNlZURldmljZUlkID8gcGVlcklkIDogJ+KAlCcpOwogICB0cnkgewogICAgIFN0cmluZyBwZWVyID0gYmluZC5tYWluR2V0UGVlclN5bmMoaWQ6IHBlZXJJZCk7CiAgICAgTWFwPFN0cmluZywgZHluYW1pYz4gY29uZmlnID0ganNvbkRlY29kZShwZWVyKTsK' | base64 -d > glitch-04-tab-title-alias.diff
+            echo 'LS0tIGEvZmx1dHRlci9saWIvZGVza3RvcC9wYWdlcy9jb25uZWN0aW9uX3BhZ2UuZGFydAorKysgYi9mbHV0dGVyL2xpYi9kZXNrdG9wL3BhZ2VzL2Nvbm5lY3Rpb25fcGFnZS5kYXJ0CkBAIC0zMTAsMTMgKzMxMCwyMyBAQAogICAgICAgICBFeHBhbmRlZCgKICAgICAgICAgICAgIGNoaWxkOiBDb2x1bW4oCiAgICAgICAgICAgY2hpbGRyZW46IFsKLSAgICAgICAgICAgIFJvdygKLSAgICAgICAgICAgICAgY2hpbGRyZW46IFsKLSAgICAgICAgICAgICAgICBGbGV4aWJsZShjaGlsZDogX2J1aWxkUmVtb3RlSURUZXh0RmllbGQoY29udGV4dCkpLAotICAgICAgICAgICAgICBdLAotICAgICAgICAgICAgKS5tYXJnaW5Pbmx5KHRvcDogMjIpLAotICAgICAgICAgICAgU2l6ZWRCb3goaGVpZ2h0OiAxMiksCi0gICAgICAgICAgICBEaXZpZGVyKCkucGFkZGluZ09ubHkocmlnaHQ6IDEyKSwKKyAgICAgICAgICAgIC8vIEdMIVRDSDogb25lIGJ1aWxkLCBub3QgdHdvIC0gdGhlIG1hbnVhbCBJRC1lbnRyeSBib3ggaXMgc2hvd24KKyAgICAgICAgICAgIC8vIG9ubHkgdG8gVGVjaC9BZG1pbmlzdHJhdG9yIGFjY291bnRzIChpdCBpcyBvbmx5IGV2ZXIgbmVlZGVkIGZvcgorICAgICAgICAgICAgLy8gYWQtaG9jIFNPUyBjb25uZWN0cyksIGNoZWNrZWQgbGl2ZSBhZ2FpbnN0IHdobyBpcyBzaWduZWQgaW4KKyAgICAgICAgICAgIC8vIHJhdGhlciB0aGFuIGJha2VkIGluIGF0IGJ1aWxkIHRpbWUuCisgICAgICAgICAgICBPYngoKCkgPT4gZ0ZGSS51c2VyTW9kZWwuY2FuU2VlRGV2aWNlSWQKKyAgICAgICAgICAgICAgICA/IENvbHVtbigKKyAgICAgICAgICAgICAgICAgICAgY2hpbGRyZW46IFsKKyAgICAgICAgICAgICAgICAgICAgICBSb3coCisgICAgICAgICAgICAgICAgICAgICAgICBjaGlsZHJlbjogWworICAgICAgICAgICAgICAgICAgICAgICAgICBGbGV4aWJsZShjaGlsZDogX2J1aWxkUmVtb3RlSURUZXh0RmllbGQoY29udGV4dCkpLAorICAgICAgICAgICAgICAgICAgICAgICAgXSwKKyAgICAgICAgICAgICAgICAgICAgICApLm1hcmdpbk9ubHkodG9wOiAyMiksCisgICAgICAgICAgICAgICAgICAgICAgU2l6ZWRCb3goaGVpZ2h0OiAxMiksCisgICAgICAgICAgICAgICAgICAgICAgRGl2aWRlcigpLnBhZGRpbmdPbmx5KHJpZ2h0OiAxMiksCisgICAgICAgICAgICAgICAgICAgIF0sCisgICAgICAgICAgICAgICAgICApCisgICAgICAgICAgICAgICAgOiBjb25zdCBTaXplZEJveC5zaHJpbmsoKSksCiAgICAgICAgICAgICBFeHBhbmRlZChjaGlsZDogUGVlclRhYlBhZ2UoKSksCiAgICAgICAgICAgXSwKICAgICAgICAgKS5wYWRkaW5nT25seShsZWZ0OiAxMi4wKSksCg==' | base64 -d > glitch-05-connection-page-id-box.diff
+            git apply --verbose glitch-01-is-tech-field.diff
+            git apply --verbose glitch-02-user-model-is-tech.diff
+            git apply --verbose glitch-03-peer-card-id-gate.diff
+            git apply --verbose glitch-04-tab-title-alias.diff
+            git apply --verbose glitch-05-connection-page-id-box.diff
+            grep -q "canSeeDeviceId" flutter/lib/models/user_model.dart || { echo "ERROR: Tech-tier patches missing"; exit 1; }
+            grep -q "canSeeDeviceId" flutter/lib/desktop/pages/connection_page.dart || { echo "ERROR: ID-box runtime gate missing"; exit 1; }
+            echo "Tech-tier ID visibility applied"
+
+            sed -i '' -e 's|0071FF|B9F020|g' -e 's|2C8CFF|B9F020|g' flutter/lib/common.dart
+            grep -q "B9F020" flutter/lib/common.dart || { echo "ERROR: brand color patch missing"; exit 1; }
+            echo "brand accent applied: #B9F020"
+
+            echo "::notice title=GL!TCH patches applied::loginGate=$(grep -c _glitchLoginGate "$HOMEPAGE") techGate=$(grep -c canSeeDeviceId flutter/lib/desktop/pages/connection_page.dart) $BUILDTAG"
+          else
+            echo "Not a GlitchConnect/GlitchTech build; GL!TCH controller patches skipped"
+            echo "::notice title=GL!TCH patches SKIPPED::appname='$GL_APP'"
+          fi
+
       - name: Install imagemagick and potrace and nasm and and
         shell: bash
         run: |
@@ -142,14 +194,14 @@ jobs:
           sed -i '' -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./flutter/macos/Runner/Configs/AppInfo.xcconfig
           sed -i '' -e 's|Purslane Ltd.|${{ env.compname }}|' ./flutter/macos/Runner/Configs/AppInfo.xcconfig
 
-          sed -i -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./Cargo.toml
-          sed -i -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./libs/portable/Cargo.toml
-          sed -i -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./flutter/lib/desktop/pages/desktop_setting_page.dart
-          sed -i -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./src/main.rs
-          sed -i -e 's|Purslane Ltd.|${{ env.compname }}|' ./Cargo.toml
-          sed -i -e 's|Purslane Ltd.|${{ env.compname }}|' ./libs/portable/Cargo.toml
-          sed -i -e 's|Purslane Ltd.|${{ env.compname }}|' ./flutter/lib/desktop/pages/desktop_setting_page.dart
-          sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./src/main.rs
+          sed -i '' -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./Cargo.toml
+          sed -i '' -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./libs/portable/Cargo.toml
+          sed -i '' -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./flutter/lib/desktop/pages/desktop_setting_page.dart
+          sed -i '' -e 's|Purslane Tech Pte. Ltd.|${{ env.compname }}|' ./src/main.rs
+          sed -i '' -e 's|Purslane Ltd.|${{ env.compname }}|' ./Cargo.toml
+          sed -i '' -e 's|Purslane Ltd.|${{ env.compname }}|' ./libs/portable/Cargo.toml
+          sed -i '' -e 's|Purslane Ltd.|${{ env.compname }}|' ./flutter/lib/desktop/pages/desktop_setting_page.dart
+          sed -i '' -e 's|Purslane Ltd|${{ env.compname }}|' ./src/main.rs
           
           # Update Xcode project settings
           sed -i '' -e 's/PRODUCT_NAME = "RustDesk"/PRODUCT_NAME = "${{ env.appname }}"/' ./flutter/macos/Runner.xcodeproj/project.pbxproj
@@ -179,11 +231,11 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          sed -i -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./flutter/lib/desktop/pages/desktop_home_page.dart
-          sed -i -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./flutter/lib/mobile/pages/connection_page.dart
-          sed -i -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./src/ui/index.tis
-          sed -i -e 's|&download_url|"${{ env.downloadLink }}"|' ./src/updater.rs
-          sed -i -e 's|$downloadUrl/$downloadFile|${{ env.downloadLink }}|' ./flutter/lib/desktop/widgets/update_progress.dart
+          sed -i '' -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./flutter/lib/desktop/pages/desktop_home_page.dart
+          sed -i '' -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./flutter/lib/mobile/pages/connection_page.dart
+          sed -i '' -e 's|https://rustdesk.com/download|${{ env.downloadLink }}|' ./src/ui/index.tis
+          sed -i '' -e 's|&download_url|"${{ env.downloadLink }}"|' ./src/updater.rs
+          sed -i '' -e 's|$downloadUrl/$downloadFile|${{ env.downloadLink }}|' ./flutter/lib/desktop/widgets/update_progress.dart
           
           # Update slogan - About in en.rs 
           sed -i '' -e 's/("Slogan_tip", "Made with heart in this chaotic world!")/("Slogan_tip", "Powered by ${{ env.appname }}")/' ./src/lang/en.rs
@@ -238,16 +290,16 @@ jobs:
           echo "Setting server: $SERVER_DOMAIN"
           echo "Setting ports: $SERVER_PORT, $RELAY_PORT, $WS_RENDEZVOUS_PORT, $WS_RELAY_PORT"
 
-          sed -i -e "s|rs-ny.rustdesk.com|$SERVER_DOMAIN|" ./libs/hbb_common/src/config.rs
+          sed -i '' -e "s|rs-ny.rustdesk.com|$SERVER_DOMAIN|" ./libs/hbb_common/src/config.rs
 
           # Match on numeric value so the step is independent of defaults
-          sed -i -e "s|pub const RENDEZVOUS_PORT: i32 = [0-9][0-9]*;|pub const RENDEZVOUS_PORT: i32 = $SERVER_PORT;|" ./libs/hbb_common/src/config.rs
-          sed -i -e "s|pub const RELAY_PORT: i32 = [0-9][0-9]*;|pub const RELAY_PORT: i32 = $RELAY_PORT;|" ./libs/hbb_common/src/config.rs
-          sed -i -e "s|pub const WS_RENDEZVOUS_PORT: i32 = [0-9][0-9]*;|pub const WS_RENDEZVOUS_PORT: i32 = $WS_RENDEZVOUS_PORT;|" ./libs/hbb_common/src/config.rs
-          sed -i -e "s|pub const WS_RELAY_PORT: i32 = [0-9][0-9]*;|pub const WS_RELAY_PORT: i32 = $WS_RELAY_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i '' -e "s|pub const RENDEZVOUS_PORT: i32 = [0-9][0-9]*;|pub const RENDEZVOUS_PORT: i32 = $SERVER_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i '' -e "s|pub const RELAY_PORT: i32 = [0-9][0-9]*;|pub const RELAY_PORT: i32 = $RELAY_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i '' -e "s|pub const WS_RENDEZVOUS_PORT: i32 = [0-9][0-9]*;|pub const WS_RENDEZVOUS_PORT: i32 = $WS_RENDEZVOUS_PORT;|" ./libs/hbb_common/src/config.rs
+          sed -i '' -e "s|pub const WS_RELAY_PORT: i32 = [0-9][0-9]*;|pub const WS_RELAY_PORT: i32 = $WS_RELAY_PORT;|" ./libs/hbb_common/src/config.rs
 
-          sed -i -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|$SERVER_KEY|" ./libs/hbb_common/src/config.rs
-          sed -i -e "s|https://admin.rustdesk.com|$API_SERVER|" ./src/common.rs
+          sed -i '' -e "s|OeVuKk5nlHiXp+APNn0Y3pC1Iwpwn44JGqrQCsWqmBw=|$SERVER_KEY|" ./libs/hbb_common/src/config.rs
+          sed -i '' -e "s|https://admin.rustdesk.com|$API_SERVER|" ./src/common.rs
 
           echo "=== Verification ==="
           grep -nE "RENDEZVOUS_PORT|RELAY_PORT|WS_" ./libs/hbb_common/src/config.rs
@@ -304,7 +356,7 @@ jobs:
         run: |
           cd "$(dirname "$(which flutter)")"
           # https://github.com/flutter/flutter/issues/133533
-          sed -i -e 's/_setFramesEnabledState(false);/\/\/_setFramesEnabledState(false);/g' ../packages/flutter/lib/src/scheduler/binding.dart
+          sed -i '' -e 's/_setFramesEnabledState(false);/\/\/_setFramesEnabledState(false);/g' ../packages/flutter/lib/src/scheduler/binding.dart
           grep -n '_setFramesEnabledState(false);' ../packages/flutter/lib/src/scheduler/binding.dart
         
       - name: Install Rust toolchain
@@ -472,7 +524,7 @@ jobs:
           # Precise fix: only extend the direct-connection condition with the
           # key check, instead of globally replacing !key.is_empty() with
           # false (which would also disable TCP encryption and UDP logic).
-          sed -i -e 's#if is_local || peer_nat_type == NatType::SYMMETRIC {#if is_local || peer_nat_type == NatType::SYMMETRIC || !key.is_empty() {#' ./src/client.rs
+          sed -i '' -e 's#if is_local || peer_nat_type == NatType::SYMMETRIC {#if is_local || peer_nat_type == NatType::SYMMETRIC || !key.is_empty() {#' ./src/client.rs
           grep -n "key.is_empty()" ./src/client.rs || true
   
       - name: use X for offline display instead of orange circle
@@ -493,8 +545,8 @@ jobs:
         continue-on-error: true
         if: env.removeNewVersionNotif == 'true'
         run: | 
-          sed -i -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
-          sed -i '/let (request, url) =/,/Ok(())/{/Ok(())/!d}' ./src/common.rs
+          sed -i '' -e 's|updateUrl.isNotEmpty|false|' ./flutter/lib/desktop/pages/desktop_home_page.dart
+          sed -i '' '/let (request, url) =/,/Ok(())/{/Ok(())/!d}' ./src/common.rs
 
       - name: Restore bridge files
         uses: actions/download-artifact@master
@@ -532,12 +584,12 @@ jobs:
         run: |
           if [ "${{ matrix.job.target }}" = "aarch64-apple-darwin" ]; then
             MIN_MACOS_VERSION="12.3"
-            sed -i -e "s/MACOSX_DEPLOYMENT_TARGET\=[0-9]*.[0-9]*/MACOSX_DEPLOYMENT_TARGET=${MIN_MACOS_VERSION}/" build.py
-            sed -i -e "s/platform :osx, '.*'/platform :osx, '${MIN_MACOS_VERSION}'/" flutter/macos/Podfile
-            sed -i -e "s/osx_minimum_system_version = \"[0-9]*.[0-9]*\"/osx_minimum_system_version = \"${MIN_MACOS_VERSION}\"/" Cargo.toml
-            sed -i -e "s/MACOSX_DEPLOYMENT_TARGET = [0-9]*.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = ${MIN_MACOS_VERSION};/" flutter/macos/Runner.xcodeproj/project.pbxproj
+            sed -i '' -e "s/MACOSX_DEPLOYMENT_TARGET\=[0-9]*.[0-9]*/MACOSX_DEPLOYMENT_TARGET=${MIN_MACOS_VERSION}/" build.py
+            sed -i '' -e "s/platform :osx, '.*'/platform :osx, '${MIN_MACOS_VERSION}'/" flutter/macos/Podfile
+            sed -i '' -e "s/osx_minimum_system_version = \"[0-9]*.[0-9]*\"/osx_minimum_system_version = \"${MIN_MACOS_VERSION}\"/" Cargo.toml
+            sed -i '' -e "s/MACOSX_DEPLOYMENT_TARGET = [0-9]*.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = ${MIN_MACOS_VERSION};/" flutter/macos/Runner.xcodeproj/project.pbxproj
           fi
-          sed -i -e "s/RustDesk.app/\"${{ env.appname }}.app\"/" build.py
+          sed -i '' -e "s/RustDesk.app/\"${{ env.appname }}.app\"/" build.py
           ./build.py --flutter --hwcodec --unix-file-copy-paste ${{ matrix.job.extra-build-args }}
 
       # - name: Copy service file
