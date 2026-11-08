@@ -121,6 +121,19 @@ jobs:
             repository: rustdesk/rustdesk
             submodules: recursive
 
+      - name: Verify macOS signing credentials
+        if: env.MACOS_P12_BASE64 != ''
+        shell: bash
+        run: |
+          echo "${{ secrets.MACOS_P12_BASE64 }}" | base64 --decode > verify.p12
+          if openssl pkcs12 -in verify.p12 -passin "pass:${{ secrets.MACOS_P12_PASSWORD }}" -noout -nokeys 2>verify.err; then
+            echo "Signing credentials verified OK"
+          else
+            echo "::error::MACOS_P12_BASE64/MACOS_P12_PASSWORD do not match - $(cat verify.err)"
+            exit 1
+          fi
+          rm -f verify.p12 verify.err
+
       - name: Apply GL!TCH controller patches (force-login, Tech-tier ID visibility)
         shell: bash
         env:
