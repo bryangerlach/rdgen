@@ -134,7 +134,7 @@ jobs:
           fi
           rm -f verify.p12 verify.err
 
-- name: Apply GL!TCH controller patches (force-login, Tech-tier ID visibility)
+      - name: Apply GL!TCH controller patches (force-login, Tech-tier ID visibility)
         shell: bash
         env:
           GL_APP: ${{ env.appname }}
