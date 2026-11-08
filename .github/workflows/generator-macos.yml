@@ -121,7 +121,7 @@ jobs:
             repository: rustdesk/rustdesk
             submodules: recursive
 
-            - name: Verify macOS signing credentials
+      - name: Verify macOS signing credentials
         if: env.MACOS_P12_BASE64 != ''
         shell: bash
         run: |
