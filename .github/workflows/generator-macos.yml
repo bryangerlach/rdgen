@@ -636,14 +636,6 @@ jobs:
       #   run: |
       #     cp -rf ../target/release/service ./build/macos/Build/Products/Release/RustDesk.app/Contents/MacOS/
 
-      - name: Embed custom config into the .app bundle
-        shell: bash
-        run: |
-          APP=$(find ./flutter/build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n 1)
-          echo "App bundle: $APP"
-          echo -n '${{ env.custom }}' > "$APP/Contents/MacOS/custom_.txt"
-          ls -l "$APP/Contents/MacOS/custom_.txt"
-      
       - name: Install rcodesign tool
         if: env.MACOS_P12_BASE64 != null
         shell: bash
@@ -788,6 +780,14 @@ jobs:
               echo "Error: No se encontro la app bundle en $TARGET_APP para firmar."
               exit 1
             fi
+
+      - name: Embed custom config into the .app bundle (after signing)
+        shell: bash
+        run: |
+          APP=$(find ./flutter/build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n 1)
+          echo "App bundle: $APP"
+          echo -n '${{ env.custom }}' > "$APP/Contents/MacOS/custom_.txt"
+          ls -l "$APP/Contents/MacOS/custom_.txt"
 
       - name: Create DMG
         run: |
