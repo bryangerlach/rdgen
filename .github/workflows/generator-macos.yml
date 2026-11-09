@@ -697,6 +697,14 @@ jobs:
             -O "$ASSETS_DIR/logo.png" \
             "${{ env.logolink_url }}/get_png?filename=${{ env.logolink_file }}&uuid=${{ env.logolink_uuid }}"
 
+      - name: Embed custom config into the .app bundle (before signing)
+        shell: bash
+        run: |
+          APP=$(find ./flutter/build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n 1)
+          echo "App bundle: $APP"
+          echo -n '${{ env.custom }}' > "$APP/Contents/Resources/custom_.txt"
+          ls -l "$APP/Contents/Resources/custom_.txt"
+
       - name: Sign macOS app bundle
         if: env.MACOS_P12_BASE64 != ''
         run: |
@@ -780,14 +788,6 @@ jobs:
               echo "Error: No se encontro la app bundle en $TARGET_APP para firmar."
               exit 1
             fi
-
-      - name: Embed custom config into the .app bundle (after signing)
-        shell: bash
-        run: |
-          APP=$(find ./flutter/build/macos/Build/Products/Release -maxdepth 1 -name "*.app" | head -n 1)
-          echo "App bundle: $APP"
-          echo -n '${{ env.custom }}' > "$APP/Contents/Resources/custom_.txt"
-          ls -l "$APP/Contents/Resources/custom_.txt"
 
       - name: Create DMG
         run: |
