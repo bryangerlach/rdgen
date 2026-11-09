@@ -235,6 +235,27 @@ jobs:
           flutter build ipa --release --no-codesign
           popd
 
+          # GL!TCH: "flutter build ipa --no-codesign" only ever produces the
+          # .xcarchive - Xcode's own IPA export step requires a signing
+          # identity, so Flutter deliberately stops there and prints
+          # "Codesigning disabled with --no-codesign, skipping IPA." (this
+          # is why every earlier attempt "succeeded" at building but then
+          # failed to upload - there was never an .ipa to find). Package the
+          # already-built .app into a standard unsigned IPA ourselves: a
+          # "Payload/<App>.app" folder zipped with a .ipa extension, exactly
+          # what sideloading tools (AltStore, Sideloadly) expect.
+          ARCHIVE_APP=$(find flutter/build/ios/archive/Runner.xcarchive/Products/Applications -maxdepth 1 -name "*.app" | head -n 1)
+          if [ -z "$ARCHIVE_APP" ]; then
+            echo "::error::No .app found in the built archive"
+            exit 1
+          fi
+          mkdir -p flutter/build/ios/ipa/Payload
+          cp -r "$ARCHIVE_APP" flutter/build/ios/ipa/Payload/
+          pushd flutter/build/ios/ipa
+          zip -r -q "${{ env.filename }}-unsigned.ipa" Payload
+          rm -rf Payload
+          popd
+
       - name: Upload unsigned build artifact
         uses: actions/upload-artifact@v4
         with:
