@@ -1090,6 +1090,7 @@ jobs:
                gcc \
                git \
                g++ \
+               imagemagick \
                libayatana-appindicator3-dev \
                libasound2-dev \
                libclang-10-dev \
