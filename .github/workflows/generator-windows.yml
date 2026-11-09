@@ -1049,6 +1049,7 @@ jobs:
               $v.GetType().InvokeMember('Execute', 'InvokeMethod', $null, $v, @($rec)) | Out-Null
               $r = if ($sql -like 'SELECT*') { $v.GetType().InvokeMember('Fetch', 'InvokeMethod', $null, $v, $null) }
               $v.GetType().InvokeMember('Close', 'InvokeMethod', $null, $v, $null) | Out-Null
+              [Runtime.InteropServices.Marshal]::ReleaseComObject($v) | Out-Null
               , $r
           }
           function One($sql) { $r = Run $sql; if ($r) { $r.GetType().InvokeMember('StringData', 'GetProperty', $null, $r, 1) } }
@@ -1068,6 +1069,7 @@ jobs:
               if ($s -ge $fin) { $late += , @($r.GetType().InvokeMember('StringData', 'GetProperty', $null, $r, 1), $s) }
           }
           $v.GetType().InvokeMember('Close', 'InvokeMethod', $null, $v, $null) | Out-Null
+          [Runtime.InteropServices.Marshal]::ReleaseComObject($v) | Out-Null
           foreach ($a in $late) { Run "UPDATE InstallExecuteSequence SET Sequence=$($a[1] + 10) WHERE Action='$($a[0])'" | Out-Null }
 
           Run 'INSERT INTO `Property` (`Property`, `Value`) VALUES (?, ?)' @('GLITCHHOSTCODE', $Placeholder) | Out-Null
@@ -1077,10 +1079,15 @@ jobs:
           $db.GetType().InvokeMember('Commit', 'InvokeMethod', $null, $db, $null) | Out-Null
           [Runtime.InteropServices.Marshal]::ReleaseComObject($db) | Out-Null
           [Runtime.InteropServices.Marshal]::ReleaseComObject($wi) | Out-Null
-          [GC]::Collect(); [GC]::WaitForPendingFinalizers()
+          [GC]::Collect(); [GC]::WaitForPendingFinalizers(); [GC]::Collect()
 
           # The server swaps the placeholder bytes in place: it must be in the file exactly once, in one piece.
-          $bytes = [IO.File]::ReadAllBytes($Out)
+          $bytes = $null
+          for ($i = 0; $i -lt 10; $i++) {
+              try { $bytes = [IO.File]::ReadAllBytes($Out); break }
+              catch { Start-Sleep -Milliseconds 500 }
+          }
+          if (-not $bytes) { throw "Could not read $Out after retries - file still locked" }
           $text = [Text.Encoding]::GetEncoding('ISO-8859-1').GetString($bytes)
           $count = ([regex]::Matches($text, [regex]::Escape($Placeholder))).Count
           Write-Output "placeholder found $count time(s) in one piece"
