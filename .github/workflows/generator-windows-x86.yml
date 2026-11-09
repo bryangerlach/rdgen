@@ -478,6 +478,21 @@ jobs:
             ls -l ./libs/portable/Runner.res;
           fi
       
+      - name: sign dlls and exe (Artifact Signing)
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: https://eus.codesigning.azure.net/
+          signing-account-name: glitch-signing
+          certificate-profile-name: GlitchRemote
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          files-folder: ${{ github.workspace }}/Release
+          files-folder-filter: dll,exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
       - name: zip dlls
         continue-on-error: true
         shell: pwsh
@@ -527,6 +542,21 @@ jobs:
           cargo build --target ${{ matrix.job.target }} --package rustdesk-portable-packer --release
           mkdir -p ./SignOutput
           mv ./target/${{ matrix.job.target }}/release/rustdesk-portable-packer.exe "./SignOutput/rustdesk.exe"
+
+      - name: sign exe (Artifact Signing)
+        uses: azure/artifact-signing-action@v2
+        with:
+          endpoint: https://eus.codesigning.azure.net/
+          signing-account-name: glitch-signing
+          certificate-profile-name: GlitchRemote
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          files-folder: ${{ github.workspace }}/SignOutput
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
 
       - name: zip exe
         continue-on-error: true
