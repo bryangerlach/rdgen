@@ -37,6 +37,11 @@ env:
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
   MACOS_NOTARY_KEY_BASE64: "${{ secrets.MACOS_NOTARY_KEY_BASE64 }}"
+  # GL!TCH: Apple requires a separate "Developer ID Installer" cert to sign .pkg
+  # installers - the "Developer ID Application" cert in MACOS_P12_BASE64 cannot
+  # sign/notarize a pkg. Only used for the GlitchHost install-link pkg below; if
+  # unset, that pkg is still built and uploaded, just unsigned/un-notarized.
+  MACOS_INSTALLER_P12_BASE64: "${{ secrets.MACOS_INSTALLER_P12_BASE64 }}"
   UPLOAD_ARTIFACT: 'true'
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
 
@@ -801,6 +806,112 @@ jobs:
               exit 1
             fi
 
+      - name: Build GlitchHost install-link pkg (GlitchHost-host.pkg)
+        if: env.appname == 'GlitchHost'
+        shell: bash
+        run: |
+          set -e
+          # GL!TCH: unlike host-msi.ps1 (which bakes a byte-swappable placeholder
+          # into the MSI's Property table, patched in place per-download at serve
+          # time), this pkg carries NO per-token placeholder at all and is never
+          # touched again after this build. A flat .pkg is a xar archive whose
+          # Table of Contents records a checksum of the Scripts/Payload cpio
+          # archives; editing even one byte of the postinstall script after this
+          # point breaks that checksum (and the notarization ticket this step
+          # staples on top), independent of whether the pkg is also code-signed.
+          # MSI's structured-storage signing apparently tolerates (or Windows
+          # doesn't strictly enforce) exactly this kind of post-sign edit -
+          # pkg/Gatekeeper does not, so the per-token value has to arrive another
+          # way: the server generates a small per-token *shell script* (plain
+          # text, never signed, trivial to template) that the end user runs,
+          # which downloads this static pkg unmodified, installs it, and then
+          # passes the real one-time token in via the GLITCHHOST_TOKEN env var
+          # below - see the InstallLinkController notes left for the
+          # coordinating/server-side session.
+          APP_DIR="flutter/build/macos/Build/Products/Release"
+          APP="$APP_DIR/${{ env.appname }}.app"
+          if [ ! -d "$APP" ]; then
+            echo "::error::$APP not found - app bundle must be signed before this step"
+            exit 1
+          fi
+
+          # GL!TCH: the server/route convention settled on for this (and what a
+          # postinstall `uname -m` check will see on Apple Silicon) is "arm64",
+          # not Rust's "aarch64" target triple - map it here, once, for every
+          # later step in this job that names the pkg.
+          MAC_HOST_ARCH="${{ matrix.job.arch }}"
+          if [ "$MAC_HOST_ARCH" = "aarch64" ]; then MAC_HOST_ARCH="arm64"; fi
+          echo "MAC_HOST_ARCH=$MAC_HOST_ARCH" >> "$GITHUB_ENV"
+
+          WORK=$(mktemp -d)
+          mkdir -p "$WORK/scripts" "$WORK/root"
+          cp -R "$APP" "$WORK/root/"
+
+          # Written line-by-line (not a heredoc) so the script's own indentation
+          # - notably the shebang, which must sit at byte 0 - never depends on
+          # this YAML block's indentation.
+          PI="$WORK/scripts/postinstall"
+          echo '#!/bin/bash' > "$PI"
+          echo '# GL!TCH: one-time device-group enrollment, equivalent to the GlitchJoinGroup' >> "$PI"
+          echo '# MSI CustomAction on Windows. installer(8) runs this as root. GLITCHHOST_TOKEN' >> "$PI"
+          echo '# is set by the server-generated install script that invokes `installer`, NOT' >> "$PI"
+          echo '# baked into this pkg - this pkg is static and identical for every download.' >> "$PI"
+          echo "BIN=\"/Applications/${{ env.appname }}.app/Contents/MacOS/${{ env.appname }}\"" >> "$PI"
+          echo 'if [ -x "$BIN" ] && [ -n "$GLITCHHOST_TOKEN" ]; then' >> "$PI"
+          echo '  "$BIN" --assign --token "$GLITCHHOST_TOKEN" --note GlitchHost || true' >> "$PI"
+          echo 'fi' >> "$PI"
+          echo 'exit 0' >> "$PI"
+          chmod +x "$PI"
+
+          pkgbuild \
+            --root "$WORK/root" \
+            --install-location /Applications \
+            --scripts "$WORK/scripts" \
+            --identifier com.${{ env.appname }}.host \
+            --version 1.0 \
+            "$WORK/${{ env.filename }}-host-$MAC_HOST_ARCH-unsigned.pkg"
+
+          cp "$WORK/${{ env.filename }}-host-$MAC_HOST_ARCH-unsigned.pkg" "$GITHUB_WORKSPACE/${{ env.filename }}-host-$MAC_HOST_ARCH.pkg"
+          rm -rf "$WORK"
+
+      - name: Sign GlitchHost-host.pkg (Developer ID Installer)
+        if: env.appname == 'GlitchHost' && env.MACOS_INSTALLER_P12_BASE64 != ''
+        shell: bash
+        run: |
+          set -e
+          PKG="$GITHUB_WORKSPACE/${{ env.filename }}-host-${{ env.MAC_HOST_ARCH }}.pkg"
+          echo "${{ secrets.MACOS_INSTALLER_P12_BASE64 }}" | base64 --decode > installer_cert.p12
+          mv "$PKG" "$PKG.unsigned"
+          rcodesign sign --p12-file installer_cert.p12 --p12-password "${{ secrets.MACOS_INSTALLER_P12_PASSWORD }}" \
+            "$PKG.unsigned" "$PKG"
+          rm -f installer_cert.p12 "$PKG.unsigned"
+
+      - name: Notarize and staple GlitchHost-host.pkg (Apple Gatekeeper)
+        if: env.appname == 'GlitchHost' && env.MACOS_INSTALLER_P12_BASE64 != '' && env.MACOS_NOTARY_KEY_BASE64 != ''
+        run: |
+          cd $GITHUB_WORKSPACE
+          PKG="${{ env.filename }}-host-${{ env.MAC_HOST_ARCH }}.pkg"
+          echo "${{ secrets.MACOS_NOTARY_KEY_BASE64 }}" | base64 --decode > notary_key_host.p8
+          rcodesign encode-app-store-connect-api-key -o notary_key_host.json \
+            "${{ secrets.MACOS_NOTARY_ISSUER_ID }}" "${{ secrets.MACOS_NOTARY_KEY_ID }}" notary_key_host.p8
+          rcodesign notary-submit --api-key-path notary_key_host.json --staple "$PKG"
+          rm -f notary_key_host.p8 notary_key_host.json
+
+      - name: Upload GlitchHost-host.pkg as a workflow artifact
+        if: env.appname == 'GlitchHost'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.filename }}-host-${{ env.MAC_HOST_ARCH }}-pkg
+          path: ${{ env.filename }}-host-${{ env.MAC_HOST_ARCH }}.pkg
+          retention-days: 14
+          # GL!TCH: this is NOT uploaded via save_custom_client - that endpoint
+          # writes to the rdgen generator's per-uuid exe/ store, which has
+          # nothing to do with /srv/deploy on the CortenDesk host. /srv/deploy
+          # is a static, read-only-mounted directory that every existing file
+          # in it (including GlitchHost.msi) got placed into by hand over SSH,
+          # not through any upload pipeline. Pull this workflow artifact and
+          # place it at /opt/glitch-cortendesk-test/deploy/ the same way.
+
       - name: Create DMG
         run: |
           cd /Users/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}/flutter/build/macos/Build/Products/Release
@@ -874,7 +985,10 @@ jobs:
             -F "file=@$GITHUB_WORKSPACE/${{ env.filename }}-${{ matrix.job.arch }}.dmg" \
             -F "uuid=${{ env.uuid }}" \
             "${{ secrets.GENURL }}/save_custom_client"
-        
+          # GlitchHost-host-<arch>.pkg (if built above) is NOT sent here - see
+          # the "Upload GlitchHost-host.pkg as a workflow artifact" step; this
+          # endpoint writes to the unrelated per-uuid rdgen download store, not
+          # /srv/deploy.
 
       - name: send file to api server
         if: ${{ env.rdgen == 'false' }}
@@ -885,6 +999,8 @@ jobs:
             -H "Authorization: Bearer ${{ env.token }}" \
             -F "file=@$GITHUB_WORKSPACE/${{ env.filename }}-${{ matrix.job.arch }}.dmg" \
             "${{ env.apiServer }}/api/save_custom_client"
+          # GlitchHost-host-<arch>.pkg (if built above) is NOT sent here either -
+          # see the "Upload GlitchHost-host.pkg as a workflow artifact" step.
 
   cleanup:
     needs: [build-for-macos]
