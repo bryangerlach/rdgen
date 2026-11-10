@@ -800,17 +800,23 @@ jobs:
         shell: bash
         run: |
           set -e
-          # GL!TCH: the /host and /h/{link} install-link flow serves a separate
-          # GlitchHost-host-<arch>.pkg with a one-time-code placeholder the server
-          # swaps in at download time - the pkg equivalent of host-msi.ps1's MSI
-          # CustomAction. A pkg postinstall script runs as root automatically
-          # (installer/Installer.app always runs scripts as root), so this needs
-          # no separate "deferred SYSTEM step" bookkeeping the way MSI does.
-          #
-          # Unlike host-msi.ps1 (which patches an already-signed MSI's CustomAction
-          # table after the fact), there is no equivalent lightweight way to splice
-          # a script into an already-built pkg, so this builds a second, separate
-          # pkg from scratch here and signs/notarizes it on its own below.
+          # GL!TCH: unlike host-msi.ps1 (which bakes a byte-swappable placeholder
+          # into the MSI's Property table, patched in place per-download at serve
+          # time), this pkg carries NO per-token placeholder at all and is never
+          # touched again after this build. A flat .pkg is a xar archive whose
+          # Table of Contents records a checksum of the Scripts/Payload cpio
+          # archives; editing even one byte of the postinstall script after this
+          # point breaks that checksum (and the notarization ticket this step
+          # staples on top), independent of whether the pkg is also code-signed.
+          # MSI's structured-storage signing apparently tolerates (or Windows
+          # doesn't strictly enforce) exactly this kind of post-sign edit -
+          # pkg/Gatekeeper does not, so the per-token value has to arrive another
+          # way: the server generates a small per-token *shell script* (plain
+          # text, never signed, trivial to template) that the end user runs,
+          # which downloads this static pkg unmodified, installs it, and then
+          # passes the real one-time token in via the GLITCHHOST_TOKEN env var
+          # below - see the InstallLinkController notes left for the
+          # coordinating/server-side session.
           APP_DIR="flutter/build/macos/Build/Products/Release"
           APP="$APP_DIR/${{ env.appname }}.app"
           if [ ! -d "$APP" ]; then
@@ -818,7 +824,6 @@ jobs:
             exit 1
           fi
 
-          PLACEHOLDER="GLH-CODE-PLACEHOLDER-$(printf 'X%.0s' $(seq 1 27))"   # 48 chars, same convention as host-msi.ps1
           WORK=$(mktemp -d)
           mkdir -p "$WORK/scripts" "$WORK/root"
           cp -R "$APP" "$WORK/root/"
@@ -829,12 +834,12 @@ jobs:
           PI="$WORK/scripts/postinstall"
           echo '#!/bin/bash' > "$PI"
           echo '# GL!TCH: one-time device-group enrollment, equivalent to the GlitchJoinGroup' >> "$PI"
-          echo '# MSI CustomAction on Windows. installer(8) runs this as root. The token below' >> "$PI"
-          echo '# is a placeholder the server overwrites with a real one-time code (see' >> "$PI"
-          echo '# InstallLinkController) before this pkg is ever served to an end user.' >> "$PI"
+          echo '# MSI CustomAction on Windows. installer(8) runs this as root. GLITCHHOST_TOKEN' >> "$PI"
+          echo '# is set by the server-generated install script that invokes `installer`, NOT' >> "$PI"
+          echo '# baked into this pkg - this pkg is static and identical for every download.' >> "$PI"
           echo "BIN=\"/Applications/${{ env.appname }}.app/Contents/MacOS/${{ env.appname }}\"" >> "$PI"
-          echo 'if [ -x "$BIN" ]; then' >> "$PI"
-          echo "  \"\$BIN\" --assign --token $PLACEHOLDER --note GlitchHost || true" >> "$PI"
+          echo 'if [ -x "$BIN" ] && [ -n "$GLITCHHOST_TOKEN" ]; then' >> "$PI"
+          echo '  "$BIN" --assign --token "$GLITCHHOST_TOKEN" --note GlitchHost || true' >> "$PI"
           echo 'fi' >> "$PI"
           echo 'exit 0' >> "$PI"
           chmod +x "$PI"
@@ -848,9 +853,6 @@ jobs:
             "$WORK/${{ env.filename }}-host-${{ matrix.job.arch }}-unsigned.pkg"
 
           cp "$WORK/${{ env.filename }}-host-${{ matrix.job.arch }}-unsigned.pkg" "$GITHUB_WORKSPACE/${{ env.filename }}-host-${{ matrix.job.arch }}.pkg"
-
-          # The server swaps the placeholder bytes in place: it must be in the file exactly once, in one piece.
-          python3 -c "import sys; d = open('$GITHUB_WORKSPACE/${{ env.filename }}-host-${{ matrix.job.arch }}.pkg', 'rb').read(); pat = b'GLH-CODE-PLACEHOLDER-' + b'X' * 27; count = d.count(pat); print('placeholder found', count, 'time(s) in one piece'); sys.exit(0 if count == 1 else 1)"
           rm -rf "$WORK"
 
       - name: Sign GlitchHost-host.pkg (Developer ID Installer)
