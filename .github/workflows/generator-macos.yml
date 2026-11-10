@@ -824,6 +824,14 @@ jobs:
             exit 1
           fi
 
+          # GL!TCH: the server/route convention settled on for this (and what a
+          # postinstall `uname -m` check will see on Apple Silicon) is "arm64",
+          # not Rust's "aarch64" target triple - map it here, once, for every
+          # later step in this job that names the pkg.
+          MAC_HOST_ARCH="${{ matrix.job.arch }}"
+          if [ "$MAC_HOST_ARCH" = "aarch64" ]; then MAC_HOST_ARCH="arm64"; fi
+          echo "MAC_HOST_ARCH=$MAC_HOST_ARCH" >> "$GITHUB_ENV"
+
           WORK=$(mktemp -d)
           mkdir -p "$WORK/scripts" "$WORK/root"
           cp -R "$APP" "$WORK/root/"
@@ -850,9 +858,9 @@ jobs:
             --scripts "$WORK/scripts" \
             --identifier com.${{ env.appname }}.host \
             --version 1.0 \
-            "$WORK/${{ env.filename }}-host-${{ matrix.job.arch }}-unsigned.pkg"
+            "$WORK/${{ env.filename }}-host-$MAC_HOST_ARCH-unsigned.pkg"
 
-          cp "$WORK/${{ env.filename }}-host-${{ matrix.job.arch }}-unsigned.pkg" "$GITHUB_WORKSPACE/${{ env.filename }}-host-${{ matrix.job.arch }}.pkg"
+          cp "$WORK/${{ env.filename }}-host-$MAC_HOST_ARCH-unsigned.pkg" "$GITHUB_WORKSPACE/${{ env.filename }}-host-$MAC_HOST_ARCH.pkg"
           rm -rf "$WORK"
 
       - name: Sign GlitchHost-host.pkg (Developer ID Installer)
@@ -860,7 +868,7 @@ jobs:
         shell: bash
         run: |
           set -e
-          PKG="$GITHUB_WORKSPACE/${{ env.filename }}-host-${{ matrix.job.arch }}.pkg"
+          PKG="$GITHUB_WORKSPACE/${{ env.filename }}-host-${{ env.MAC_HOST_ARCH }}.pkg"
           echo "${{ secrets.MACOS_INSTALLER_P12_BASE64 }}" | base64 --decode > installer_cert.p12
           mv "$PKG" "$PKG.unsigned"
           rcodesign sign --p12-file installer_cert.p12 --p12-password "${{ secrets.MACOS_INSTALLER_P12_PASSWORD }}" \
@@ -871,12 +879,27 @@ jobs:
         if: env.appname == 'GlitchHost' && env.MACOS_INSTALLER_P12_BASE64 != '' && env.MACOS_NOTARY_KEY_BASE64 != ''
         run: |
           cd $GITHUB_WORKSPACE
-          PKG="${{ env.filename }}-host-${{ matrix.job.arch }}.pkg"
+          PKG="${{ env.filename }}-host-${{ env.MAC_HOST_ARCH }}.pkg"
           echo "${{ secrets.MACOS_NOTARY_KEY_BASE64 }}" | base64 --decode > notary_key_host.p8
           rcodesign encode-app-store-connect-api-key -o notary_key_host.json \
             "${{ secrets.MACOS_NOTARY_ISSUER_ID }}" "${{ secrets.MACOS_NOTARY_KEY_ID }}" notary_key_host.p8
           rcodesign notary-submit --api-key-path notary_key_host.json --staple "$PKG"
           rm -f notary_key_host.p8 notary_key_host.json
+
+      - name: Upload GlitchHost-host.pkg as a workflow artifact
+        if: env.appname == 'GlitchHost'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.filename }}-host-${{ env.MAC_HOST_ARCH }}-pkg
+          path: ${{ env.filename }}-host-${{ env.MAC_HOST_ARCH }}.pkg
+          retention-days: 14
+          # GL!TCH: this is NOT uploaded via save_custom_client - that endpoint
+          # writes to the rdgen generator's per-uuid exe/ store, which has
+          # nothing to do with /srv/deploy on the CortenDesk host. /srv/deploy
+          # is a static, read-only-mounted directory that every existing file
+          # in it (including GlitchHost.msi) got placed into by hand over SSH,
+          # not through any upload pipeline. Pull this workflow artifact and
+          # place it at /opt/glitch-cortendesk-test/deploy/ the same way.
 
       - name: Create DMG
         run: |
@@ -951,15 +974,10 @@ jobs:
             -F "file=@$GITHUB_WORKSPACE/${{ env.filename }}-${{ matrix.job.arch }}.dmg" \
             -F "uuid=${{ env.uuid }}" \
             "${{ secrets.GENURL }}/save_custom_client"
-          HOSTPKG="$GITHUB_WORKSPACE/${{ env.filename }}-host-${{ matrix.job.arch }}.pkg"
-          if [ -f "$HOSTPKG" ]; then
-            curl -i -X POST \
-              -H "Content-Type: multipart/form-data" \
-              -H "Authorization: Bearer ${{ env.token }}" \
-              -F "file=@$HOSTPKG" \
-              -F "uuid=${{ env.uuid }}" \
-              "${{ secrets.GENURL }}/save_custom_client" || true
-          fi
+          # GlitchHost-host-<arch>.pkg (if built above) is NOT sent here - see
+          # the "Upload GlitchHost-host.pkg as a workflow artifact" step; this
+          # endpoint writes to the unrelated per-uuid rdgen download store, not
+          # /srv/deploy.
 
       - name: send file to api server
         if: ${{ env.rdgen == 'false' }}
@@ -970,14 +988,8 @@ jobs:
             -H "Authorization: Bearer ${{ env.token }}" \
             -F "file=@$GITHUB_WORKSPACE/${{ env.filename }}-${{ matrix.job.arch }}.dmg" \
             "${{ env.apiServer }}/api/save_custom_client"
-          HOSTPKG="$GITHUB_WORKSPACE/${{ env.filename }}-host-${{ matrix.job.arch }}.pkg"
-          if [ -f "$HOSTPKG" ]; then
-            curl -i -X POST \
-              -H "Content-Type: multipart/form-data" \
-              -H "Authorization: Bearer ${{ env.token }}" \
-              -F "file=@$HOSTPKG" \
-              "${{ env.apiServer }}/api/save_custom_client" || true
-          fi
+          # GlitchHost-host-<arch>.pkg (if built above) is NOT sent here either -
+          # see the "Upload GlitchHost-host.pkg as a workflow artifact" step.
 
   cleanup:
     needs: [build-for-macos]
