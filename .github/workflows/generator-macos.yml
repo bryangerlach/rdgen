@@ -37,6 +37,11 @@ env:
   ANDROID_SIGNING_KEY: "${{ secrets.ANDROID_SIGNING_KEY }}"
   MACOS_P12_BASE64: "${{ secrets.MACOS_P12_BASE64 }}"
   MACOS_NOTARY_KEY_BASE64: "${{ secrets.MACOS_NOTARY_KEY_BASE64 }}"
+  # GL!TCH: Apple requires a separate "Developer ID Installer" cert to sign .pkg
+  # installers - the "Developer ID Application" cert in MACOS_P12_BASE64 cannot
+  # sign/notarize a pkg. Only used for the GlitchHost install-link pkg below; if
+  # unset, that pkg is still built and uploaded, just unsigned/un-notarized.
+  MACOS_INSTALLER_P12_BASE64: "${{ secrets.MACOS_INSTALLER_P12_BASE64 }}"
   UPLOAD_ARTIFACT: 'true'
   SIGN_BASE_URL: "${{ secrets.SIGN_BASE_URL }}"
 
@@ -790,6 +795,87 @@ jobs:
               exit 1
             fi
 
+      - name: Build GlitchHost install-link pkg (GlitchHost-host.pkg)
+        if: env.appname == 'GlitchHost'
+        shell: bash
+        run: |
+          set -e
+          # GL!TCH: the /host and /h/{link} install-link flow serves a separate
+          # GlitchHost-host-<arch>.pkg with a one-time-code placeholder the server
+          # swaps in at download time - the pkg equivalent of host-msi.ps1's MSI
+          # CustomAction. A pkg postinstall script runs as root automatically
+          # (installer/Installer.app always runs scripts as root), so this needs
+          # no separate "deferred SYSTEM step" bookkeeping the way MSI does.
+          #
+          # Unlike host-msi.ps1 (which patches an already-signed MSI's CustomAction
+          # table after the fact), there is no equivalent lightweight way to splice
+          # a script into an already-built pkg, so this builds a second, separate
+          # pkg from scratch here and signs/notarizes it on its own below.
+          APP_DIR="flutter/build/macos/Build/Products/Release"
+          APP="$APP_DIR/${{ env.appname }}.app"
+          if [ ! -d "$APP" ]; then
+            echo "::error::$APP not found - app bundle must be signed before this step"
+            exit 1
+          fi
+
+          PLACEHOLDER="GLH-CODE-PLACEHOLDER-$(printf 'X%.0s' $(seq 1 27))"   # 48 chars, same convention as host-msi.ps1
+          WORK=$(mktemp -d)
+          mkdir -p "$WORK/scripts" "$WORK/root"
+          cp -R "$APP" "$WORK/root/"
+
+          # Written line-by-line (not a heredoc) so the script's own indentation
+          # - notably the shebang, which must sit at byte 0 - never depends on
+          # this YAML block's indentation.
+          PI="$WORK/scripts/postinstall"
+          echo '#!/bin/bash' > "$PI"
+          echo '# GL!TCH: one-time device-group enrollment, equivalent to the GlitchJoinGroup' >> "$PI"
+          echo '# MSI CustomAction on Windows. installer(8) runs this as root. The token below' >> "$PI"
+          echo '# is a placeholder the server overwrites with a real one-time code (see' >> "$PI"
+          echo '# InstallLinkController) before this pkg is ever served to an end user.' >> "$PI"
+          echo "BIN=\"/Applications/${{ env.appname }}.app/Contents/MacOS/${{ env.appname }}\"" >> "$PI"
+          echo 'if [ -x "$BIN" ]; then' >> "$PI"
+          echo "  \"\$BIN\" --assign --token $PLACEHOLDER --note GlitchHost || true" >> "$PI"
+          echo 'fi' >> "$PI"
+          echo 'exit 0' >> "$PI"
+          chmod +x "$PI"
+
+          pkgbuild \
+            --root "$WORK/root" \
+            --install-location /Applications \
+            --scripts "$WORK/scripts" \
+            --identifier com.${{ env.appname }}.host \
+            --version 1.0 \
+            "$WORK/${{ env.filename }}-host-${{ matrix.job.arch }}-unsigned.pkg"
+
+          cp "$WORK/${{ env.filename }}-host-${{ matrix.job.arch }}-unsigned.pkg" "$GITHUB_WORKSPACE/${{ env.filename }}-host-${{ matrix.job.arch }}.pkg"
+
+          # The server swaps the placeholder bytes in place: it must be in the file exactly once, in one piece.
+          python3 -c "import sys; d = open('$GITHUB_WORKSPACE/${{ env.filename }}-host-${{ matrix.job.arch }}.pkg', 'rb').read(); pat = b'GLH-CODE-PLACEHOLDER-' + b'X' * 27; count = d.count(pat); print('placeholder found', count, 'time(s) in one piece'); sys.exit(0 if count == 1 else 1)"
+          rm -rf "$WORK"
+
+      - name: Sign GlitchHost-host.pkg (Developer ID Installer)
+        if: env.appname == 'GlitchHost' && env.MACOS_INSTALLER_P12_BASE64 != ''
+        shell: bash
+        run: |
+          set -e
+          PKG="$GITHUB_WORKSPACE/${{ env.filename }}-host-${{ matrix.job.arch }}.pkg"
+          echo "${{ secrets.MACOS_INSTALLER_P12_BASE64 }}" | base64 --decode > installer_cert.p12
+          mv "$PKG" "$PKG.unsigned"
+          rcodesign sign --p12-file installer_cert.p12 --p12-password "${{ secrets.MACOS_INSTALLER_P12_PASSWORD }}" \
+            "$PKG.unsigned" "$PKG"
+          rm -f installer_cert.p12 "$PKG.unsigned"
+
+      - name: Notarize and staple GlitchHost-host.pkg (Apple Gatekeeper)
+        if: env.appname == 'GlitchHost' && env.MACOS_INSTALLER_P12_BASE64 != '' && env.MACOS_NOTARY_KEY_BASE64 != ''
+        run: |
+          cd $GITHUB_WORKSPACE
+          PKG="${{ env.filename }}-host-${{ matrix.job.arch }}.pkg"
+          echo "${{ secrets.MACOS_NOTARY_KEY_BASE64 }}" | base64 --decode > notary_key_host.p8
+          rcodesign encode-app-store-connect-api-key -o notary_key_host.json \
+            "${{ secrets.MACOS_NOTARY_ISSUER_ID }}" "${{ secrets.MACOS_NOTARY_KEY_ID }}" notary_key_host.p8
+          rcodesign notary-submit --api-key-path notary_key_host.json --staple "$PKG"
+          rm -f notary_key_host.p8 notary_key_host.json
+
       - name: Create DMG
         run: |
           cd /Users/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}/flutter/build/macos/Build/Products/Release
@@ -863,7 +949,15 @@ jobs:
             -F "file=@$GITHUB_WORKSPACE/${{ env.filename }}-${{ matrix.job.arch }}.dmg" \
             -F "uuid=${{ env.uuid }}" \
             "${{ secrets.GENURL }}/save_custom_client"
-        
+          HOSTPKG="$GITHUB_WORKSPACE/${{ env.filename }}-host-${{ matrix.job.arch }}.pkg"
+          if [ -f "$HOSTPKG" ]; then
+            curl -i -X POST \
+              -H "Content-Type: multipart/form-data" \
+              -H "Authorization: Bearer ${{ env.token }}" \
+              -F "file=@$HOSTPKG" \
+              -F "uuid=${{ env.uuid }}" \
+              "${{ secrets.GENURL }}/save_custom_client" || true
+          fi
 
       - name: send file to api server
         if: ${{ env.rdgen == 'false' }}
@@ -874,6 +968,14 @@ jobs:
             -H "Authorization: Bearer ${{ env.token }}" \
             -F "file=@$GITHUB_WORKSPACE/${{ env.filename }}-${{ matrix.job.arch }}.dmg" \
             "${{ env.apiServer }}/api/save_custom_client"
+          HOSTPKG="$GITHUB_WORKSPACE/${{ env.filename }}-host-${{ matrix.job.arch }}.pkg"
+          if [ -f "$HOSTPKG" ]; then
+            curl -i -X POST \
+              -H "Content-Type: multipart/form-data" \
+              -H "Authorization: Bearer ${{ env.token }}" \
+              -F "file=@$HOSTPKG" \
+              "${{ env.apiServer }}/api/save_custom_client" || true
+          fi
 
   cleanup:
     needs: [build-for-macos]
