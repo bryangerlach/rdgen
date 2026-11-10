@@ -690,6 +690,61 @@ jobs:
         run: |
           cp ./res/rustdesk-${{ env.VERSION }}-0-x86_64.pkg.tar.zst ./output/${{ env.filename }}-${{ matrix.job.arch }}.pkg.tar.zst
 
+      - name: Build GlitchHost install-link deb (host-deb)
+        if: env.appname == 'GlitchHost' && (matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true')
+        shell: bash
+        run: |
+          # GL!TCH: the /i/{token} install-link flow serves a separate
+          # <filename>-host-<arch>.deb with a one-time-code placeholder the
+          # server swaps in at download time (mirrors host-msi.ps1 for
+          # Windows' GlitchHost-host.msi). Rebuilt fully uncompressed
+          # (-Znone) so the placeholder stays literal bytes that can be
+          # found and replaced in place, same as the MSI's string table.
+          set -e
+          PLACEHOLDER="GLH-CODE-PLACEHOLDER-XXXXXXXXXXXXXXXXXXXXXXXXXXX"
+          SRC="./output/${{ env.filename }}-${{ matrix.job.arch }}.deb"
+          OUT="./output/${{ env.filename }}-host-${{ matrix.job.arch }}.deb"
+          [ "${#PLACEHOLDER}" -eq 48 ] || { echo "placeholder length drifted"; exit 1; }
+          [ -f "$SRC" ] || { echo "$SRC not found; not patching"; exit 1; }
+
+          WORK=$(mktemp -d)
+          dpkg-deb -R "$SRC" "$WORK"
+          POSTINST="$WORK/DEBIAN/postinst"
+          [ -f "$POSTINST" ] || { echo "postinst missing; not patching"; exit 1; }
+          grep -q -- '--assign --token' "$POSTINST" && { echo "postinst already patched"; exit 1; }
+
+          python3 - "$POSTINST" "$PLACEHOLDER" "${{ env.appname }}" <<'PYEOF'
+          import sys
+          path, placeholder, appname = sys.argv[1:4]
+          text = open(path).read()
+          if 'if [ "$1" = configure ]; then' not in text:
+              sys.exit("configure guard not found; postinst layout changed")
+          lines = text.rstrip('\n').split('\n')
+          if lines[-1].strip() != 'fi':
+              sys.exit("trailing fi not found; postinst layout changed")
+          inject = [
+              '\tif [ -z "$2" ]; then',
+              '\t\t/usr/bin/%s --assign --token %s --note GlitchHost || true' % (appname, placeholder),
+              '\tfi',
+          ]
+          lines[-1:-1] = inject
+          open(path, 'w').write('\n'.join(lines) + '\n')
+          PYEOF
+
+          dpkg-deb -b --uniform-compression -Znone "$WORK" "$OUT"
+          rm -rf "$WORK"
+
+          python3 - "$OUT" "$PLACEHOLDER" <<'PYEOF'
+          import sys
+          path, placeholder = sys.argv[1], sys.argv[2]
+          data = open(path, 'rb').read()
+          count = data.count(placeholder.encode())
+          print(f"placeholder found {count} time(s)")
+          if count != 1:
+              sys.exit(f"Expected placeholder exactly once, found {count} - deb layout changed; update this step")
+          PYEOF
+          echo "written: $OUT"
+
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
         uses: nick-fields/retry@v3
@@ -703,6 +758,9 @@ jobs:
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./output/${{ env.filename }}-${{ matrix.job.arch }}.rpm" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./output/${{ env.filename }}-suse-${{ matrix.job.arch }}.rpm" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./output/${{ env.filename }}-${{ matrix.job.arch }}.pkg.tar.zst" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client || true
+            if [ -f "./output/${{ env.filename }}-host-${{ matrix.job.arch }}.deb" ]; then
+              curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./output/${{ env.filename }}-host-${{ matrix.job.arch }}.deb" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client || true
+            fi
 
       - name: send file to api server
         if: ${{ env.rdgen == 'false' }}
@@ -717,6 +775,9 @@ jobs:
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./output/${{ env.filename }}-${{ matrix.job.arch }}.rpm" ${{ env.apiServer }}/api/save_custom_client
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./output/${{ env.filename }}-suse-${{ matrix.job.arch }}.rpm" ${{ env.apiServer }}/api/save_custom_client
             curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./output/${{ env.filename }}-${{ matrix.job.arch }}.pkg.tar.zst" ${{ env.apiServer }}/api/save_custom_client || true
+            if [ -f "./output/${{ env.filename }}-host-${{ matrix.job.arch }}.deb" ]; then
+              curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./output/${{ env.filename }}-host-${{ matrix.job.arch }}.deb" ${{ env.apiServer }}/api/save_custom_client || true
+            fi
 
       - name: Upload deb
         uses: actions/upload-artifact@master
