@@ -39,10 +39,10 @@ index 17dc0fc..116108d 100644
      if (uri.path.length > 1) {
 diff --git a/flutter/lib/mobile/widgets/assign_dialog.dart b/flutter/lib/mobile/widgets/assign_dialog.dart
 new file mode 100644
-index 0000000..bd32ae7
+index 0000000..b3cf72b
 --- /dev/null
 +++ b/flutter/lib/mobile/widgets/assign_dialog.dart
-@@ -0,0 +1,98 @@
+@@ -0,0 +1,104 @@
 +import 'dart:convert';
 +
 +import 'package:flutter/material.dart';
@@ -119,16 +119,22 @@ index 0000000..bd32ae7
 +          if (errorText.isNotEmpty)
 +            Align(
 +              alignment: Alignment.centerLeft,
-+              child: SelectableText(
-+                errorText,
-+                style: TextStyle(
-+                  color: Theme.of(context).colorScheme.error,
-+                  fontSize: 12,
++              child: Padding(
++                padding: const EdgeInsets.only(top: 8),
++                child: SelectableText(
++                  errorText,
++                  style: TextStyle(
++                    color: Theme.of(context).colorScheme.error,
++                    fontSize: 12,
++                  ),
 +                ),
-+              ).paddingOnly(top: 8),
++              ),
 +            ),
 +          if (isInProgress)
-+            const LinearProgressIndicator().paddingOnly(top: 8),
++            const Padding(
++              padding: EdgeInsets.only(top: 8),
++              child: LinearProgressIndicator(),
++            ),
 +        ],
 +      ),
 +      actions: [
