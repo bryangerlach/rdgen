@@ -1,15 +1,18 @@
 --- a/flutter/lib/common/widgets/peer_card.dart	2026-11-02 15:10:08.867187800 -0500
 +++ b/flutter/lib/common/widgets/peer_card.dart	2026-11-02 15:10:34.619384900 -0500
-@@ -27,6 +27,15 @@
+@@ -27,6 +27,18 @@
  
  bool? hideUsernameOnCard;
  
-+// GL!TCH: Regular (non-Tech, non-Administrator) users never see the raw
-+// RustDesk ID - it's only meaningful for ad-hoc SOS connections, which Tech
-+// and Administrator accounts handle. Alias always wins when set, for everyone.
++// GL!TCH: nobody sees the raw RustDesk ID in the peer list, regardless of
++// role - only the Alias (CortenDesk address-book name) or, failing that,
++// the device's own hostname. The raw ID stays reachable only through the
++// Tech/Administrator manual ID-entry box on the connection page (ad-hoc SOS
++// connects to a peer with no saved alias yet) - that is a separate, deliberate
++// affordance and untouched by this function.
 +String peerPrimaryLabel(Peer peer) {
 +  if (peer.alias.isNotEmpty) return peer.alias;
-+  if (gFFI.userModel.canSeeDeviceId) return formatID(peer.id);
++  if (peer.hostname.isNotEmpty) return peer.hostname;
 +  return '—';
 +}
 +

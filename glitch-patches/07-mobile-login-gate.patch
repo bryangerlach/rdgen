@@ -1,0 +1,66 @@
+--- a/flutter/lib/mobile/pages/home_page.dart
++++ b/flutter/lib/mobile/pages/home_page.dart
+@@ -4,6 +4,7 @@ import 'package:flutter_hbb/mobile/pages/settings_page.dart';
+ import 'package:flutter_hbb/web/settings_page.dart';
+ import 'package:get/get.dart';
+ import '../../common.dart';
++import '../../common/widgets/login.dart';
+ import '../../common/widgets/chat_page.dart';
+ import '../../models/platform_model.dart';
+ import '../../models/state_model.dart';
+@@ -14,5 +14,39 @@ abstract class PageShape extends Widget {
+   final Widget icon = Icon(null);
+   final List<Widget> appBarActions = [];
+ }
++
++// GL!TCH: shown instead of the normal tabs when no one is signed in - the
++// whole app is gated behind a CortenDesk login, mirroring the desktop
++// client's force-login gate (desktop_home_page.dart).
++class _GlitchLoginGatePage extends StatelessWidget implements PageShape {
++  @override
++  final title = 'GL!TCH Remote';
++  @override
++  final icon = const Icon(Icons.login);
++  @override
++  final List<Widget> appBarActions = [];
++
++  @override
++  Widget build(BuildContext context) {
++    return Center(
++      child: Column(
++        mainAxisSize: MainAxisSize.min,
++        children: [
++          const Text('GL!TCH Remote',
++              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
++          const SizedBox(height: 12),
++          const Text('Please sign in to continue',
++              style: TextStyle(fontSize: 16)),
++          const SizedBox(height: 24),
++          ElevatedButton.icon(
++            icon: const Icon(Icons.login),
++            label: const Text('Login'),
++            onPressed: () => loginDialog(),
++          ),
++        ],
++      ),
++    );
++  }
++}
+
+ class HomePage extends StatefulWidget {
+@@ -62,4 +97,13 @@ class HomePageState extends State<HomePage> {
+   @override
+-  Widget build(BuildContext context) {
+-    return WillPopScope(
++  Widget build(BuildContext context) {
++    return Obx(() => gFFI.userModel.userName.value.isEmpty
++        ? Scaffold(body: _GlitchLoginGatePage())
++        : _buildMainScaffold(context));
++  }
++
++  // GL!TCH: the whole app is gated behind a CortenDesk login (see
++  // _GlitchLoginGatePage above) - everything below is unchanged from stock,
++  // just moved out of build() so it can be shown only once signed in.
++  Widget _buildMainScaffold(BuildContext context) {
++    return WillPopScope(
+         onWillPop: () async {
