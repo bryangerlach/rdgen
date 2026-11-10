@@ -1,0 +1,81 @@
+diff --git a/flutter/lib/common/widgets/autocomplete.dart b/flutter/lib/common/widgets/autocomplete.dart
+index 2952583..d514295 100644
+--- a/flutter/lib/common/widgets/autocomplete.dart
++++ b/flutter/lib/common/widgets/autocomplete.dart
+@@ -357,31 +357,15 @@ class AutocompletePeerTileState extends State<AutocompletePeerTile> {
+                                                         8, widget.peer.online),
+                                                     Expanded(
+                                                         child: Text(
+-                                                      widget.peer.alias.isEmpty
+-                                                          ? formatID(
+-                                                              widget.peer.id)
+-                                                          : widget.peer.alias,
++                                                      peerPrimaryLabel(
++                                                          widget.peer),
+                                                       overflow:
+                                                           TextOverflow.ellipsis,
+                                                       style: Theme.of(context)
+                                                           .textTheme
+                                                           .titleSmall,
+                                                     )),
+-                                                    widget.peer.alias.isNotEmpty
+-                                                        ? Padding(
+-                                                            padding:
+-                                                                const EdgeInsets
+-                                                                    .only(
+-                                                                    left: 5,
+-                                                                    right: 5),
+-                                                            child: Text(
+-                                                              "(${widget.peer.id})",
+-                                                              style: greyStyle,
+-                                                              overflow:
+-                                                                  TextOverflow
+-                                                                      .ellipsis,
+-                                                            ))
+-                                                        : Container(),
++                                                    Container(),
+                                                   ])),
+                                               Align(
+                                                 alignment: Alignment.centerLeft,
+diff --git a/flutter/lib/common/widgets/peer_card.dart b/flutter/lib/common/widgets/peer_card.dart
+index 3923366..0d7c892 100644
+--- a/flutter/lib/common/widgets/peer_card.dart
++++ b/flutter/lib/common/widgets/peer_card.dart
+@@ -450,7 +450,7 @@ class _PeerCardState extends State<_PeerCard>
+       return isWebDesktop
+           ? Semantics(
+               container: true,
+-              label: formatID(peer.id),
++              label: peerPrimaryLabel(peer),
+               checked: selected,
+               onTap: () => peerTabModel.select(peer),
+               child: checkbox)
+@@ -484,7 +484,7 @@ class _PeerCardState extends State<_PeerCard>
+       final checkbox = isWebDesktop
+           ? Semantics(
+               container: true,
+-              label: formatID(peer.id),
++              label: peerPrimaryLabel(peer),
+               checked: selected,
+               onTap: () => peerTabModel.select(peer),
+               child: icon)
+@@ -693,9 +693,7 @@ abstract class BasePeerCard extends StatelessWidget {
+   MenuEntryBase<String> _connectAction(BuildContext context) {
+     return _connectCommonAction(
+       context,
+-      peer.alias.isEmpty
+-          ? translate('Connect')
+-          : '${translate('Connect')} ${peer.id}',
++      '${translate('Connect')} ${peerPrimaryLabel(peer)}',
+     );
+   }
+ 
+@@ -950,7 +948,7 @@ abstract class BasePeerCard extends StatelessWidget {
+         }
+ 
+         deleteConfirmDialog(onSubmit,
+-            '${translate('Delete')} "${peer.alias.isEmpty ? formatID(peer.id) : peer.alias}"?');
++            '${translate('Delete')} "${peerPrimaryLabel(peer)}"?');
+       },
+       padding: menuPadding,
+       dismissOnClicked: true,

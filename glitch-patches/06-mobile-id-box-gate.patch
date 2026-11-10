@@ -1,0 +1,18 @@
+--- a/flutter/lib/mobile/pages/connection_page.dart
++++ b/flutter/lib/mobile/pages/connection_page.dart
+@@ -86,7 +86,14 @@ class _ConnectionPageState extends State<ConnectionPage> {
+             delegate: SliverChildListDelegate([
+           if (!bind.isCustomClient() && !isIOS)
+             Obx(() => _buildUpdateUI(stateGlobal.updateUrl.value)),
+-          _buildRemoteIDTextField(),
++          // GL!TCH: Regular (non-Tech, non-Administrator) users never see
++          // the manual ID-entry box - it is only meaningful for ad-hoc SOS
++          // connections, which Tech/Administrator accounts handle. Checked
++          // live against the signed-in user, same gate as the peer list
++          // (peer_card.dart).
++          Obx(() => gFFI.userModel.canSeeDeviceId
++              ? _buildRemoteIDTextField()
++              : const SizedBox.shrink()),
+         ])),
+         SliverFillRemaining(
+           hasScrollBody: true,
