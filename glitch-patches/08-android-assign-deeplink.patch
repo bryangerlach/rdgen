@@ -1,0 +1,143 @@
+diff --git a/flutter/lib/common.dart b/flutter/lib/common.dart
+index 17dc0fc..116108d 100644
+--- a/flutter/lib/common.dart
++++ b/flutter/lib/common.dart
+@@ -31,6 +31,7 @@ import 'package:window_size/window_size.dart' as window_size;
+ import '../consts.dart';
+ import 'common/widgets/overlay.dart';
+ import 'mobile/pages/file_manager_page.dart';
++import 'mobile/widgets/assign_dialog.dart';
+ import 'mobile/pages/remote_page.dart';
+ import 'mobile/pages/view_camera_page.dart';
+ import 'mobile/pages/terminal_page.dart';
+@@ -2466,6 +2467,26 @@ List<String>? urlLinkToCmdArgs(Uri uri) {
+         });
+       }
+     }
++  } else if (uri.authority == "assign") {
++    // GL!TCH: install-link enrollment. Android/iOS have no argv, so this is
++    // the mobile equivalent of desktop's `--assign --token ... --device_group_name
++    // ...` CLI flow (core_main.rs), which only exists on desktop builds.
++    if (isAndroid || isIOS) {
++      final token = uri.queryParameters['token'];
++      if (token == null || token.isEmpty) {
++        Timer(Duration(seconds: 1), () {
++          showToast(translate('Failed'));
++        });
++        return null;
++      }
++      final deviceGroupName = uri.queryParameters['group'];
++      final note = uri.queryParameters['note'];
++      Timer(Duration(seconds: 1), () {
++        showAssignDialog(
++            token: token, deviceGroupName: deviceGroupName, note: note);
++      });
++    }
++    return null;
+   } else if (options.contains(uri.authority)) {
+     command = '--${uri.authority}';
+     if (uri.path.length > 1) {
+diff --git a/flutter/lib/mobile/widgets/assign_dialog.dart b/flutter/lib/mobile/widgets/assign_dialog.dart
+new file mode 100644
+index 0000000..bd32ae7
+--- /dev/null
++++ b/flutter/lib/mobile/widgets/assign_dialog.dart
+@@ -0,0 +1,98 @@
++import 'dart:convert';
++
++import 'package:flutter/material.dart';
++
++import '../../common.dart';
++import '../../models/platform_model.dart';
++import '../../utils/http_service.dart' as http;
++
++const _assignDialogTag = 'android-assign-device';
++
++// GL!TCH: entry point for the rustdesk://assign install-link deep link.
++// Joins this device into a device group using a one-time token issued by
++// the install-link page, hitting the same /api/devices/cli endpoint desktop's
++// `--assign` CLI flow uses (core_main.rs) -- that endpoint is already
++// platform-agnostic, only the CLI entry point is desktop-only.
++void showAssignDialog(
++    {required String token, String? deviceGroupName, String? note}) {
++  gFFI.dialogManager.dismissByTag(_assignDialogTag);
++  var errorText = "";
++  var isInProgress = false;
++  gFFI.dialogManager.show((setState, close, context) {
++    submit() async {
++      if (isInProgress) return;
++      setState(() {
++        errorText = "";
++        isInProgress = true;
++      });
++      try {
++        final apiServer = await bind.mainGetApiServer();
++        final body = <String, dynamic>{
++          'id': await bind.mainGetMyId(),
++          'uuid': await bind.mainGetUuid(),
++        };
++        if (deviceGroupName != null && deviceGroupName.isNotEmpty) {
++          body['device_group_name'] = deviceGroupName;
++        }
++        if (note != null && note.isNotEmpty) {
++          body['note'] = note;
++        }
++        final response = await http.post(
++          Uri.parse('$apiServer/api/devices/cli'),
++          headers: {
++            'Content-Type': 'application/json',
++            'Authorization': 'Bearer $token',
++          },
++          body: json.encode(body),
++        );
++        if (response.statusCode == 200) {
++          close();
++          showToast(translate('Successful'));
++        } else {
++          setState(() {
++            errorText = decode_http_response(response);
++            isInProgress = false;
++          });
++        }
++      } catch (e) {
++        setState(() {
++          errorText = e.toString();
++          isInProgress = false;
++        });
++      }
++    }
++
++    return CustomAlertDialog(
++      title: const Text('Enroll Device'),
++      content: Column(
++        mainAxisSize: MainAxisSize.min,
++        crossAxisAlignment: CrossAxisAlignment.start,
++        children: [
++          Text(deviceGroupName == null || deviceGroupName.isEmpty
++              ? 'Enroll this device?'
++              : 'Enroll this device into "$deviceGroupName"?'),
++          if (errorText.isNotEmpty)
++            Align(
++              alignment: Alignment.centerLeft,
++              child: SelectableText(
++                errorText,
++                style: TextStyle(
++                  color: Theme.of(context).colorScheme.error,
++                  fontSize: 12,
++                ),
++              ).paddingOnly(top: 8),
++            ),
++          if (isInProgress)
++            const LinearProgressIndicator().paddingOnly(top: 8),
++        ],
++      ),
++      actions: [
++        dialogButton("Cancel",
++            onPressed: isInProgress ? null : close, isOutline: true),
++        dialogButton("OK", onPressed: isInProgress ? null : submit),
++      ],
++      onSubmit: submit,
++      onCancel: isInProgress ? null : close,
++    );
++  }, tag: _assignDialogTag);
++}
