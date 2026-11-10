@@ -845,7 +845,12 @@ jobs:
           echo "${{ secrets.MACOS_NOTARY_KEY_BASE64 }}" | base64 --decode > notary_key.p8
           rcodesign encode-app-store-connect-api-key -o notary_key.json \
             "${{ secrets.MACOS_NOTARY_ISSUER_ID }}" "${{ secrets.MACOS_NOTARY_KEY_ID }}" notary_key.p8
-          rcodesign notary-submit --api-key-file notary_key.json --staple "$DMG_FILE"
+          # GL!TCH: the pinned rcodesign (apple-codesign 0.22.0, released 2022)
+          # only knows --api-key-path for this - --api-key-file is a later
+          # rename/alias that doesn't exist yet in 0.22.0, which is why run
+          # #18 failed with "Found argument '--api-key-file' which wasn't
+          # expected... Did you mean '--api-key'?" (exit code 2).
+          rcodesign notary-submit --api-key-path notary_key.json --staple "$DMG_FILE"
           rm -f notary_key.p8 notary_key.json
 
       - name: send file to rdgen server
