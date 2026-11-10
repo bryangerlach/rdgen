@@ -964,6 +964,21 @@ jobs:
             exit 1
           fi
 
+      - name: Sign the DMG (Apple Gatekeeper)
+        if: env.MACOS_NOTARY_KEY_BASE64 != ''
+        run: |
+          cd $GITHUB_WORKSPACE
+          DMG_FILE="${{ env.filename }}-${{ matrix.job.arch }}.dmg"
+          # GL!TCH: stapling a notarization ticket requires the DMG container
+          # itself to carry a code signature - signing the .app inside it
+          # earlier isn't enough. Without this, rcodesign notary-submit
+          # --staple notarizes fine (the submitted .app is already signed)
+          # but then fails at the staple step with "Error: cannot staple DMG
+          # without an embedded signature" (2026-11-10 incident, run #22).
+          echo "${{ secrets.MACOS_P12_BASE64 }}" | base64 --decode > dmg_certificate.p12
+          rcodesign sign --p12-file dmg_certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" "$DMG_FILE"
+          rm -f dmg_certificate.p12
+
       - name: Notarize and staple the DMG (Apple Gatekeeper)
         if: env.MACOS_NOTARY_KEY_BASE64 != ''
         run: |
