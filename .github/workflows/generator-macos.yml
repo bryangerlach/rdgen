@@ -710,6 +710,17 @@ jobs:
         if: env.MACOS_P12_BASE64 != ''
         run: |
             cd flutter/build/macos/Build/Products/Release
+            # GL!TCH: rcodesign carries forward whatever entitlements the
+            # binary already had (from Xcode's own ad-hoc build-time sign)
+            # when none are given explicitly - and that always includes the
+            # debug-only com.apple.security.get-task-allow entitlement,
+            # which Apple's notary service rejects outright ("Archive
+            # contains critical validation errors"). RustDesk's own
+            # Release.entitlements is already clean of it; just point
+            # rcodesign at it instead of leaving entitlements unspecified.
+            ENTITLEMENTS="$GITHUB_WORKSPACE/flutter/macos/Runner/Release.entitlements"
+            echo "Entitlements: $ENTITLEMENTS"
+            cat "$ENTITLEMENTS"
             # Debug info
             echo "Current directory contents:"
             ls -la
@@ -734,7 +745,7 @@ jobs:
               MAIN_EXECUTABLE="${{ env.appname }}.app/Contents/MacOS/${{ env.appname }}"
               if [ -f "$MAIN_EXECUTABLE" ]; then
                 rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" \
-                  --code-signature-flags runtime "$MAIN_EXECUTABLE"
+                  --code-signature-flags runtime --entitlements-xml-path "$ENTITLEMENTS" "$MAIN_EXECUTABLE"
               else
                 echo "Main executable not found at expected path: $MAIN_EXECUTABLE"
                 # Try to find the actual executable
@@ -744,7 +755,7 @@ jobs:
                 if [ -n "$ACTUAL_EXECUTABLE" ]; then
                   echo "Found executable: $ACTUAL_EXECUTABLE"
                   rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" \
-                    --code-signature-flags runtime "${{ env.appname }}.app/Contents/MacOS/$ACTUAL_EXECUTABLE"
+                    --code-signature-flags runtime --entitlements-xml-path "$ENTITLEMENTS" "${{ env.appname }}.app/Contents/MacOS/$ACTUAL_EXECUTABLE"
                 fi
               fi
               
@@ -755,7 +766,7 @@ jobs:
               
               echo "Signing main bundle..."
               rcodesign sign --p12-file certificate.p12 --p12-password "${{ secrets.MACOS_P12_PASSWORD }}" \
-                --code-signature-flags runtime "${{ env.appname }}.app"
+                --code-signature-flags runtime --entitlements-xml-path "$ENTITLEMENTS" "${{ env.appname }}.app"
             else
               echo "Error: Invalid app bundle structure"
               exit 1
