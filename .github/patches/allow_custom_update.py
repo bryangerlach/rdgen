@@ -15,29 +15,32 @@ Usage:
 What it changes:
   1. libs/hbb_common/src/lib.rs        - hardcoded update check URL -> your server
                                          get_version_number() -> support +build metadata
-  2. src/common.rs                     - relax github.com-only host check in
+  2. src/common.rs                     - allow update checks for custom-branded clients
+                                         relax github.com-only host check in
                                          release_id_from_update_url()
                                          display_version_from_release_id() -> accept +build
-  3. src/updater/artifact.rs           - relax github.com-only host check in
-                                         get_update_download_file_from_url()
+  3. src/updater/artifact.rs           - retarget the hard-coded GitHub download prefix
+                                         (metadata + artifact URLs) to your server
+                                         relax the GitHub-only download host check
   4. src/update_metadata.rs            - add your ed25519 public key to
-                                         TRUSTED_UPDATE_KEYS
+                                         TRUSTED_UPDATE_KEYS (key id: custom-update)
 
-After running, you still need to:
-  * Generate an ed25519 keypair and put the public key in TRUSTED_UPDATE_KEYS
-  * Sign your update metadata (rustdesk-update.json) with the private key and
-    serve rustdesk-update.json + rustdesk-update.json.sig alongside each build
-    on your update server, e.g.:
-        https://updates.example.com/releases/v1.5.0/rustdesk-update.json
-        https://updates.example.com/releases/v1.5.0/rustdesk-update.json.sig
-  * The Go /api/version/latest endpoint returns the base release URL; the client
-    appends /rustdesk-update.json (and .sig) to fetch + verify it.
+Client contract implemented by the matching update server:
+  * POST <downloadLink>/api/version/latest returns a flat {"url": "..."}
+    whose path is /rustdesk/rustdesk/releases/tag/<release_id>
+  * The client derives the release id from that path, then fetches
+        <downloadLink>/rustdesk/rustdesk/releases/download/<release_id>/rustdesk-update.json
+        <downloadLink>/rustdesk/rustdesk/releases/download/<release_id>/rustdesk-update.json.sig
+    and the artifact URL listed in the signed metadata.
+  * <release_id> is "v" + <version> + "+" + <build id padded to 3 digits>,
+    e.g. v1.5.1+057.
 """
 
 import argparse
 import re
 import sys
 from pathlib import Path
+from urllib.parse import urlparse
 
 DEFAULT_UPDATE_URL = "https://updates.example.com/api/version/latest"
 
@@ -197,6 +200,32 @@ def modify_get_version_number_tests(root: Path) -> None:
         print(f"[OK] {target}: updated test_get_version_number() ({count} substitution(s))")
     else:
         print(f"[WARN] {target}: could not find test_get_version_number() block to replace")
+
+
+def allow_updates_for_custom_clients(root: Path) -> None:
+    """Remove the is_custom_client() early return from check_software_update().
+
+    Custom-branded clients otherwise skip update checks entirely (the app name
+    is not "RustDesk"), which would make self-hosted updates do nothing.
+    """
+    target = root / "src" / "common.rs"
+    if not target.exists():
+        print(f"[WARN] {target} not found, skipping custom-client update check change")
+        return
+
+    text = target.read_text(encoding="utf-8")
+    old_block = '''pub fn check_software_update() {
+    if is_custom_client() {
+        return;
+    }
+'''
+    new_block = '''pub fn check_software_update() {
+'''
+    if old_block in text:
+        target.write_text(text.replace(old_block, new_block, 1), encoding="utf-8")
+        print(f"[OK] {target}: enabled update checks for custom-branded clients")
+    else:
+        print(f"[WARN] {target}: could not find is_custom_client() guard in check_software_update()")
 
 
 def relax_common_rs(root: Path) -> None:
@@ -363,7 +392,58 @@ def relax_artifact_rs(root: Path) -> None:
         print(f"[WARN] {target}: could not find download host check block")
 
 
-def add_trusted_key(root: Path, public_key: str) -> None:
+def retarget_artifact_base(root: Path, update_url: str) -> None:
+    """Point the updater's metadata/artifact base at the self-hosted server.
+
+    src/updater/artifact.rs hard-codes
+        https://github.com/rustdesk/rustdesk/releases/download/{release_id}/
+    for BOTH the metadata sidecar URL and the artifact URL validation prefix.
+    Derive the origin from --update-url and rewrite that prefix.
+    """
+    target = root / "src" / "updater" / "artifact.rs"
+    if not target.exists():
+        print(f"[WARN] {target} not found, skipping artifact base change")
+        return
+
+    parsed = urlparse(update_url)
+    if not parsed.scheme or not parsed.netloc:
+        print(f"[WARN] could not derive an origin from --update-url: {update_url}")
+        return
+    base = f"{parsed.scheme}://{parsed.netloc}"
+
+    text = target.read_text(encoding="utf-8")
+
+    old_block = (
+        'let expected_artifact_url_prefix =\n'
+        '        format!("https://github.com/rustdesk/rustdesk/releases/download/{release_id}/");'
+    )
+    new_block = (
+        'let expected_artifact_url_prefix =\n'
+        f'        format!("{base}/rustdesk/rustdesk/releases/download/{{release_id}}/");'
+    )
+
+    if old_block in text:
+        target.write_text(text.replace(old_block, new_block, 1), encoding="utf-8")
+        print(f"[OK] {target}: retargeted metadata/artifact base to {base}")
+        return
+
+    # Tolerate formatting changes in newer RustDesk versions.
+    pattern = re.compile(
+        r'format!\("https://github\.com/rustdesk/rustdesk/releases/download/\{release_id\}/"\)'
+    )
+    new_text, n = pattern.subn(
+        f'format!("{base}/rustdesk/rustdesk/releases/download/{{release_id}}/")',
+        text,
+        count=1,
+    )
+    if n > 0:
+        target.write_text(new_text, encoding="utf-8")
+        print(f"[OK] {target}: retargeted metadata/artifact base to {base}")
+    else:
+        print(f"[WARN] {target}: could not find expected_artifact_url_prefix to retarget")
+
+
+def add_trusted_key(root: Path, public_key: str, key_id: str = "custom-update") -> None:
     """Add an ed25519 public key to TRUSTED_UPDATE_KEYS in src/update_metadata.rs."""
     target = root / "src" / "update_metadata.rs"
     if not target.exists():
@@ -383,49 +463,54 @@ def add_trusted_key(root: Path, public_key: str) -> None:
             key_bytes = bytes.fromhex(public_key)
         except Exception:
             pass
-    if key_bytes is None:
-        print(f"[WARN] {target}: could not decode public key as base64 or hex")
+    if key_bytes is None or len(key_bytes) != 32:
+        print(f"[WARN] {target}: public key must be a 32-byte ed25519 key (base64 or hex)")
         return
 
-    byte_list = ",\n        ".join(
+    byte_list = ",\n            ".join(
         ", ".join(str(b) for b in key_bytes[i:i + 12])
         for i in range(0, len(key_bytes), 12)
     )
 
+    entry = f'''TrustedUpdateKey {{
+        key_id: "{key_id}",
+        algorithm: SIGNATURE_ALGORITHM,
+        public_key: [
+            {byte_list}
+        ],
+    }}'''
+
     text = target.read_text(encoding="utf-8")
 
-    old_block = '''const TRUSTED_UPDATE_KEYS: &[TrustedUpdateKey] = &[TrustedUpdateKey {
-    key_id: "2026-ed25519-main",
-    algorithm: SIGNATURE_ALGORITHM,
-    public_key: [
-        118, 252, 116, 215, 49, 217, 220, 109, 145, 119, 210, 101, 225, 198, 63, 2, 41, 127, 197,
-        127, 52, 251, 6, 204, 125, 117, 96, 204, 187, 166, 85, 59,
-    ],
-}];'''
-
-    new_block = f'''const TRUSTED_UPDATE_KEYS: &[TrustedUpdateKey] = &[TrustedUpdateKey {{
-    key_id: "2026-ed25519-main",
-    algorithm: SIGNATURE_ALGORITHM,
-    public_key: [
-        118, 252, 116, 215, 49, 217, 220, 109, 145, 119, 210, 101, 225, 198, 63, 2, 41, 127, 197,
-        127, 52, 251, 6, 204, 125, 117, 96, 204, 187, 166, 85, 59,
-    ],
-}}, TrustedUpdateKey {{
-    key_id: "custom-update",
-    algorithm: SIGNATURE_ALGORITHM,
-    public_key: [
-        {byte_list}
-    ],
-}}];'''
-
-    count = text.count(old_block)
-    if count > 0:
-        new_text = text.replace(old_block, new_block)
+    # Idempotent: if our key id is already present, replace that entry.
+    entry_pattern = re.compile(
+        r'TrustedUpdateKey\s*\{\s*key_id:\s*"' + re.escape(key_id) +
+        r'",\s*algorithm:\s*SIGNATURE_ALGORITHM,\s*public_key:\s*\[[^\]]*\],\s*\}',
+        re.S,
+    )
+    if entry_pattern.search(text):
+        new_text = entry_pattern.sub(entry, text, count=1)
         target.write_text(new_text, encoding="utf-8")
-        print(f"[OK] {target}: added public key to TRUSTED_UPDATE_KEYS ({count} substitution(s))")
-    else:
-        print(f"[WARN] {target}: could not find TRUSTED_UPDATE_KEYS block")
+        print(f"[OK] {target}: updated existing '{key_id}' trusted key")
+        return
+
+    anchor = "const TRUSTED_UPDATE_KEYS: &[TrustedUpdateKey] = &["
+    idx = text.find(anchor)
+    if idx < 0:
+        print(f"[WARN] {target}: could not find TRUSTED_UPDATE_KEYS")
         print(f"    Manually add your public key to TRUSTED_UPDATE_KEYS in {target}")
+        return
+    end = text.find("];", idx)
+    if end < 0:
+        print(f"[WARN] {target}: could not find end of TRUSTED_UPDATE_KEYS")
+        return
+
+    before = text[:end].rstrip()
+    if not before.endswith(","):
+        before += ","
+    new_text = before + "\n    " + entry + "\n" + text[end:]
+    target.write_text(new_text, encoding="utf-8")
+    print(f"[OK] {target}: added '{key_id}' public key to TRUSTED_UPDATE_KEYS")
 
 
 def main() -> None:
@@ -463,10 +548,12 @@ def main() -> None:
     change_update_url(root, args.update_url)
     modify_get_version_number(root)
     modify_get_version_number_tests(root)
+    allow_updates_for_custom_clients(root)
     relax_common_rs(root)
     modify_display_version_from_release_id(root)
     modify_display_version_from_release_id_tests(root)
     relax_artifact_rs(root)
+    retarget_artifact_base(root, args.update_url)
     if args.ed25519_public_key:
         add_trusted_key(root, args.ed25519_public_key)
 
