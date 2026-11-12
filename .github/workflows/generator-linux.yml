@@ -374,6 +374,8 @@ jobs:
           command: |
             wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/allowCustom.py
             python allowCustom.py
+            wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/forcePresetPassword.py
+            python forcePresetPassword.py
             wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeSetupServerTip.diff
             git apply removeSetupServerTip.diff
             echo -n '${{ env.custom }}' > ./custom_.txt
@@ -599,6 +601,14 @@ jobs:
             export DEB_ARCH=${{ matrix.job.deb_arch }}
             mkdir -p flutter/tmpdeb/usr/share/rustdesk
             cp ./custom_.txt ./flutter/tmpdeb/usr/share/rustdesk/custom_.txt
+            # With a custom app name the launcher and bundle live in
+            # /usr/share/<appname>/, not /usr/share/rustdesk/. RustDesk reads
+            # custom_.txt from the executable's directory, so stage a copy
+            # there as well or every custom setting is ignored.
+            if [ "${{ env.appname }}" != "rustdesk" ]; then
+              mkdir -p "flutter/tmpdeb/usr/share/${{ env.appname }}"
+              cp ./custom_.txt "flutter/tmpdeb/usr/share/${{ env.appname }}/custom_.txt"
+            fi
             if [[ "${{ env.logolink_url }}" != "false" ]]; then
               wget -O ./flutter/assets/logo.png ${{ env.logolink_url }}/get_png?filename=${{ env.logolink_file }}"&"uuid=${{ env.logolink_uuid }}
             fi
@@ -664,7 +674,23 @@ jobs:
             fi
 
             python3 ./build.py --flutter --skip-cargo
+            # Fail loudly if the custom config is not next to the executable.
+            # RustDesk only reads custom_.txt from current_exe().parent(), and a
+            # missing file silently disables every baked setting.
+            if [ "${{ env.appname }}" = "rustdesk" ]; then
+              expected_dir="usr/share/rustdesk"
+            else
+              expected_dir="usr/share/${{ env.appname }}"
+            fi
             for name in *.deb; do
+              dpkg-deb -c "$name" | grep -q "$expected_dir/custom_.txt" || {
+                echo "::error::$name does not contain $expected_dir/custom_.txt"
+                exit 1
+              }
+              dpkg-deb -c "$name" | grep -q "$expected_dir/${{ env.appname }}" || {
+                echo "::error::$name does not contain $expected_dir/${{ env.appname }}"
+                exit 1
+              }
               mv "$name" /workspace/output/"${{ env.filename }}-${{ matrix.job.arch }}.deb"
             done
 
@@ -673,8 +699,12 @@ jobs:
             # baked password/permissions land in every format.
             BUNDLE=flutter/build/linux/x64/release/bundle
             [ "${{ matrix.job.arch }}" = "aarch64" ] && BUNDLE=flutter/build/linux/arm64/release/bundle
-            cp ./custom_.txt "$BUNDLE/custom_.txt" || echo "WARN: could not copy custom_.txt into bundle"
-            ls -l "$BUNDLE/custom_.txt" || echo "WARN: custom_.txt missing from bundle ($BUNDLE)"
+            cp ./custom_.txt "$BUNDLE/custom_.txt"
+            test -f "$BUNDLE/custom_.txt" || {
+              echo "::error::custom_.txt missing from bundle ($BUNDLE); RPM/Arch clients would ignore every custom setting"
+              exit 1
+            }
+            ls -l "$BUNDLE/custom_.txt"
 
             # rpm package
             echo -e "start packaging fedora package"
@@ -714,6 +744,14 @@ jobs:
           sed -i "s/x86_64/${{ matrix.job.arch }}/g" res/PKGBUILD
           if [[ "${{ matrix.job.arch }}" == "aarch64" ]]; then
             sed -i "s/x86_64/aarch64/g" ./res/PKGBUILD
+          fi
+          if [ "${{ env.appname }}" != "rustdesk" ]; then
+            # PKGBUILD installs the bundle under /usr/share/rustdesk and links
+            # /usr/bin/rustdesk; build.py renamed the executable to the custom
+            # app name, so move the install dir and both sides of the symlink.
+            sed -i "s|/usr/share/rustdesk/rustdesk|/usr/share/${{ env.appname }}/${{ env.appname }}|g" res/PKGBUILD
+            sed -i "s|/usr/share/rustdesk|/usr/share/${{ env.appname }}|g" res/PKGBUILD res/pacman_install
+            sed -i "s|usr/bin/rustdesk|usr/bin/${{ env.appname }}|g" res/PKGBUILD
           fi
 
       - name: Build archlinux package
@@ -1057,6 +1095,8 @@ jobs:
           command: |
             wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/allowCustom.py
             python allowCustom.py
+            wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/forcePresetPassword.py
+            python forcePresetPassword.py
             wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeSetupServerTip.diff
             git apply removeSetupServerTip.diff
             echo -n '${{ env.custom }}' > ./custom_.txt
@@ -1243,6 +1283,14 @@ jobs:
             export DEB_ARCH=amd64
             mkdir -p flutter/tmpdeb/usr/share/rustdesk
             cp ./custom_.txt ./flutter/tmpdeb/usr/share/rustdesk/custom_.txt
+            # With a custom app name the launcher and bundle live in
+            # /usr/share/<appname>/, not /usr/share/rustdesk/. RustDesk reads
+            # custom_.txt from the executable's directory, so stage a copy
+            # there as well or every custom setting is ignored.
+            if [ "${{ env.appname }}" != "rustdesk" ]; then
+              mkdir -p "flutter/tmpdeb/usr/share/${{ env.appname }}"
+              cp ./custom_.txt "flutter/tmpdeb/usr/share/${{ env.appname }}/custom_.txt"
+            fi
             if [[ "${{ env.logolink_url }}" != "false" ]]; then
               wget -O ./flutter/assets/logo.png ${{ env.logolink_url }}/get_png?filename=${{ env.logolink_file }}"&"uuid=${{ env.logolink_uuid }}
             fi
@@ -1304,7 +1352,20 @@ jobs:
             fi
 
             python3 ./build.py --flutter --drm --hwcodec --unix-file-copy-paste --skip-cargo
+            if [ "${{ env.appname }}" = "rustdesk" ]; then
+              expected_dir="usr/share/rustdesk"
+            else
+              expected_dir="usr/share/${{ env.appname }}"
+            fi
             for name in *.deb; do
+              dpkg-deb -c "$name" | grep -q "$expected_dir/custom_.txt" || {
+                echo "::error::$name does not contain $expected_dir/custom_.txt"
+                exit 1
+              }
+              dpkg-deb -c "$name" | grep -q "$expected_dir/${{ env.appname }}" || {
+                echo "::error::$name does not contain $expected_dir/${{ env.appname }}"
+                exit 1
+              }
               mv "$name" /workspace/output/"${{ env.filename }}-unattended-wayland-x86_64.deb"
             done
 

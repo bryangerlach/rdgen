@@ -28,4 +28,6 @@ Save your configuration from the rdgen web interface, or generate your own, then
 - Icons should be square (256x256 recommended)
 - Avoid special characters or non-English characters in app name and file name
 - Build time is currently 30 - 45 minutes
+- Permissions and security settings are written to `override-settings`, so they also apply to machines that already have a saved RustDesk configuration and cannot be changed by the client. The old Default/Override selector for permissions was removed.
+- A permanent password baked into a client is always accepted, even if the machine already has a local permanent password. Setting one also selects permanent-password verification.
 

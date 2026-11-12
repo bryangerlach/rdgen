@@ -284,10 +284,11 @@ jobs:
           max_attempts: 3
           retry_wait_seconds: 15
           shell: pwsh
-          continue_on_error: true
           command: |
-            Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/allowCustom.diff -OutFile allowCustom.diff
-            git apply allowCustom.diff
+            Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/allowCustom.py -OutFile allowCustom.py
+            python allowCustom.py
+            Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/forcePresetPassword.py -OutFile forcePresetPassword.py
+            python forcePresetPassword.py
 
       - name: Install LLVM and Clang
         uses: KyleMayes/install-llvm-action@v1
@@ -523,10 +524,11 @@ jobs:
           Remove-Item ./Release/unsigned_files.zip
           Remove-Item ./Release/signed_files.zip
 
-      - name: Create custom.txt file
+      - name: Create custom_.txt file
         shell: bash
         run: |
-          echo -n "${{ env.custom }}" | cat > ./Release/custom.txt
+          # allowCustom.py renames the runtime path to custom_.txt.
+          echo -n "${{ env.custom }}" | cat > ./Release/custom_.txt
 
       - name: Build self-extracted executable
         shell: bash

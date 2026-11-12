@@ -101,7 +101,6 @@ def generate_custom_client(params, full_url):
     denyLan = params.get('denyLan', False)
     enableDirectIP = params.get('enableDirectIP', False)
     autoClose = params.get('autoClose', False)
-    permissionsDorO = params.get('permissionsDorO', 'default')
     permissionsType = params.get('permissionsType', 'custom')
     enableKeyboard = params.get('enableKeyboard', True)
     enableClipboard = params.get('enableClipboard', True)
@@ -125,6 +124,10 @@ def generate_custom_client(params, full_url):
     else:
         filename = "rustdesk"
     if not all(char.isascii() for char in appname):
+        appname = "rustdesk"
+    # Treat "RustDesk" as the default name too, so the app-name key and the
+    # workflow's directory rename stay in sync.
+    if appname.lower() == "rustdesk":
         appname = "rustdesk"
     myuuid = str(uuid.uuid4())
 
@@ -161,18 +164,26 @@ def generate_custom_client(params, full_url):
 
     ###create the custom.txt json here and send in as inputs below
     decodedCustom = {}
-    if direction != "Both":
+    if direction != "both":
         decodedCustom['conn-type'] = direction
     if installation == "installationN":
         decodedCustom['disable-installation'] = 'Y'
     if settings == "settingsN":
         decodedCustom['disable-settings'] = 'Y'
-    if appname.upper != "rustdesk".upper and appname != "":
+    if appname.lower() != "rustdesk":
         decodedCustom['app-name'] = appname_display
+
+    # Permissions and security settings are enforced (override) so they also
+    # apply on machines that already have a saved RustDesk configuration.
+    # Anything placed in default-settings loses to a value the user (or a
+    # previous installation) already stored.
     decodedCustom['override-settings'] = {}
     decodedCustom['default-settings'] = {}
+    override = decodedCustom['override-settings']
+
     if permPass != "":
         decodedCustom['password'] = permPass
+
     if theme != "system":
         if themeDorO == "default":
             if platform == "windows-x86":
@@ -184,65 +195,85 @@ def generate_custom_client(params, full_url):
                 decodedCustom['override-settings']['allow-darktheme'] = 'Y' if theme == "dark" else 'N'
             else:
                 decodedCustom['override-settings']['theme'] = theme
-    decodedCustom['enable-lan-discovery'] = 'N' if denyLan else 'Y'
-    #decodedCustom['direct-server'] = 'Y' if enableDirectIP else 'N'
-    decodedCustom['allow-auto-disconnect'] = 'Y' if autoClose else 'N'
 
-    if permissionsDorO == "default":
-        decodedCustom['default-settings']['access-mode'] = permissionsType
-        decodedCustom['default-settings']['enable-keyboard'] = 'Y' if enableKeyboard else 'N'
-        decodedCustom['default-settings']['enable-clipboard'] = 'Y' if enableClipboard else 'N'
-        decodedCustom['default-settings']['enable-file-transfer'] = 'Y' if enableFileTransfer else 'N'
-        decodedCustom['default-settings']['enable-audio'] = 'Y' if enableAudio else 'N'
-        decodedCustom['default-settings']['enable-tunnel'] = 'Y' if enableTCP else 'N'
-        decodedCustom['default-settings']['enable-remote-restart'] = 'Y' if enableRemoteRestart else 'N'
-        decodedCustom['default-settings']['enable-record-session'] = 'Y' if enableRecording else 'N'
-        decodedCustom['default-settings']['enable-block-input'] = 'Y' if enableBlockingInput else 'N'
-        decodedCustom['default-settings']['allow-remote-config-modification'] = 'Y' if enableRemoteModi else 'N'
-        decodedCustom['default-settings']['direct-server'] = 'Y' if enableDirectIP else 'N'
-        decodedCustom['default-settings']['verification-method'] = 'use-permanent-password' if hidecm else 'use-both-passwords'
-        decodedCustom['default-settings']['approve-mode'] = passApproveMode
-        decodedCustom['default-settings']['allow-hide-cm'] = 'Y' if hidecm else 'N'
-        decodedCustom['default-settings']['allow-remove-wallpaper'] = 'Y' if removeWallpaper else 'N'
-        decodedCustom['default-settings']['enable-remote-printer'] = 'Y' if enablePrinter else 'N'
-        decodedCustom['default-settings']['enable-camera'] = 'Y' if enableCamera else 'N'
-        decodedCustom['default-settings']['enable-terminal'] = 'Y' if enableTerminal else 'N'
-        
+    # enable-lan-discovery and allow-auto-disconnect are read through
+    # Config::get_option, so they must live in a settings map.  A top-level
+    # key would only land in HARD_SETTINGS and be ignored by get_option.
+    override['enable-lan-discovery'] = 'N' if denyLan else 'Y'
+    override['allow-auto-disconnect'] = 'Y' if autoClose else 'N'
 
-    else:
-        decodedCustom['override-settings']['access-mode'] = permissionsType
-        decodedCustom['override-settings']['enable-keyboard'] = 'Y' if enableKeyboard else 'N'
-        decodedCustom['override-settings']['enable-clipboard'] = 'Y' if enableClipboard else 'N'
-        decodedCustom['override-settings']['enable-file-transfer'] = 'Y' if enableFileTransfer else 'N'
-        decodedCustom['override-settings']['enable-audio'] = 'Y' if enableAudio else 'N'
-        decodedCustom['override-settings']['enable-tunnel'] = 'Y' if enableTCP else 'N'
-        decodedCustom['override-settings']['enable-remote-restart'] = 'Y' if enableRemoteRestart else 'N'
-        decodedCustom['override-settings']['enable-record-session'] = 'Y' if enableRecording else 'N'
-        decodedCustom['override-settings']['enable-block-input'] = 'Y' if enableBlockingInput else 'N'
-        decodedCustom['override-settings']['allow-remote-config-modification'] = 'Y' if enableRemoteModi else 'N'
-        decodedCustom['override-settings']['direct-server'] = 'Y' if enableDirectIP else 'N'
-        decodedCustom['override-settings']['verification-method'] = 'use-permanent-password' if hidecm else 'use-both-passwords'
-        decodedCustom['override-settings']['approve-mode'] = passApproveMode
-        decodedCustom['override-settings']['allow-hide-cm'] = 'Y' if hidecm else 'N'
-        decodedCustom['override-settings']['allow-remove-wallpaper'] = 'Y' if removeWallpaper else 'N'
-        decodedCustom['override-settings']['enable-remote-printer'] = 'Y' if enablePrinter else 'N'
-        decodedCustom['override-settings']['enable-camera'] = 'Y' if enableCamera else 'N'
-        decodedCustom['override-settings']['enable-terminal'] = 'Y' if enableTerminal else 'N'
-        if direction == 'incoming':
-            decodedCustom['override-settings']['custom-rendezvous-server'] = server
-            decodedCustom['override-settings']['api-server'] = apiServer
+    # The permission checkboxes are disabled by the form for "full" and
+    # "view", so disabled inputs are not submitted.  Derive those two modes
+    # explicitly instead of trusting the missing parameters.
+    if permissionsType == "full":
+        enableKeyboard = enableClipboard = enableFileTransfer = True
+        enableAudio = enableTCP = enableRemoteRestart = enableRecording = True
+        enableBlockingInput = enableRemoteModi = True
+        enablePrinter = enableCamera = enableTerminal = True
+    elif permissionsType == "view":
+        enableKeyboard = enableClipboard = enableFileTransfer = False
+        enableAudio = enableTCP = enableRemoteRestart = enableRecording = False
+        enableBlockingInput = enableRemoteModi = False
+        enablePrinter = enableCamera = enableTerminal = False
+
+    override['access-mode'] = permissionsType
+    override['enable-keyboard'] = 'Y' if enableKeyboard else 'N'
+    override['enable-clipboard'] = 'Y' if enableClipboard else 'N'
+    override['enable-file-transfer'] = 'Y' if enableFileTransfer else 'N'
+    override['enable-audio'] = 'Y' if enableAudio else 'N'
+    override['enable-tunnel'] = 'Y' if enableTCP else 'N'
+    override['enable-remote-restart'] = 'Y' if enableRemoteRestart else 'N'
+    override['enable-record-session'] = 'Y' if enableRecording else 'N'
+    override['enable-block-input'] = 'Y' if enableBlockingInput else 'N'
+    override['allow-remote-config-modification'] = 'Y' if enableRemoteModi else 'N'
+    override['direct-server'] = 'Y' if enableDirectIP else 'N'
+    # A baked permanent password is authoritative: make it the permanent
+    # password method instead of silently leaving "both passwords" enabled.
+    override['verification-method'] = 'use-permanent-password' if permPass else 'use-both-passwords'
+    # hide_cm() only returns true with approve-mode=password and a permanent
+    # password, so do not advertise the feature when it cannot work.
+    effective_hidecm = bool(hidecm and permPass)
+    override['approve-mode'] = 'password' if effective_hidecm else passApproveMode
+    override['allow-hide-cm'] = 'Y' if effective_hidecm else 'N'
+    override['allow-remove-wallpaper'] = 'Y' if removeWallpaper else 'N'
+    override['enable-remote-printer'] = 'Y' if enablePrinter else 'N'
+    override['enable-camera'] = 'Y' if enableCamera else 'N'
+    override['enable-terminal'] = 'Y' if enableTerminal else 'N'
+    if direction == 'incoming':
+        override['custom-rendezvous-server'] = server
+        override['api-server'] = apiServer
+
+    # Some keys are only read from HARD_SETTINGS and never from a
+    # default-settings/override-settings map.  Route those to the top level
+    # when an advanced user enters them in either manual box.
+    hard_custom_keys = {
+        'conn-type',
+        'password',
+        'salt',
+        'app-name',
+        'disable-installation',
+        'disable-settings',
+        'disable-tcp-listen',
+        'disable-ab',
+        'disable-account',
+    }
+
+    def apply_manual_settings(lines, target):
+        for line in lines.splitlines():
+            if '=' in line:
+                k, value = line.split('=', 1)
+                k = k.strip()
+                value = value.strip()
+                if k in hard_custom_keys:
+                    decodedCustom[k] = value
+                else:
+                    target[k] = value
 
     if defaultManual:
-        for line in defaultManual.splitlines():
-            if '=' in line:
-                k, value = line.split('=', 1)
-                decodedCustom['default-settings'][k.strip()] = value.strip()
+        apply_manual_settings(defaultManual, decodedCustom['default-settings'])
 
     if overrideManual:
-        for line in overrideManual.splitlines():
-            if '=' in line:
-                k, value = line.split('=', 1)
-                decodedCustom['override-settings'][k.strip()] = value.strip()
+        apply_manual_settings(overrideManual, decodedCustom['override-settings'])
     
     decodedCustomJson = json.dumps(decodedCustom)
 

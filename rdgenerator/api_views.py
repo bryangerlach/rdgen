@@ -15,7 +15,6 @@ SETTINGS_CHOICES = ['settingsY', 'settingsN']
 THEME_CHOICES = ['light', 'dark', 'system']
 THEME_DORO_CHOICES = ['default', 'override']
 PASS_APPROVE_MODE_CHOICES = ['password', 'click', 'password-click']
-PERMISSIONS_DORO_CHOICES = ['default', 'override']
 PERMISSIONS_TYPE_CHOICES = ['custom', 'full', 'view']
 
 # Boolean fields
@@ -66,7 +65,9 @@ def validate_generate_params(data):
         'theme': (THEME_CHOICES, 'system'),
         'themeDorO': (THEME_DORO_CHOICES, 'default'),
         'passApproveMode': (PASS_APPROVE_MODE_CHOICES, 'password-click'),
-        'permissionsDorO': (PERMISSIONS_DORO_CHOICES, 'default'),
+        # permissionsDorO is no longer used: permissions are always written to
+        # override-settings so they apply to existing installations.  The old
+        # field is still accepted in incoming JSON and simply ignored.
         'permissionsType': (PERMISSIONS_TYPE_CHOICES, 'custom'),
     }
     for field, (choices, default) in choice_validations.items():
