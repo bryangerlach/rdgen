@@ -469,11 +469,42 @@ jobs:
           grep -n 'customClientConfig:' "$DART" | sed 's/\(.\{80\}\).*/\1.../'
 
       - name: change app id to custom
-        if: env.androidappid != 'com.carriez.flutter_hbb'
-        continue-on-error: true
-        shell: bash
+        if: env.androidappid != '' && env.androidappid != 'com.carriez.flutter_hbb'
+        shell: python
         run: |
-          sed -i -e 's|com.carriez.flutter_hbb|${{ env.androidappid }}|' ./flutter/android/app/build.gradle
+          import os
+          import re
+          import sys
+
+          path = "flutter/android/app/build.gradle"
+          app_id = os.environ.get("androidappid", "").strip()
+
+          # Android application IDs: at least two segments, each starting with
+          # a letter. This is also what keeps the value safe to write to Gradle.
+          if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_]*(\.[A-Za-z][A-Za-z0-9_]*)+", app_id):
+              print(f"::error::invalid Android app id: {app_id!r}")
+              sys.exit(1)
+
+          with open(path, encoding="utf-8") as f:
+              text = f.read()
+
+          # Change ONLY applicationId (the installed identity). The namespace
+          # must stay com.carriez.flutter_hbb: that is where the Kotlin sources
+          # (and their unqualified R references) live, so retargeting it breaks
+          # the build with "Unresolved reference: R".
+          pattern = r'(?m)^(\s*applicationId\s+)["\x27]com\.carriez\.flutter_hbb["\x27]'
+          text, count = re.subn(pattern, lambda m: m.group(1) + f'"{app_id}"', text)
+          if count != 1:
+              print(f"::error::expected one applicationId line in {path}, replaced {count}")
+              sys.exit(1)
+
+          if not re.search(r'(?m)^\s*namespace\s+"com\.carriez\.flutter_hbb"', text):
+              print(f"::error::namespace in {path} is not com.carriez.flutter_hbb")
+              sys.exit(1)
+
+          with open(path, "w", encoding="utf-8", newline="") as f:
+              f.write(text)
+          print(f"applicationId -> {app_id} (namespace kept as com.carriez.flutter_hbb)")
 
       - name: change download link to custom
         if: env.downloadLink != 'https://rustdesk.com/download'
