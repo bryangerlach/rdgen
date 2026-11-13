@@ -14,6 +14,8 @@ Usage:
 
 What it changes:
   1. libs/hbb_common/src/lib.rs        - hardcoded update check URL -> your server
+                                         report the platform name, not a Linux
+                                         distro id ("ubuntu" -> "linux")
                                          get_version_number() -> support +build metadata
   2. src/common.rs                     - allow update checks for custom-branded clients
                                          relax github.com-only host check in
@@ -79,6 +81,31 @@ def change_update_url(root: Path, update_url: str) -> None:
             break
     if not changed:
         print(f"[WARN] {target}: could not find UPDATE_URL pattern to replace")
+
+
+def normalize_update_platform(root: Path) -> None:
+    """Send a platform name instead of a Linux distribution id.
+
+    version_check_request() uses System::distribution_id(), which on Linux is
+    the /etc/os-release ID ("ubuntu", "debian", ...). Update servers that key on
+    "linux" reject those checks as an unsupported platform. Windows, macOS and
+    Android already report std::env::consts::OS.
+    """
+    target = root / "libs" / "hbb_common" / "src" / "lib.rs"
+    if not target.exists():
+        print(f"[WARN] {target} not found, skipping update platform change")
+        return
+
+    text = target.read_text(encoding="utf-8")
+    pattern = re.compile(r"let os = system\.distribution_id\(\);")
+    new_text, n = pattern.subn(
+        "let os = std::env::consts::OS.to_string();", text, count=1
+    )
+    if n > 0:
+        target.write_text(new_text, encoding="utf-8")
+        print(f"[OK] {target}: update checks report the platform name")
+    else:
+        print(f"[WARN] {target}: could not find distribution_id() assignment")
 
 
 def modify_get_version_number(root: Path) -> None:
@@ -647,6 +674,7 @@ def main() -> None:
     print()
 
     change_update_url(root, args.update_url)
+    normalize_update_platform(root)
     modify_get_version_number(root)
     modify_get_version_number_tests(root)
     allow_updates_for_custom_clients(root)
