@@ -1,8 +1,11 @@
+import base64
 import json
 import os
 import tempfile
 from unittest import mock
 
+import pyzipper
+from django.conf import settings
 from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 
 from .api_views import validate_generate_params
@@ -122,3 +125,12 @@ class GeneratorViewTests(TestCase):
         post.assert_called_once()
         zip_url = json.loads(post.call_args.kwargs['json']['inputs']['zip_url'])
         self.assertEqual(zip_url['url'], 'https://rdgen.example.com')
+
+        # The generated custom_.txt must hide RustDesk's "Powered by" link
+        # through the built-in option, not by rewriting the translation.
+        zip_path = os.path.join('temp_zips', zip_url['file'])
+        with pyzipper.AESZipFile(zip_path) as zf:
+            zf.setpassword(settings.ZIP_PASSWORD.encode())
+            secrets = json.loads(zf.read('secrets.json'))
+        custom = json.loads(base64.b64decode(secrets['custom']))
+        self.assertEqual(custom['override-settings']['hide-powered-by-me'], 'Y')

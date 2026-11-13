@@ -210,6 +210,12 @@ def generate_custom_client(params, full_url):
     decodedCustom['default-settings'] = {}
     override = decodedCustom['override-settings']
 
+    # Remove the "Powered by <app>" link entirely. RustDesk ships a built-in
+    # option for this that BOTH the Flutter UI (loadPowered) and the Sciter UI
+    # check; unlike rewriting the powered_by_me translation, it removes the
+    # element instead of leaving an empty (still clickable) label behind.
+    override['hide-powered-by-me'] = 'Y'
+
     if permPass != "":
         decodedCustom['password'] = permPass
 
