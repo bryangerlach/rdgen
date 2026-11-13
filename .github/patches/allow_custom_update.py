@@ -24,6 +24,9 @@ What it changes:
                                          relax the GitHub-only download host check
   4. src/update_metadata.rs            - add your ed25519 public key to
                                          TRUSTED_UPDATE_KEYS (key id: custom-update)
+  5. Flutter sources                   - remove the is_custom_client() gates around
+                                         the startup check, the update card/banner
+                                         and the "check on startup" toggles
 
 Client contract implemented by the matching update server:
   * POST <downloadLink>/api/version/latest returns a flat {"url": "..."}
@@ -226,6 +229,104 @@ def allow_updates_for_custom_clients(root: Path) -> None:
         print(f"[OK] {target}: enabled update checks for custom-branded clients")
     else:
         print(f"[WARN] {target}: could not find is_custom_client() guard in check_software_update()")
+
+
+def _apply_regex(path: Path, pattern: "re.Pattern[str]", replacement: str, label: str) -> None:
+    if not path.exists():
+        print(f"[WARN] {path} not found, skipping {label}")
+        return
+    text = path.read_text(encoding="utf-8")
+    new_text, n = pattern.subn(replacement, text, count=1)
+    if n > 0:
+        path.write_text(new_text, encoding="utf-8")
+        print(f"[OK] {path}: enabled {label}")
+    else:
+        print(f"[WARN] {path}: could not find {label} gate")
+
+
+def _replace_literal(path: Path, old: str, new: str, label: str) -> None:
+    if not path.exists():
+        print(f"[WARN] {path} not found, skipping {label}")
+        return
+    text = path.read_text(encoding="utf-8")
+    if old in text:
+        path.write_text(text.replace(old, new, 1), encoding="utf-8")
+        print(f"[OK] {path}: enabled {label}")
+    else:
+        print(f"[WARN] {path}: could not find {label} gate")
+
+
+def _replace_gate_before(path: Path, marker: str, old: str, new: str, label: str) -> None:
+    """Replace the last `old` that appears before `marker` in the file."""
+    if not path.exists():
+        print(f"[WARN] {path} not found, skipping {label}")
+        return
+    text = path.read_text(encoding="utf-8")
+    marker_idx = text.rfind(marker)
+    gate_idx = text.rfind(old, 0, marker_idx) if marker_idx >= 0 else -1
+    if gate_idx >= 0:
+        new_text = text[:gate_idx] + new + text[gate_idx + len(old):]
+        path.write_text(new_text, encoding="utf-8")
+        print(f"[OK] {path}: enabled {label}")
+    else:
+        print(f"[WARN] {path}: could not find {label} gate")
+
+
+def patch_flutter_update_gates(root: Path) -> None:
+    """Remove the Flutter-side is_custom_client() gates around updates.
+
+    Removing the Rust guard in check_software_update() is not enough: the Dart
+    caller only invokes mainGetSoftwareUpdateUrl() when bind.isCustomClient()
+    is false, so a custom-branded client never contacts the update server at
+    all. The update card, the mobile banner and the "check on startup" toggles
+    are gated the same way.
+    """
+    # Startup check: common.dart checkUpdate()
+    _apply_regex(
+        root / "flutter" / "lib" / "common.dart",
+        re.compile(
+            r"(void\s+checkUpdate\(\)\s*\{\s*if\s*\(!isWeb\)\s*\{\s*)"
+            r"if\s*\(!bind\.isCustomClient\(\)\)\s*\{"
+        ),
+        r"\1if (true) {",
+        "startup update check",
+    )
+
+    # Desktop update card: desktop_home_page.dart buildHelpCards()
+    _apply_regex(
+        root / "flutter" / "lib" / "desktop" / "pages" / "desktop_home_page.dart",
+        re.compile(
+            r"if\s*\(!bind\.isCustomClient\(\)\s*&&\s*updateUrl\.isNotEmpty\s*&&\s*"
+            r"!isCardClosed\s*&&\s*bind\.mainUriPrefixSync\(\)\.contains\('rustdesk'\)\)"
+        ),
+        "if (updateUrl.isNotEmpty && !isCardClosed)",
+        "desktop update card",
+    )
+
+    # Mobile update banner
+    _replace_literal(
+        root / "flutter" / "lib" / "mobile" / "pages" / "connection_page.dart",
+        "if (!bind.isCustomClient() && !isIOS)",
+        "if (!isIOS)",
+        "mobile update banner",
+    )
+
+    # Desktop "Check for software update on startup" toggle
+    _replace_literal(
+        root / "flutter" / "lib" / "desktop" / "pages" / "desktop_setting_page.dart",
+        "if (!isWeb && !bind.isCustomClient())",
+        "if (!isWeb)",
+        "desktop update toggle",
+    )
+
+    # Mobile "Check for software update on startup" toggle
+    _replace_gate_before(
+        root / "flutter" / "lib" / "mobile" / "pages" / "settings_page.dart",
+        "kOptionEnableCheckUpdate",
+        "if (!bind.isCustomClient()) {",
+        "if (true) {",
+        "mobile update toggle",
+    )
 
 
 def relax_common_rs(root: Path) -> None:
@@ -549,6 +650,7 @@ def main() -> None:
     modify_get_version_number(root)
     modify_get_version_number_tests(root)
     allow_updates_for_custom_clients(root)
+    patch_flutter_update_gates(root)
     relax_common_rs(root)
     modify_display_version_from_release_id(root)
     modify_display_version_from_release_id_tests(root)
