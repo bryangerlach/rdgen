@@ -29,10 +29,14 @@ What it changes:
   5. Flutter sources                   - remove the is_custom_client() gates around
                                          the startup check, the update card/banner
                                          and the "check on startup" toggles
+                                         open the release page instead of a static
+                                         URL where no in-place updater exists
 
 Client contract implemented by the matching update server:
   * POST <downloadLink>/api/version/latest returns a flat {"url": "..."}
     whose path is /rustdesk/rustdesk/releases/tag/<release_id>
+  * GET  <downloadLink>/rustdesk/rustdesk/releases/tag/<release_id>
+    returns an HTML page listing that release's files (used by Linux/Android)
   * The client derives the release id from that path, then fetches
         <downloadLink>/rustdesk/rustdesk/releases/download/<release_id>/rustdesk-update.json
         <downloadLink>/rustdesk/rustdesk/releases/download/<release_id>/rustdesk-update.json.sig
@@ -353,6 +357,21 @@ def patch_flutter_update_gates(root: Path) -> None:
         "if (!bind.isCustomClient()) {",
         "if (true) {",
         "mobile update toggle",
+    )
+
+    # Platforms without an in-place updater open the release page returned by
+    # the update server, so the user can pick the package for their distro/arch.
+    _replace_literal(
+        root / "flutter" / "lib" / "desktop" / "pages" / "desktop_home_page.dart",
+        "final Uri url = Uri.parse('https://rustdesk.com/download');",
+        "final Uri url = Uri.parse(updateUrl);",
+        "desktop release page button",
+    )
+    _replace_literal(
+        root / "flutter" / "lib" / "mobile" / "pages" / "connection_page.dart",
+        "final url = 'https://rustdesk.com/download';",
+        "final url = updateUrl;",
+        "mobile release page button",
     )
 
 
