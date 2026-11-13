@@ -378,6 +378,12 @@ jobs:
             wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeSetupServerTip.diff
             git apply removeSetupServerTip.diff
             echo -n '${{ env.custom }}' > ./custom_.txt
+
+      - name: apply theme colors
+        shell: bash
+        run: |
+          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/themeColors.py
+          python themeColors.py
           
       - name: change url to custom
         if: env.urlLink != 'https://rustdesk.com'
@@ -1098,6 +1104,12 @@ jobs:
             wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/removeSetupServerTip.diff
             git apply removeSetupServerTip.diff
             echo -n '${{ env.custom }}' > ./custom_.txt
+
+      - name: apply theme colors
+        shell: bash
+        run: |
+          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/themeColors.py
+          python themeColors.py
           
       - name: change url to custom
         if: env.urlLink != 'https://rustdesk.com'

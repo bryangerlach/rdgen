@@ -22,13 +22,64 @@
             padding: 20px;
             max-width: 1200px;
         }
-        .container {
+        /* Two-column section grid. Wide sections (Visual, Other) span both
+           columns, so a tall card can no longer stretch a short neighbour. */
+        .sections {
             display: grid;
-            grid-template-columns: 1fr 1fr;  /* Adjust as needed */
-            grid-gap: 20px;
-            margin: 0 auto;  /* Center the container horizontally */
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+            margin: 0 auto;
             padding: 20px;
             max-width: 1200px;
+            align-items: stretch;
+        }
+        .sections > .section {
+            margin: 0;
+        }
+        .sections > .section--wide {
+            grid-column: 1 / -1;
+        }
+        @media (max-width: 900px) {
+            .sections {
+                grid-template-columns: minmax(0, 1fr);
+            }
+            .sections > .section--wide {
+                grid-column: auto;
+            }
+        }
+        /* Internal splits for the wide Visual and Other sections. */
+        .split-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 20px;
+            align-items: start;
+        }
+        .visual-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 20px;
+            align-items: start;
+        }
+        .visual-pane h3 {
+            margin: 0 0 10px;
+            color: #fff;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        @media (max-width: 1100px) {
+            .visual-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+            /* Keep the preview readable instead of leaving a half-row hole. */
+            .visual-grid > .visual-pane:last-child {
+                grid-column: 1 / -1;
+            }
+        }
+        @media (max-width: 700px) {
+            .visual-grid,
+            .split-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
         }
         .column {
             flex: 50%;
@@ -125,6 +176,140 @@
             max-height: 100px;
             margin-top: 10px;
         }
+        .theme-colors {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 10px;
+        }
+        .theme-color label {
+            margin-bottom: 4px;
+        }
+        .theme-color input[type="text"] {
+            margin-bottom: 0;
+        }
+        .theme-color input[type="color"] {
+            box-sizing: border-box;
+            width: 100%;
+            height: 30px;
+            padding: 0;
+            margin-bottom: 6px;
+            background-color: #222;
+            border: 1px solid #444;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .hint {
+            color: #888;
+            font-weight: normal;
+        }
+        .theme-live {
+            margin-top: 14px;
+        }
+        .theme-live-bar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            color: #888;
+            font-size: 11px;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+        }
+        .theme-live-bar button {
+            width: auto;
+            padding: 3px 10px;
+            margin-left: 0;
+            background: #222;
+            color: #bbb;
+            border: 1px solid #444;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: normal;
+            letter-spacing: 0;
+            text-transform: none;
+        }
+        .theme-live-bar button.is-on {
+            border-color: #0077ff;
+            color: #fff;
+            background: #17325c;
+        }
+        .theme-live-window {
+            --tp-bg: #18191e;
+            --tp-card: #18191e;
+            --tp-accent: #0071ff;
+            --tp-accent-halo: rgba(0, 113, 255, .25);
+            --tp-btn: #0071ff;
+            --tp-ink: #e8edf5;
+            --tp-muted: #97a1b3;
+            --tp-me: #21790b;
+            --tp-title: #18191e;
+            max-width: 420px;
+            overflow: hidden;
+            background: var(--tp-bg);
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+        .theme-live-window[data-mode="light"] {
+            --tp-ink: #1a1d24;
+            --tp-muted: #5c6574;
+        }
+        .theme-live .tp-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            background: var(--tp-title);
+            border-bottom: 1px solid rgba(127, 127, 127, .22);
+            color: var(--tp-ink);
+            font-size: 12.5px;
+            font-weight: 600;
+        }
+        .theme-live .tp-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--tp-accent);
+            box-shadow: 0 0 0 3px var(--tp-accent-halo);
+        }
+        .theme-live .tp-body {
+            padding: 14px;
+        }
+        .theme-live .tp-card {
+            padding: 14px;
+            background: var(--tp-card);
+            border: 1px solid rgba(127, 127, 127, .22);
+            border-radius: 10px;
+        }
+        .theme-live .tp-id {
+            color: var(--tp-me);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: .08em;
+        }
+        .theme-live .tp-sub {
+            margin: 4px 0 12px;
+            color: var(--tp-muted);
+            font-size: 12px;
+        }
+        .theme-live .tp-btn,
+        .theme-live .tp-btn:hover {
+            width: auto;
+            padding: 7px 14px;
+            background: var(--tp-btn);
+            color: #fff;
+            border: 0;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: default;
+        }
+        .theme-live-hint {
+            margin: 8px 0 0;
+            color: #888;
+            font-size: 12px;
+            line-height: 1.45;
+        }
         .save-load-section-container { /* New container for fixed positioning */
             position: fixed;
             top: 20px; /* Adjust as needed */
@@ -137,6 +322,15 @@
         }
         .save-load-section {
             display: none; /* Initially hidden */
+        }
+        @media (max-width: 1200px) {
+            /* On narrow screens the fixed panel would sit on top of the
+               title; let it flow above the form instead. */
+            .save-load-section-container {
+                position: static;
+                width: fit-content;
+                margin: 0 auto 10px;
+            }
         }
         .error {
             color: red;
@@ -274,7 +468,7 @@
                 <label for="{{ form.delayFix.id_for_label }}">{{ form.delayFix }} Fix connection delay when using third-party API</label>
             </div>
         </div>
-        <div class="container">   
+        <div class="sections">
             <div class="section">
                 <h2><i class="fas fa-sliders-h"></i> General</h2>
                     <label for="{{ form.exename.id_for_label }}">Name of the configuration (no spaces or special characters, English characters only):</label>
@@ -308,8 +502,7 @@
                     <label for="{{ form.compname.id_for_label }}">Company name for copyright (replaces Purslane Tech Pte. Ltd.):</label>
                     {{ form.compname }}<br><br>
             </div>
-        </div>
-        <div class="container">
+
             <div class="section">
                 <h2><i class="fas fa-shield-alt"></i> Security</h2>
                     <label for="{{ form.passApproveMode.id_for_label }}">Password Approve mode:</label>
@@ -328,28 +521,6 @@
                     <label for="{{ form.hidecm.id_for_label }}">{{ form.hidecm }} Allow hiding the connection window from remote screen.</label><br>
             </div>
         
-            <div class="section">
-                <h2><i class="fas fa-paint-brush"></i> Visual</h2>
-                    {{ form.iconbase64.as_hidden }}
-                    {{ form.logobase64.as_hidden }}
-                    {{ form.privacybase64.as_hidden }}
-                    <label for="{{ form.iconfile.id_for_label }}">Custom App Icon (in .png format)</label>
-                    {{ form.iconfile }}<br><br>
-                    <!-- <input type="file" name="iconfile" id="iconfile" accept="image/png"> -->
-                    <div id="icon-preview"></div><br><br>
-                    <label for="{{ form.logofile.id_for_label }}">Custom App Logo (in .png format)</label>
-                    {{ form.logofile }}<br><br>
-                    <!-- <input type="file" name="logofile" id="logofile" accept="image/png"> -->
-                    <div id="logo-preview"></div><br><br>
-                    <label for="{{ form.privacyfile.id_for_label }}">Custom Privacy Screen (in .png format)</label>
-                    {{ form.privacyfile }}<br><br>
-                    <!-- <input type="file" name="iconfile" id="iconfile" accept="image/png"> -->
-                    <div id="privacy-preview"></div><br><br>
-                    <label for="{{ form.theme.id_for_label }}">Theme:</label>
-                    {{ form.theme }} {{ form.themeDorO }} *Default sets the theme but allows the client to change it, Override sets the theme permanently.<br><br>
-            </div>
-        </div>
-        <div class="container">
             <div class="section">
                 <h2><i class="fas fa-lock"></i> Permissions</h2>
                     The following permissions are enforced (override) and cannot be changed by the client. This is required so they also apply to machines that already have saved settings.<br>
@@ -374,14 +545,95 @@
                     <label for="{{ form.removeNewVersionNotif.id_for_label }}">{{ form.removeNewVersionNotif }} Remove notification for new versions.</label><br>
             </div>
 
-            <div class="section">
+            <div class="section section--wide">
+                <h2><i class="fas fa-paint-brush"></i> Visual</h2>
+                    {{ form.iconbase64.as_hidden }}
+                    {{ form.logobase64.as_hidden }}
+                    {{ form.privacybase64.as_hidden }}
+                    <div class="visual-grid">
+                        <div class="visual-pane">
+                            <h3><i class="fas fa-image"></i> Branding</h3>
+                            <label for="{{ form.iconfile.id_for_label }}">Custom App Icon (in .png format)</label>
+                            {{ form.iconfile }}<br><br>
+                            <!-- <input type="file" name="iconfile" id="iconfile" accept="image/png"> -->
+                            <div id="icon-preview"></div><br><br>
+                            <label for="{{ form.logofile.id_for_label }}">Custom App Logo (in .png format)</label>
+                            {{ form.logofile }}<br><br>
+                            <!-- <input type="file" name="logofile" id="logofile" accept="image/png"> -->
+                            <div id="logo-preview"></div><br><br>
+                            <label for="{{ form.privacyfile.id_for_label }}">Custom Privacy Screen (in .png format)</label>
+                            {{ form.privacyfile }}<br><br>
+                            <!-- <input type="file" name="iconfile" id="iconfile" accept="image/png"> -->
+                            <div id="privacy-preview"></div><br><br>
+                        </div>
+                        <div class="visual-pane">
+                            <h3><i class="fas fa-palette"></i> Theme</h3>
+                            <label for="{{ form.theme.id_for_label }}">Theme:</label>
+                            {{ form.theme }} {{ form.themeDorO }} *Default sets the theme but allows the client to change it, Override sets the theme permanently.<br><br>
+                            <label>Theme colors <span class="hint">(optional; blank keeps the stock RustDesk color. Flutter clients only &mdash; not the 32-bit Windows/Sciter build.)</span></label>
+                            <div class="theme-colors">
+                                <div class="theme-color">
+                                    <label for="{{ form.themeColor.id_for_label }}">Accent</label>
+                                    <input type="color" value="#0071ff" data-color-for="{{ form.themeColor.id_for_label }}">
+                                    {{ form.themeColor }}
+                                </div>
+                                <div class="theme-color">
+                                    <label for="{{ form.themeSurfaceLight.id_for_label }}">Light surface</label>
+                                    <input type="color" value="#efeff2" data-color-for="{{ form.themeSurfaceLight.id_for_label }}">
+                                    {{ form.themeSurfaceLight }}
+                                </div>
+                                <div class="theme-color">
+                                    <label for="{{ form.themeSurfaceDark.id_for_label }}">Dark surface</label>
+                                    <input type="color" value="#18191e" data-color-for="{{ form.themeSurfaceDark.id_for_label }}">
+                                    {{ form.themeSurfaceDark }}
+                                </div>
+                                <div class="theme-color">
+                                    <label for="{{ form.themeMeColor.id_for_label }}">ID / &ldquo;me&rdquo;</label>
+                                    <input type="color" value="#21790b" data-color-for="{{ form.themeMeColor.id_for_label }}">
+                                    {{ form.themeMeColor }}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="visual-pane">
+                            <h3><i class="fas fa-eye"></i> Client preview</h3>
+                            <div class="theme-live">
+                                <div class="theme-live-bar">
+                                    <button type="button" data-tp-mode="light">light</button>
+                                    <button type="button" data-tp-mode="dark">dark</button>
+                                </div>
+                                <div class="theme-live-window" id="theme-live" data-mode="dark">
+                                    <div class="tp-title">
+                                        <span class="tp-dot"></span>
+                                        <span id="tp-app">App</span>
+                                    </div>
+                                    <div class="tp-body">
+                                        <div class="tp-card">
+                                            <div class="tp-id">1 234 567</div>
+                                            <div class="tp-sub">ready to connect</div>
+                                            <button type="button" class="tp-btn">Connect</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <p class="theme-live-hint">Approximate preview. The selected colors are compiled into the client at build time.</p>
+                            </div>
+                        </div>
+                    </div>
+            </div>
+
+            <div class="section section--wide">
                 <h2><i class="fas fa-cog"></i> Other</h2>
                     <label for="{{ form.removeWallpaper.id_for_label }}">{{ form.removeWallpaper }} Remove wallpaper during incoming sessions</label><br>
                     <a href="https://rustdesk.com/docs/en/self-host/client-configuration/advanced-settings/">Click here for a list of Default/Override settings</a>
-                    <label for="{{ form.defaultManual.id_for_label }}">Default settings</label><br>
-                    {{ form.defaultManual }}<br><br>
-                    <label for="{{ form.overrideManual.id_for_label }}">Override settings</label><br>
-                    {{ form.overrideManual }}<br><br>
+                    <div class="split-grid">
+                        <div>
+                            <label for="{{ form.defaultManual.id_for_label }}">Default settings</label>
+                            {{ form.defaultManual }}
+                        </div>
+                        <div>
+                            <label for="{{ form.overrideManual.id_for_label }}">Override settings</label>
+                            {{ form.overrideManual }}
+                        </div>
+                    </div>
             </div>
         </div>
         <div class="platform">
@@ -423,6 +675,147 @@
         document.getElementById("{{ form.privacyfile.id_for_label }}").addEventListener('change', function(event) {
             previewImage(event.target, 'privacy-preview');
         });
+
+        // Keep each native color picker and its hex text field in sync. Only
+        // the text field is submitted, so leaving a field blank still means
+        // "stock RustDesk color" even though a picker always has a value.
+        function syncThemeColorFromText(picker) {
+            const text = document.getElementById(picker.dataset.colorFor);
+            if (!text) return;
+            const match = text.value.trim().match(/^#?([0-9A-Fa-f]{6})$/);
+            if (match) {
+                picker.value = '#' + match[1].toLowerCase();
+            } else if (!text.value.trim()) {
+                // Empty = stock; show the stock swatch again.
+                picker.value = picker.defaultValue;
+            }
+        }
+
+        // Live client preview, modeled on DVForge's Theme panel. Blank fields
+        // fall back to the stock RustDesk colors, and the Connect button uses
+        // the same contrast adjustment themeColors.py bakes into the build.
+        const THEME_PREVIEW_DEFAULTS = {
+            themeColor: '#0071FF',
+            themeSurfaceLight: '#EFEFF2',
+            themeSurfaceDark: '#18191E',
+            themeMeColor: '#21790B',
+        };
+
+        function themePreviewHex(key) {
+            const el = document.getElementById('id_' + key);
+            const raw = ((el && el.value) || '').trim().replace(/^#/, '');
+            return /^[0-9A-Fa-f]{6}$/.test(raw)
+                ? '#' + raw.toUpperCase()
+                : THEME_PREVIEW_DEFAULTS[key];
+        }
+
+        function hexRgb(hex) {
+            const h = (hex || '').replace('#', '');
+            return [
+                parseInt(h.slice(0, 2), 16),
+                parseInt(h.slice(2, 4), 16),
+                parseInt(h.slice(4, 6), 16),
+            ];
+        }
+
+        function colorLuma(hex) {
+            const [r, g, b] = hexRgb(hex);
+            return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
+        }
+
+        function colorsTooClose(a, b) {
+            const [r1, g1, b1] = hexRgb(a);
+            const [r2, g2, b2] = hexRgb(b);
+            const dist = Math.hypot(r1 - r2, g1 - g2, b1 - b2);
+            return dist < 55 || Math.abs(colorLuma(a) - colorLuma(b)) < 0.14;
+        }
+
+        function mixColors(a, b, amount) {
+            const [r1, g1, b1] = hexRgb(a);
+            const [r2, g2, b2] = hexRgb(b);
+            const channel = (x, y) => Math.round(x + (y - x) * amount)
+                .toString(16).padStart(2, '0');
+            return ('#' + channel(r1, r2) + channel(g1, g2) + channel(b1, b2)).toUpperCase();
+        }
+
+        function contrastOn(fg, bg) {
+            if (!colorsTooClose(fg, bg)) return fg;
+            return mixColors(fg, colorLuma(bg) > 0.5 ? '#000000' : '#FFFFFF', 0.38);
+        }
+
+        function updateThemeLive() {
+            const win = document.getElementById('theme-live');
+            if (!win) return;
+            const mode = win.dataset.mode || 'dark';
+            const accent = themePreviewHex('themeColor');
+            const surface = mode === 'light'
+                ? themePreviewHex('themeSurfaceLight')
+                : themePreviewHex('themeSurfaceDark');
+            const [r, g, b] = hexRgb(accent);
+            win.style.setProperty('--tp-bg', surface);
+            win.style.setProperty('--tp-card', surface);
+            win.style.setProperty('--tp-accent', accent);
+            win.style.setProperty('--tp-accent-halo', `rgba(${r}, ${g}, ${b}, 0.25)`);
+            win.style.setProperty('--tp-btn', contrastOn(accent, surface));
+            win.style.setProperty('--tp-me', themePreviewHex('themeMeColor'));
+            // The compiled title bar is white in light mode and stock chrome
+            // in dark mode, regardless of the surface color.
+            win.style.setProperty('--tp-title', mode === 'light' ? '#FFFFFF' : '#18191E');
+
+            const app = document.getElementById('id_appname');
+            const appLabel = document.getElementById('tp-app');
+            if (appLabel) appLabel.textContent = ((app && app.value) || '').trim() || 'App';
+
+            document.querySelectorAll('.theme-live-bar button[data-tp-mode]').forEach(function(btn) {
+                btn.classList.toggle('is-on', btn.dataset.tpMode === mode);
+            });
+        }
+
+        function setThemePreviewMode(mode) {
+            const win = document.getElementById('theme-live');
+            if (!win) return;
+            win.dataset.mode = mode;
+            updateThemeLive();
+        }
+
+        document.querySelectorAll('input[type="color"][data-color-for]').forEach(function(picker) {
+            const text = document.getElementById(picker.dataset.colorFor);
+            if (!text) return;
+            picker.addEventListener('input', function() {
+                text.value = picker.value.toUpperCase();
+                updateThemeLive();
+            });
+            text.addEventListener('input', function() {
+                syncThemeColorFromText(picker);
+                updateThemeLive();
+            });
+            syncThemeColorFromText(picker);
+        });
+
+        document.querySelectorAll('.theme-live-bar button[data-tp-mode]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                setThemePreviewMode(btn.dataset.tpMode);
+            });
+        });
+
+        const themeModeSelect = document.getElementById('id_theme');
+        if (themeModeSelect) {
+            const syncPreviewMode = function() {
+                if (themeModeSelect.value === 'light' || themeModeSelect.value === 'dark') {
+                    setThemePreviewMode(themeModeSelect.value);
+                } else {
+                    updateThemeLive();
+                }
+            };
+            themeModeSelect.addEventListener('change', syncPreviewMode);
+            syncPreviewMode();
+        }
+
+        const appNameForPreview = document.getElementById('id_appname');
+        if (appNameForPreview) {
+            appNameForPreview.addEventListener('input', updateThemeLive);
+        }
+        updateThemeLive();
 
         document.getElementById("{{ form.hidecm.id_for_label }}").addEventListener('change',function() {
             if (this.checked) {
@@ -736,6 +1129,14 @@
                                 }
                             }
                             showLoadWarnings(skippedKeys);
+                            document.querySelectorAll('input[type="color"][data-color-for]').forEach(syncThemeColorFromText);
+                            const loadedTheme = document.getElementById('id_theme');
+                            const previewWin = document.getElementById('theme-live');
+                            if (previewWin && loadedTheme &&
+                                (loadedTheme.value === 'light' || loadedTheme.value === 'dark')) {
+                                previewWin.dataset.mode = loadedTheme.value;
+                            }
+                            updateThemeLive();
                         } catch (error) {
                             alert("Error loading data. Invalid JSON file.");
                         }

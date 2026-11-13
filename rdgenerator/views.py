@@ -13,7 +13,7 @@ import uuid
 import pyzipper
 from django.conf import settings as _settings
 from django.db.models import Q
-from .forms import GenerateForm
+from .forms import GenerateForm, HEX_COLOR_RE
 from .models import GithubRun
 from PIL import Image
 from urllib.parse import quote
@@ -29,6 +29,19 @@ def _safe_parts(uuid_val, filename):
     if filename is not None and (not _NAME_RE.match(filename) or filename.startswith('.')):
         return False
     return True
+
+
+def _norm_hex_color(value):
+    """Return canonical #RRGGBB, or '' for blank/invalid (stock color).
+
+    The workflows receive this as a step env var and interpolate it into Dart
+    0xAARRGGBB literals, so nothing but validated hex may reach them.
+    """
+    value = value if isinstance(value, str) else ''
+    value = value.strip()
+    if not value or not HEX_COLOR_RE.match(value):
+        return ''
+    return '#' + value.lstrip('#').upper()
 
 
 def get_full_url(request):
@@ -108,6 +121,11 @@ def generate_custom_client(params, full_url):
     permPass = params.get('permanentPassword', '')
     theme = params.get('theme', 'system')
     themeDorO = params.get('themeDorO', 'default')
+    # Optional Flutter theme colours; blank means "leave the stock colour".
+    themeColor = _norm_hex_color(params.get('themeColor', ''))
+    themeSurfaceLight = _norm_hex_color(params.get('themeSurfaceLight', ''))
+    themeSurfaceDark = _norm_hex_color(params.get('themeSurfaceDark', ''))
+    themeMeColor = _norm_hex_color(params.get('themeMeColor', ''))
     passApproveMode = params.get('passApproveMode', 'password-click')
     denyLan = params.get('denyLan', False)
     enableDirectIP = params.get('enableDirectIP', False)
@@ -328,6 +346,10 @@ def generate_custom_client(params, full_url):
         "privacylink_file":privacylink_file,
         "appname":appname,
         "genurl":_settings.GENURL,
+        "themeColor": themeColor,
+        "themeSurfaceLight": themeSurfaceLight,
+        "themeSurfaceDark": themeSurfaceDark,
+        "themeMeColor": themeMeColor,
         "urlLink":urlLink,
         "downloadLink":downloadLink,
         "delayFix": 'true' if delayFix else 'false',

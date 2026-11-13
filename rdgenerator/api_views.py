@@ -3,6 +3,7 @@ import os
 import re
 from django.http import JsonResponse
 from django.conf import settings as _settings
+from .forms import HEX_COLOR_RE
 from .views import generate_custom_client, get_full_url, _get_run_status, _UUID_RE
 
 
@@ -34,6 +35,7 @@ OPTIONAL_STR_FIELDS = [
     'iconbase64', 'logobase64', 'privacybase64',
     'update_public_key',
     'app_version',
+    'themeColor', 'themeSurfaceLight', 'themeSurfaceDark', 'themeMeColor',
 ]
 
 
@@ -102,6 +104,20 @@ def validate_generate_params(data):
                 'Contains characters unsupported in build scripts '
                 '(& \\ | \' " $ `, newlines).'
             )
+
+    # Theme colors flow into Dart 0xAARRGGBB literals in the workflow patch.
+    # Accept #RRGGBB/RRGGBB and store the canonical form; blank = stock.
+    for field in ('themeColor', 'themeSurfaceLight', 'themeSurfaceDark', 'themeMeColor'):
+        value = cleaned.get(field, '')
+        if not value:
+            continue
+        if not isinstance(value, str) or not HEX_COLOR_RE.match(value.strip()):
+            errors[field] = (
+                'Must be a 6-digit hex color such as #0071FF, or blank for the '
+                'stock RustDesk color.'
+            )
+        else:
+            cleaned[field] = '#' + value.strip().lstrip('#').upper()
 
     # File fields are not used in API mode (base64 fields are used instead)
     cleaned['iconfile'] = None

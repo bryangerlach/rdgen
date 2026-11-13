@@ -16,6 +16,7 @@ If you would prefer to build rustdesk on your own computer, check out the [DVFor
 - Embed server and key into client
 - Custom app name
 - Custom icon/logo
+- Custom theme colors (accent, light/dark surfaces, ID/“me” color)
 - Set default settings for the client
 - Support for rustdesk advanced settings (https://rustdesk.com/docs/en/self-host/client-configuration/advanced-settings/)
 
