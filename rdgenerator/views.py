@@ -31,6 +31,17 @@ def _safe_parts(uuid_val, filename):
     return True
 
 
+def get_full_url(request):
+    """URL the GitHub workflow uses to reach this server. GENURL wins over the
+    request host, which can be an internal address behind a reverse proxy."""
+    if _settings.GENURL:
+        genurl = _settings.GENURL.rstrip('/')
+        if '://' in genurl:
+            return genurl
+        return f"{_settings.PROTOCOL}://{genurl}"
+    return f"{_settings.PROTOCOL}://{request.get_host()}"
+
+
 def generate_custom_client(params, full_url):
     """
     Core generation logic shared by web form and JSON API.
@@ -448,7 +459,7 @@ def generator_view(request):
         form = GenerateForm(request.POST, request.FILES)
         if form.is_valid():
             params = form.cleaned_data
-            full_url = f"{_settings.PROTOCOL}://{request.get_host()}" if _settings.GENURL else f"{_settings.PROTOCOL}://{request.get_host()}"
+            full_url = get_full_url(request)
             result = generate_custom_client(params, full_url)
             if result['success']:
                 return render(request, 'waiting.html', {

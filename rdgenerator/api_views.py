@@ -3,7 +3,7 @@ import os
 import re
 from django.http import JsonResponse
 from django.conf import settings as _settings
-from .views import generate_custom_client, _get_run_status, _UUID_RE
+from .views import generate_custom_client, get_full_url, _get_run_status, _UUID_RE
 
 
 # Field validation constraints (mirrored from GenerateForm)
@@ -243,7 +243,7 @@ def api_generate(request):
         }, status=400)
 
     # Build full_url the same way as generator_view
-    full_url = f"{_settings.PROTOCOL}://{request.get_host()}" if _settings.GENURL else f"{_settings.PROTOCOL}://{request.get_host()}"
+    full_url = get_full_url(request)
 
     result = generate_custom_client(cleaned, full_url)
 
