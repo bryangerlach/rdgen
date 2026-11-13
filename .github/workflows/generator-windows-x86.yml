@@ -406,10 +406,14 @@ jobs:
         if: ${{ env.delayFix == 'true' }}
         shell: bash
         run: |
-          # Precise fix: only extend the direct-connection condition with the
-          # key check, instead of globally replacing !key.is_empty() with
-          # false (which would also disable TCP encryption and UDP logic).
-          sed -i -e 's#if is_local || peer_nat_type == NatType::SYMMETRIC {#if is_local || peer_nat_type == NatType::SYMMETRIC || !key.is_empty() {#' ./src/client.rs
+          # Skip the optional secure_tcp handshake to the rendezvous server.
+          # The open-source rustdesk-server never sends KeyExchange, so when an
+          # access_token is set (third-party API login) the client waits for
+          # READ_TIMEOUT and fails with:
+          # "Failed to secure tcp: deadline has elapsed: Please try later(0)".
+          # Matches DVForge's delay fix. Safe on 1.4.x-1.5.x/master: the only
+          # !key.is_empty() occurrences in client.rs are the two secure_tcp gates.
+          sed -i -e 's|!key.is_empty()|false|' ./src/client.rs
           grep -n "key.is_empty()" ./src/client.rs || true
 
       - name: removeNewVersionNotif
