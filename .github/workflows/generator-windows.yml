@@ -716,9 +716,22 @@ jobs:
       - name: Build msi
         continue-on-error: true
         if: env.UPLOAD_ARTIFACT == 'true'
+        env:
+          APP_VERSION: ${{ inputs.app_version }}
         run: |
+          # MSI ProductVersion must be numeric, so strip build metadata such as
+          # "+078" here. The client/updater keeps the full version; the MSI uses
+          # the numeric base and preprocess.py adds its own revision.
+          $msiVersion = ''
+          if ($env:APP_VERSION -match '^(\d+)\.(\d+)\.(\d+)') {
+            $msiVersion = "$($Matches[1]).$($Matches[2]).$($Matches[3])"
+          }
           pushd ./res/msi
-          python preprocess.py --app-name "${{ env.appname }}" --arp -d ../../rustdesk
+          if ($msiVersion) {
+            python preprocess.py --app-name "${{ env.appname }}" --arp -d ../../rustdesk --version "$msiVersion"
+          } else {
+            python preprocess.py --app-name "${{ env.appname }}" --arp -d ../../rustdesk
+          }
           nuget restore msi.sln
           msbuild msi.sln -p:Configuration=Release -p:Platform=x64 /p:TargetVersion=Windows10
           cp ./Package/bin/x64/Release/en-us/Package.msi ../../SignOutput/rustdesk-latest.msi
