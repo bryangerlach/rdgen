@@ -528,10 +528,9 @@ jobs:
           max_attempts: 3
           retry_wait_seconds: 15
           shell: pwsh
-          continue_on_error: true
           command: |
-            Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/xoffline.diff -OutFile xoffline.diff
-            git apply xoffline.diff
+            Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/xoffline.py -OutFile xoffline.py
+            python xoffline.py
 
       - name: removeNewVersionNotif
         continue-on-error: true

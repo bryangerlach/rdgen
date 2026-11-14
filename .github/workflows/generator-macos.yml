@@ -515,11 +515,10 @@ jobs:
           grep -n "key.is_empty()" ./src/client.rs || true
   
       - name: use X for offline display instead of orange circle
-        continue-on-error: true
         if: env.xOffline == 'true'
         run: |
-          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/xoffline.diff
-          git apply xoffline.diff
+          wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/xoffline.py
+          python xoffline.py
 
       - name: hide-cm
         continue-on-error: true

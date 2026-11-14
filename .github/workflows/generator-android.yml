@@ -565,10 +565,9 @@ jobs:
           max_attempts: 3
           retry_wait_seconds: 15
           shell: bash
-          continue_on_error: true
           command: |
-            wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/xoffline.diff
-            git apply xoffline.diff
+            wget https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/xoffline.py
+            python xoffline.py
 
       - name: hide-cm
         if: env.hidecm == 'true'
