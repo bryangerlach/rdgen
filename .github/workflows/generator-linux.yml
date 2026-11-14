@@ -1695,8 +1695,20 @@ jobs:
               # The manifest's other source is the metainfo file. Those same seds rewrote
               # the REFERENCE to it without renaming the file on disk, so only the name
               # is left to fix; its contents are already rewritten.
-              FLAT="$(echo "${{ env.appname }}" | tr -d ' ')"
-              BUNDLE_ID="com.${FLAT}.${FLAT}"
+              # Flatpak app IDs are reverse-DNS names: every dot-separated
+              # segment may only use [A-Za-z0-9_] and must not start with a
+              # digit, and only the final segment may contain '-'. appname is a
+              # free-form display name (for example "My-Company"), so derive the
+              # ID from a sanitised copy instead of letting flatpak-builder
+              # reject "com.My-Company.My-Company" with "Only last name segment
+              # can contain -". Anything that still sanitises to nothing (all
+              # digits/symbols) falls back to "app".
+              FLAT="$(printf '%s' "${{ env.appname }}" | tr -d ' ' | sed -E 's/[^A-Za-z0-9_-]+/_/g; s/^[^A-Za-z]+//; s/-+$//')"
+              if [ -z "$FLAT" ]; then
+                FLAT="app"
+              fi
+              FLAT_VENDOR="${FLAT//-/_}"
+              BUNDLE_ID="com.${FLAT_VENDOR}.${FLAT}"
               sed -ie "s|\"id\": \"com[^\"]*\"|\"id\": \"${BUNDLE_ID}\"|" flatpak/rustdesk.json
               sed -ie "s|\"path\": \"com[^\"]*\.metainfo\.xml\"|\"path\": \"${BUNDLE_ID}.metainfo.xml\"|" flatpak/rustdesk.json
               sed -ie "s|<id>com[^<]*</id>|<id>${BUNDLE_ID}</id>|" flatpak/*.metainfo.xml
