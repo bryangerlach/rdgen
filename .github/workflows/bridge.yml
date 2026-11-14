@@ -32,7 +32,7 @@ jobs:
     steps:
       - name: Checkout source code
         if: ${{ inputs.version != 'master' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ inputs.version }}
@@ -40,7 +40,7 @@ jobs:
         
       - name: Checkout source code
         if: ${{ inputs.version == 'master' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: rustdesk/rustdesk
           submodules: recursive

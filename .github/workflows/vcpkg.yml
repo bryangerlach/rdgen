@@ -29,7 +29,7 @@ jobs:
           echo "C:\Program Files\NASM" >> $GITHUB_PATH
 
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Clone RustDesk overlays
         run: |
