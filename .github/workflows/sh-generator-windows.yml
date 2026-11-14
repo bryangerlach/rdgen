@@ -175,7 +175,7 @@ jobs:
           python-version: '3.12'
 
       - name: Setup NuGet
-        uses: NuGet/setup-nuget@v2
+        uses: NuGet/setup-nuget@v4
         with:
           nuget-version: 'latest'
       
