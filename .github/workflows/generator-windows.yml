@@ -92,7 +92,7 @@ jobs:
           # - { target: aarch64-pc-windows-msvc, os: windows-2022, arch: aarch64 }
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         
       - uses: actions/download-artifact@v4
         with:
@@ -132,7 +132,7 @@ jobs:
 
       - name: Checkout source code
         if: ${{ env.VERSION != 'master' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: rustdesk/rustdesk
           ref: refs/tags/${{ env.VERSION }}
@@ -140,7 +140,7 @@ jobs:
 
       - name: Checkout source code
         if: ${{ env.VERSION == 'master' }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: rustdesk/rustdesk
           submodules: recursive
@@ -585,7 +585,7 @@ jobs:
           cd ..
 
       - name: Checkout printer-adapter crate
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: bryangerlach/rdgen
           ref: master
