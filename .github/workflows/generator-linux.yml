@@ -210,7 +210,7 @@ jobs:
 
       - name: Restore vcpkg installed cache
         if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /opt/artifacts/vcpkg/installed
           key: vcpkg-linux-${{ env.VCPKG_COMMIT_ID }}-${{ matrix.job.vcpkg-triplet }}
@@ -247,7 +247,7 @@ jobs:
 
       - name: Save vcpkg installed cache
         if: matrix.job.arch == 'x86_64' || env.UPLOAD_ARTIFACT == 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         continue-on-error: true
         with:
           path: /opt/artifacts/vcpkg/installed
@@ -929,7 +929,7 @@ jobs:
           path: ./
 
       - name: Restore vcpkg installed cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /opt/artifacts/vcpkg/installed
           key: vcpkg-linux-${{ env.VCPKG_COMMIT_ID }}-x64-linux
@@ -963,7 +963,7 @@ jobs:
         shell: bash
 
       - name: Save vcpkg installed cache
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         continue-on-error: true
         with:
           path: /opt/artifacts/vcpkg/installed

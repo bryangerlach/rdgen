@@ -251,7 +251,7 @@ jobs:
           add-to-path: true
 
       - name: Restore vcpkg installed cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /opt/artifacts/vcpkg/installed
           key: vcpkg-android-${{ env.VCPKG_COMMIT_ID }}-${{ matrix.job.target }}
@@ -294,7 +294,7 @@ jobs:
         shell: bash
 
       - name: Save vcpkg installed cache
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         continue-on-error: true
         with:
           path: /opt/artifacts/vcpkg/installed

@@ -76,7 +76,7 @@ jobs:
           prefix-key: bridge-${{ matrix.job.os }}
 
       - name: Cache cargo git
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: ~/.cargo/git
           key: bridge-cargo-git-${{ hashFiles('**/Cargo.lock') }}
@@ -85,7 +85,7 @@ jobs:
 
       - name: Cache Bridge
         id: cache-bridge
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: /tmp/flutter_rust_bridge
           key: vcpkg-${{ matrix.job.arch }}
