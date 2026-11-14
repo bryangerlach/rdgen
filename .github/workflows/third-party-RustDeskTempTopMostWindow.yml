@@ -92,7 +92,7 @@ jobs:
             msbuild ${{ env.project_path }} -p:Configuration=${{ inputs.configuration }} -p:Platform=${{ inputs.platform }} /p:TargetVersion=${{ inputs.target_version }}
 
       - name: Archive build artifacts
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         if: ${{ inputs.upload-artifact }}
         with:
             name: topmostwindow-artifacts
