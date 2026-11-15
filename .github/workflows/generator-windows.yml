@@ -377,7 +377,7 @@ jobs:
         shell: bash
         run: |
           # Unlike the controller patches above, this one is NOT gated to
-          # Connect/Tech - sysinfo (and therefore AV/OS status) is reported
+          # GlitchConnect - sysinfo (and therefore AV/OS status) is reported
           # by every build, GlitchHost included, since Host is the managed
           # endpoint the console actually needs this for.
           set -e
