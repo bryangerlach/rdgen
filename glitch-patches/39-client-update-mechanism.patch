@@ -922,16 +922,10 @@ index 0000000..0000000
 diff --git a/src/hbbs_http/sync.rs b/src/hbbs_http/sync.rs
 --- a/src/hbbs_http/sync.rs
 +++ b/src/hbbs_http/sync.rs
-@@ -280,6 +280,34 @@
+@@ -280,6 +280,28 @@
                          // (key absent) means no update banner is shown;
                          // this does not download or install anything.
                          if let Some(update) = rsp.remove("update") {
-+                            // GL!TCH: GlitchHost always installs silently
-+                            // once the release has a sha256 - no banner, no
-+                            // user to ask. GlitchConnect never auto-installs
-+                            // from here; its banner's own "Update now"
-+                            // button (or, if `mandatory`, its nag) is the
-+                            // only trigger there (Lawrence, 2026-11-15).
 +                            #[cfg(not(any(target_os = "android", target_os = "ios")))]
 +                            if crate::get_app_name() == "GlitchHost" {
 +                                if let (Some(version), Some(url), Some(sha256)) = (
