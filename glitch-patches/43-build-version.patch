@@ -1,0 +1,46 @@
+diff --git a/src/glitch_update.rs b/src/glitch_update.rs
+index 7b0844e..7cbd583 100644
+--- a/src/glitch_update.rs
++++ b/src/glitch_update.rs
+@@ -10,6 +10,16 @@ use hbb_common::{bail, config::LocalConfig, log, ResultType};
+ use sha2::{Digest, Sha256};
+ use std::{io::Write, sync::Once, time::Duration};
+ 
++/// The GitHub Actions run number for this build, sed-replaced by the
++/// generator workflow before compilation (see
++/// "Apply GL!TCH build-version patch"). Appended to crate::VERSION as a 4th
++/// segment when reporting to our own heartbeat, so two GL!TCH builds of the
++/// same upstream tag are actually distinguishable - see sync.rs. Left as
++/// "0" for any build that skips that step (a local dev build, say), which
++/// just means it is never offered as an update to anything (0 never beats
++/// an already-published, real run number).
++pub const GLITCH_BUILD_NUMBER: &str = "0";
++
+ /// Downloads `url`, verifies it against `expected_sha256` (lowercase hex),
+ /// and only then dispatches to the platform install path. Runs on the
+ /// calling thread - callers that must not block (a UI button handler)
+diff --git a/src/hbbs_http/sync.rs b/src/hbbs_http/sync.rs
+index 5485264..77c118e 100644
+--- a/src/hbbs_http/sync.rs
++++ b/src/hbbs_http/sync.rs
+@@ -130,7 +130,19 @@ async fn start_hbbs_sync_async() {
+                 let need_upload = (!info_uploaded.uploaded || info_uploaded.username.as_ref() != Some(&sys_username)) &&
+                     info_uploaded.last_uploaded.map(|x| x.elapsed() >= UPLOAD_SYSINFO_TIMEOUT).unwrap_or(true);
+                 if need_upload {
+-                    v["version"] = json!(crate::VERSION);
++                    // GL!TCH: real per-build version (Lawrence, 2026-11-15).
++                    // crate::VERSION alone is just the stock "1.5.0" tag -
++                    // every GL!TCH build reports the exact same string,
++                    // since there's no per-CI-run distinction baked into
++                    // Cargo.toml (and Cargo's strict semver parsing rejects
++                    // a literal 4th dot-segment there anyway). Appending the
++                    // GitHub Actions run number as a 4th segment here gives
++                    // ClientRelease::versionIsNewer() something real to
++                    // compare, without touching crate::VERSION itself -
++                    // nothing else in the app (protocol version checks,
++                    // compatibility gates) sees this value, only our own
++                    // heartbeat's `device.version` column.
++                    v["version"] = json!(format!("{}.{}", crate::VERSION, crate::glitch_update::GLITCH_BUILD_NUMBER));
+                     v["id"] = json!(id);
+                     v["uuid"] = json!(crate::encode64(hbb_common::get_uuid()));
+                     let ab_name = Config::get_option(keys::OPTION_PRESET_ADDRESS_BOOK_NAME);
