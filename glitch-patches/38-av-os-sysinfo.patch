@@ -1,0 +1,84 @@
+diff --git a/src/common.rs b/src/common.rs
+index 0d46baf..168ec85 100644
+--- a/src/common.rs
++++ b/src/common.rs
+@@ -976,6 +976,13 @@ pub fn get_sysinfo() -> serde_json::Value {
+             out["username"] = json!(username);
+         }
+     }
++    #[cfg(windows)]
++    {
++        let av = crate::platform::get_av_info();
++        if !av.is_empty() {
++            out["av"] = json!(av);
++        }
++    }
+     out
+ }
+ 
+diff --git a/src/platform/windows.rs b/src/platform/windows.rs
+index a3c3d68..a8ec42f 100644
+--- a/src/platform/windows.rs
++++ b/src/platform/windows.rs
+@@ -1128,6 +1128,61 @@ pub fn get_active_username() -> String {
+         .to_owned()
+ }
+ 
++/// Antivirus products currently registered with Windows Security Center
++/// (`root\SecurityCenter2\AntiVirusProduct`) — the same source the Windows
++/// Security app itself, and third-party RMM dashboards, read from. Uses
++/// PowerShell's CIM cmdlets rather than `wmic`, which Windows 11 24H2 no
++/// longer ships (see the #11638 note above on try_lock_tray_single_instance).
++pub fn get_av_info() -> Vec<serde_json::Value> {
++    use serde_json::{json, Value};
++
++    let output = std::process::Command::new("powershell.exe")
++        .args([
++            "-NoProfile",
++            "-NonInteractive",
++            "-Command",
++            "Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntiVirusProduct \
++             -ErrorAction SilentlyContinue | Select-Object displayName,productState \
++             | ConvertTo-Json -Compress",
++        ])
++        .creation_flags(CREATE_NO_WINDOW)
++        .output();
++    let Ok(output) = output else {
++        return vec![];
++    };
++    let text = String::from_utf8_lossy(&output.stdout);
++    let text = text.trim();
++    if text.is_empty() {
++        return vec![];
++    }
++    let Ok(parsed) = serde_json::from_str::<Value>(text) else {
++        return vec![];
++    };
++    // A single registered product comes back as a bare object, several as an
++    // array - fold both shapes into one list before reading their fields.
++    let items = match parsed {
++        Value::Array(items) => items,
++        Value::Null => vec![],
++        single => vec![single],
++    };
++
++    items
++        .into_iter()
++        .filter_map(|item| {
++            let name = item.get("displayName")?.as_str()?.to_owned();
++            let state = item.get("productState")?.as_u64()?;
++            // SecurityCenter2's packed productState has no official layout
++            // from Microsoft, but this decode (hex digits 3-4 = real-time
++            // protection on/off, 5-6 = definitions current) is the one every
++            // monitoring tool in this space has converged on independently.
++            let hex = format!("{state:06x}");
++            let enabled = matches!(&hex[2..4], "10" | "11");
++            let up_to_date = &hex[4..6] == "00";
++            Some(json!({"name": name, "enabled": enabled, "up_to_date": up_to_date}))
++        })
++        .collect()
++}
++
+ fn get_current_session_username() -> Option<String> {
+     let Some(sid) = get_current_process_session_id() else {
+         log::error!("get_current_process_session_id failed");
