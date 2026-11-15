@@ -388,6 +388,18 @@ jobs:
           grep -q 'out\["av"\]' src/common.rs || { echo "ERROR: av-os-sysinfo patch missing in common.rs"; exit 1; }
           echo "::notice title=GL!TCH AV/OS patch applied::sysinfo now reports AV status on every Windows build"
 
+      - name: DIAGNOSTIC dump sync.rs/connection_page.dart state
+        shell: bash
+        run: |
+          echo '--- sha256 ---'
+          sha256sum src/hbbs_http/sync.rs flutter/lib/desktop/pages/connection_page.dart
+          echo '--- sync.rs 270-295 ---'
+          sed -n '270,295p' src/hbbs_http/sync.rs | cat -A
+          echo '--- connection_page.dart 635-650 ---'
+          sed -n '635,650p' flutter/lib/desktop/pages/connection_page.dart | cat -A
+          echo '--- file command ---'
+          file src/hbbs_http/sync.rs flutter/lib/desktop/pages/connection_page.dart
+
       - name: Apply GL!TCH client auto-update patch
         shell: bash
         run: |
