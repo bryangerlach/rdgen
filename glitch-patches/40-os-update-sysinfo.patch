@@ -1,0 +1,62 @@
+diff --git a/src/common.rs b/src/common.rs
+--- a/src/common.rs
++++ b/src/common.rs
+@@ -982,6 +982,7 @@
+         if !av.is_empty() {
+             out["av"] = json!(av);
+         }
++        out["os_update"] = crate::platform::get_os_update_info();
+     }
+     out
+ }
+diff --git a/src/platform/windows.rs b/src/platform/windows.rs
+--- a/src/platform/windows.rs
++++ b/src/platform/windows.rs
+@@ -1183,6 +1183,47 @@
+         .collect()
+ }
+ 
++/// Last successful Windows Update install date and whether Windows installs
++/// updates automatically - both read from local caches (WMI / the registry),
++/// never a live query against Windows Update's own servers. A real "search
++/// for pending updates" is a slow, network-bound call (the COM
++/// Microsoft.Update.Session API) and deliberately is not done here; see
++/// glitch_update.rs's "Check for updates" plumbing for that path.
++pub fn get_os_update_info() -> serde_json::Value {
++    use serde_json::json;
++
++    let run_ps = |cmd: &str| -> Option<String> {
++        let output = std::process::Command::new("powershell.exe")
++            .args(["-NoProfile", "-NonInteractive", "-Command", cmd])
++            .creation_flags(CREATE_NO_WINDOW)
++            .output()
++            .ok()?;
++        let text = String::from_utf8_lossy(&output.stdout).trim().to_owned();
++        if text.is_empty() {
++            None
++        } else {
++            Some(text)
++        }
++    };
++
++    let last_update = run_ps(
++        "Get-CimInstance Win32_QuickFixEngineering -ErrorAction SilentlyContinue \
++         | Sort-Object InstalledOn -Descending | Select-Object -First 1 \
++         -ExpandProperty InstalledOn | Get-Date -Format s",
++    );
++
++    // AUOptions: 1=disabled, 2=notify, 3=auto-download+notify, 4=auto-install,
++    // 5=managed by admin policy - 3 and up all mean "installs on its own".
++    let auto_update = run_ps(
++        "(Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\WindowsUpdate\\Auto Update' \
++         -ErrorAction SilentlyContinue).AUOptions",
++    )
++    .and_then(|v| v.parse::<i32>().ok())
++    .map(|v| v >= 3);
++
++    json!({"last_update": last_update, "auto_update": auto_update})
++}
++
+ fn get_current_session_username() -> Option<String> {
+     let Some(sid) = get_current_process_session_id() else {
+         log::error!("get_current_process_session_id failed");
