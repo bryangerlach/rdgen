@@ -1,0 +1,17 @@
+--- a/flutter/lib/common/widgets/peer_tab_page.dart
++++ b/flutter/lib/common/widgets/peer_tab_page.dart
+@@ -552,7 +552,13 @@
+   List<Widget> _landscapeRightActions(BuildContext context) {
+     final model = Provider.of<PeerTabModel>(context);
+     return [
+-      const PeerSearchBar().marginOnly(right: 13),
++      // GL!TCH: Group tab has its own always-visible inline search bar
++      // (my_group.dart) wired to a different search value than this one
++      // (gFFI.groupModel.searchAccessibleItemNameText vs peerSearchText),
++      // so this toolbar search icon does nothing there - just hide it on
++      // desktop too (the mobile/portrait layout already got this fix).
++      if (model.currentTab != PeerTabIndex.group.index)
++        const PeerSearchBar().marginOnly(right: 13),
+       _createRefresh(
+           index: PeerTabIndex.ab, loading: gFFI.abModel.currentAbLoading),
+       _createRefresh(
