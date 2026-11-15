@@ -392,7 +392,9 @@ jobs:
         continue-on-error: true
         shell: bash
         run: |
-          IMAGE_PATH="./res/icon.png"
+          # Upstream embeds a 128x128 icon; keeping the base64 small also avoids
+          # hanging Git Bash/MSYS perl on Windows with a multi-MB argument.
+          IMAGE_PATH="./res/128x128.png"
           if [ ! -f "$IMAGE_PATH" ]; then
             echo "Error: Image file '$IMAGE_PATH' not found or is a directory."
             exit 1
