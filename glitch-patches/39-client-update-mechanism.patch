@@ -1,0 +1,1096 @@
+diff --git a/src/lib.rs b/src/lib.rs
+index 649f3ef..ab78e38 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -58,6 +58,9 @@ mod whiteboard;
+ #[cfg(not(any(target_os = "android", target_os = "ios")))]
+ mod updater;
+ 
++#[cfg(not(any(target_os = "android", target_os = "ios")))]
++mod glitch_update;
++
+ mod ui_cm_interface;
+ mod ui_interface;
+ mod ui_session_interface;
+diff --git a/src/flutter_ffi.rs b/src/flutter_ffi.rs
+index f9cc2d6..8e55e28 100644
+--- a/src/flutter_ffi.rs
++++ b/src/flutter_ffi.rs
+@@ -1210,6 +1210,15 @@ pub fn main_http_request(url: String, method: String, body: Option<String>, head
+     http_request(url, method, body, header)
+ }
+ 
++// GL!TCH: "Update now" button on the Connect update banner (Lawrence,
++// 2026-11-15). Fire-and-forget like main_http_request above - the actual
++// download/verify/install runs on its own thread so this never blocks the
++// UI isolate.
++#[cfg(not(any(target_os = "android", target_os = "ios")))]
++pub fn main_apply_glitch_update(url: String, sha256: String) {
++    crate::glitch_update::apply_update_async(url, sha256);
++}
++
+ pub fn main_get_local_option(key: String) -> SyncReturn<String> {
+     SyncReturn(get_local_option(key))
+ }
+diff --git a/src/lang/ar.rs b/src/lang/ar.rs
+index c8f23c0..1bc8545 100644
+--- a/src/lang/ar.rs
++++ b/src/lang/ar.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "تعذّر على RustDesk تحميل مكوّن GStreamer اللازم لالتقاط الشاشة ({})"),
+         ("Relay fallback delay in seconds", "مهلة التراجع إلى الترحيل بالثواني"),
+         ("relay-fallback-delay-tip", "المدة التي ينتظرها اتصال الترحيل القائم بالفعل الاتصالَ المباشر عبر WebRTC قبل أن يُستخدم بدلًا منه. زِدها لمنح الاتصال المباشر البطيء فرصة أكبر للفوز؛ وقلّلها للاستقرار على الترحيل أسرع في الشبكات التي يتعذر فيها الاتصال المباشر. اتركها فارغة للقيمة الافتراضية 2.5 ثانية."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/az.rs b/src/lang/az.rs
+index 18cec31..14bc231 100644
+--- a/src/lang/az.rs
++++ b/src/lang/az.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", ""),
+         ("Relay fallback delay in seconds", "Ötürücüyə keçid gecikməsi, saniyə"),
+         ("relay-fallback-delay-tip", "Artıq qurulmuş ötürücü bağlantı birbaşa WebRTC bağlantısını nə qədər gözləyir, sonra onun əvəzinə istifadə olunur. Yavaş birbaşa bağlantıya daha çox vaxt vermək üçün artırın; birbaşa bağlantının mümkün olmadığı şəbəkələrdə ötürücüyə daha tez keçmək üçün azaldın. Standart 2.5 saniyə üçün boş buraxın."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/be.rs b/src/lang/be.rs
+index c05ad6e..b5d7764 100644
+--- a/src/lang/be.rs
++++ b/src/lang/be.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk не змог загрузіць кампанент GStreamer, патрэбны для захопу экрана ({})"),
+         ("Relay fallback delay in seconds", "Затрымка пераходу на рэтранслятар у секундах"),
+         ("relay-fallback-delay-tip", "Колькі часу ўжо ўсталяванае злучэнне праз рэтранслятар чакае прамога злучэння WebRTC, перш чым будзе выкарыстана замест яго. Павялічце, каб даць павольнаму прамому злучэнню больш часу; паменшыце, каб хутчэй пераходзіць на рэтранслятар у сетках, дзе прамое злучэнне немагчымае. Пакіньце пустым для значэння па змаўчанні 2.5 секунды."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/bg.rs b/src/lang/bg.rs
+index c129240..fa0f594 100644
+--- a/src/lang/bg.rs
++++ b/src/lang/bg.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk не можа да зареди компонент на GStreamer, необходим за заснемане на екрана ({})"),
+         ("Relay fallback delay in seconds", "Забавяне преди преминаване към препредаване в секунди"),
+         ("relay-fallback-delay-tip", "Колко време вече установената връзка чрез препредаване изчаква директната WebRTC връзка, преди да бъде използвана вместо нея. Увеличете, за да дадете повече време на бавна директна връзка; намалете, за да се премине по-бързо към препредаване в мрежи, където директна връзка е невъзможна. Оставете празно за стойността по подразбиране 2.5 секунди."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/ca.rs b/src/lang/ca.rs
+index 13fc05b..a58d87a 100644
+--- a/src/lang/ca.rs
++++ b/src/lang/ca.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "El RustDesk no ha pogut carregar un component del GStreamer necessari per capturar la pantalla ({})"),
+         ("Relay fallback delay in seconds", "Retard abans de recórrer al relé en segons"),
+         ("relay-fallback-delay-tip", "Quant de temps espera una connexió de relé ja establerta la connexió directa WebRTC abans d'utilitzar-se en lloc seu. Augmenteu-lo per donar més temps a una connexió directa lenta; reduïu-lo per passar abans al relé en xarxes on no es pot fer una connexió directa. Deixeu-lo buit per al valor predeterminat de 2.5 segons."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/cn.rs b/src/lang/cn.rs
+index 1ac1ede..cb6d743 100644
+--- a/src/lang/cn.rs
++++ b/src/lang/cn.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk 无法加载屏幕捕获所需的 GStreamer 组件 ({})"),
+         ("Relay fallback delay in seconds", "回落到中继前的等待时间（秒）"),
+         ("relay-fallback-delay-tip", "已经建立的中继连接会等待直连的 WebRTC 多久，超过这个时间就改用中继。调大可以让较慢的直连有更多机会胜出；调小则在无法直连的网络上更快回落到中继。留空表示使用默认值 2.5 秒。"),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "开始语音通话前请在\"仅共享屏幕\"页面启用\"音频录制\"。")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "开始语音通话前请在\"仅共享屏幕\"页面启用\"音频录制\"。"),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/cs.rs b/src/lang/cs.rs
+index 8330ec6..e3274d2 100644
+--- a/src/lang/cs.rs
++++ b/src/lang/cs.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk nemohl načíst komponentu GStreameru potřebnou k zachycení obrazovky ({})"),
+         ("Relay fallback delay in seconds", "Prodleva před přepnutím na přenos v sekundách"),
+         ("relay-fallback-delay-tip", "Jak dlouho již navázané spojení přes přenos čeká na přímé spojení WebRTC, než bude použito místo něj. Zvyšte, aby pomalé přímé spojení mělo více času uspět; snižte, aby se v sítích, kde přímé spojení není možné, dříve přešlo na přenos. Ponechte prázdné pro výchozí hodnotu 2.5 sekundy."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/da.rs b/src/lang/da.rs
+index 1841a1b..962dbfc 100644
+--- a/src/lang/da.rs
++++ b/src/lang/da.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk kunne ikke indlæse en GStreamer-komponent, der kræves til skærmoptagelse ({})"),
+         ("Relay fallback delay in seconds", "Forsinkelse før brug af relæ i sekunder"),
+         ("relay-fallback-delay-tip", "Hvor længe en allerede oprettet relæforbindelse venter på den direkte WebRTC-forbindelse, før den bruges i stedet. Forøg for at give en langsom direkte forbindelse mere tid; sænk for hurtigere at falde tilbage til relæet på netværk, hvor en direkte forbindelse ikke kan oprettes. Lad feltet stå tomt for standardværdien 2.5 sekunder."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/de.rs b/src/lang/de.rs
+index e9893c8..14babac 100644
+--- a/src/lang/de.rs
++++ b/src/lang/de.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk konnte eine für die Bildschirmaufnahme benötigte GStreamer-Komponente nicht laden ({})"),
+         ("Relay fallback delay in seconds", "Verzögerung bis zum Relais in Sekunden"),
+         ("relay-fallback-delay-tip", "Wie lange eine bereits aufgebaute Relaisverbindung auf die direkte WebRTC-Verbindung wartet, bevor sie stattdessen verwendet wird. Erhöhen Sie den Wert, um einer langsamen direkten Verbindung mehr Zeit zu geben; verringern Sie ihn, um in Netzwerken ohne mögliche Direktverbindung schneller auf das Relais zurückzufallen. Leer lassen für den Standardwert von 2.5 Sekunden."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/el.rs b/src/lang/el.rs
+index 8ace9d0..2c8cfef 100644
+--- a/src/lang/el.rs
++++ b/src/lang/el.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "Το RustDesk δεν μπόρεσε να φορτώσει ένα στοιχείο του GStreamer που απαιτείται για την καταγραφή οθόνης ({})"),
+         ("Relay fallback delay in seconds", "Καθυστέρηση πριν από τη χρήση αναμεταδότη σε δευτερόλεπτα"),
+         ("relay-fallback-delay-tip", "Πόσο χρόνο περιμένει μια ήδη ενεργή σύνδεση αναμεταδότη την απευθείας σύνδεση WebRTC πριν χρησιμοποιηθεί στη θέση της. Αυξήστε το για να δώσετε σε μια αργή απευθείας σύνδεση περισσότερο χρόνο. Μειώστε το για ταχύτερη επιστροφή στον αναμεταδότη σε δίκτυα όπου δεν είναι δυνατή η απευθείας σύνδεση. Αφήστε το κενό για την προεπιλογή των 2.5 δευτερολέπτων."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/eo.rs b/src/lang/eo.rs
+index 5946f22..d74e65c 100644
+--- a/src/lang/eo.rs
++++ b/src/lang/eo.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk ne povis ŝargi komponanton de GStreamer necesan por ekrankapto ({})"),
+         ("Relay fallback delay in seconds", "Prokrasto antaŭ retransmisio en sekundoj"),
+         ("relay-fallback-delay-tip", "Kiom longe jam establita retransmisia konekto atendas la rektan WebRTC-konekton antaŭ ol esti uzata anstataŭe. Pligrandigu ĝin por doni al malrapida rekta konekto pli da tempo; malpligrandigu ĝin por pli frue uzi la retransmision en retoj kie rekta konekto ne eblas. Lasu malplena por la defaŭlta valoro de 2.5 sekundoj."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/es.rs b/src/lang/es.rs
+index 73520fc..15390b6 100644
+--- a/src/lang/es.rs
++++ b/src/lang/es.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk no ha podido cargar un componente de GStreamer necesario para capturar la pantalla ({})"),
+         ("Relay fallback delay in seconds", "Retardo antes de usar el relé en segundos"),
+         ("relay-fallback-delay-tip", "Cuánto tiempo espera una conexión de relé ya establecida a la conexión directa WebRTC antes de usarse en su lugar. Auméntelo para dar más tiempo a una conexión directa lenta; redúzcalo para recurrir antes al relé en redes donde no es posible una conexión directa. Déjelo vacío para el valor predeterminado de 2.5 segundos."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Para comenzar una llamada de voz activar \"Captura de audio\" en la página \"Compartir pantalla\".")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Para comenzar una llamada de voz activar \"Captura de audio\" en la página \"Compartir pantalla\"."),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/et.rs b/src/lang/et.rs
+index 5cf614f..12f46c8 100644
+--- a/src/lang/et.rs
++++ b/src/lang/et.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk ei suutnud laadida ekraani jäädvustamiseks vajalikku GStreameri komponenti ({})"),
+         ("Relay fallback delay in seconds", "Viivitus enne relee kasutamist sekundites"),
+         ("relay-fallback-delay-tip", "Kui kaua juba loodud releeühendus ootab otsest WebRTC-ühendust, enne kui seda selle asemel kasutatakse. Suurendage, et anda aeglasele otseühendusele rohkem aega; vähendage, et võrkudes, kus otseühendust luua ei saa, releele kiiremini üle minna. Jätke tühjaks vaikeväärtuse 2.5 sekundit kasutamiseks."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/eu.rs b/src/lang/eu.rs
+index 1d1900e..0ab5160 100644
+--- a/src/lang/eu.rs
++++ b/src/lang/eu.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk-ek ezin izan du pantaila kapturatzeko beharrezkoa den GStreamer osagai bat kargatu ({})"),
+         ("Relay fallback delay in seconds", "Errelera itzultzeko atzerapena segundotan"),
+         ("relay-fallback-delay-tip", "Dagoeneko ezarritako errele-konexio batek WebRTC konexio zuzenari zenbat denbora itxaroten dion, haren ordez erabili aurretik. Handitu konexio zuzen motel bati denbora gehiago emateko; txikitu konexio zuzena egin ezin den sareetan lehenago errelera itzultzeko. Utzi hutsik 2.5 segundoko balio lehenetsirako."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/fa.rs b/src/lang/fa.rs
+index d37b027..32526ea 100644
+--- a/src/lang/fa.rs
++++ b/src/lang/fa.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk نتوانست مؤلفه GStreamer موردنیاز برای ضبط صفحه را بارگذاری کند ({})"),
+         ("Relay fallback delay in seconds", "تأخیر بازگشت به رله بر حسب ثانیه"),
+         ("relay-fallback-delay-tip", "یک اتصال رله که از قبل برقرار شده چقدر منتظر اتصال مستقیم WebRTC می ماند پیش از آنکه به جای آن استفاده شود. آن را افزایش دهید تا به اتصال مستقیم کند فرصت بیشتری داده شود؛ کاهش دهید تا در شبکه هایی که اتصال مستقیم ممکن نیست، زودتر به رله بازگردد. برای مقدار پیش فرض 2.5 ثانیه خالی بگذارید."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/fi.rs b/src/lang/fi.rs
+index 0b7ec88..3cbdd4a 100644
+--- a/src/lang/fi.rs
++++ b/src/lang/fi.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk ei voinut ladata näytön kaappaukseen tarvittavaa GStreamer-osaa ({})"),
+         ("Relay fallback delay in seconds", "Viive ennen välitykseen siirtymistä sekunteina"),
+         ("relay-fallback-delay-tip", "Kuinka kauan jo muodostettu välitysyhteys odottaa suoraa WebRTC-yhteyttä ennen kuin sitä käytetään sen sijaan. Kasvata arvoa antaaksesi hitaalle suoralle yhteydelle enemmän aikaa; pienennä sitä siirtyäksesi nopeammin välitykseen verkoissa, joissa suoraa yhteyttä ei voi muodostaa. Jätä tyhjäksi käyttääksesi oletusarvoa 2.5 sekuntia."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/fr.rs b/src/lang/fr.rs
+index 9466273..ec6e86c 100644
+--- a/src/lang/fr.rs
++++ b/src/lang/fr.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk n'a pas pu charger un composant GStreamer nécessaire à la capture d'écran ({})"),
+         ("Relay fallback delay in seconds", "Délai avant bascule vers le relais en secondes"),
+         ("relay-fallback-delay-tip", "Durée pendant laquelle une connexion relais déjà établie attend la connexion directe WebRTC avant d'être utilisée à sa place. Augmentez-la pour laisser plus de temps à une connexion directe lente ; diminuez-la pour basculer plus tôt vers le relais sur les réseaux où une connexion directe est impossible. Laissez vide pour la valeur par défaut de 2.5 secondes."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/ge.rs b/src/lang/ge.rs
+index a624b23..c510fc8 100644
+--- a/src/lang/ge.rs
++++ b/src/lang/ge.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk-მა ვერ ჩატვირთა ეკრანის ჩაწერისთვის საჭირო GStreamer-ის კომპონენტი ({})"),
+         ("Relay fallback delay in seconds", "რელეზე გადასვლის დაყოვნება წამებში"),
+         ("relay-fallback-delay-tip", "რამდენ ხანს ელოდება უკვე დამყარებული რელე-კავშირი პირდაპირ WebRTC კავშირს, სანამ მის ნაცვლად გამოიყენება. გაზარდეთ, რომ ნელ პირდაპირ კავშირს მეტი დრო მისცეთ; შეამცირეთ, რომ ქსელებში, სადაც პირდაპირი კავშირი შეუძლებელია, უფრო სწრაფად გადავიდეს რელეზე. დატოვეთ ცარიელი ნაგულისხმევი 2.5 წამისთვის."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/gl.rs b/src/lang/gl.rs
+index 0401ba6..a8a5e54 100644
+--- a/src/lang/gl.rs
++++ b/src/lang/gl.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk non puido cargar un compoñente de GStreamer necesario para capturar a pantalla ({})"),
+         ("Relay fallback delay in seconds", "Atraso antes de usar o relé en segundos"),
+         ("relay-fallback-delay-tip", "Canto tempo agarda unha conexión de relé xa establecida pola conexión directa WebRTC antes de usarse no seu lugar. Auménteo para darlle máis tempo a unha conexión directa lenta; redúzao para recorrer antes ao relé en redes onde non é posible unha conexión directa. Déixeo baleiro para o valor predeterminado de 2.5 segundos."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/gu.rs b/src/lang/gu.rs
+index 07067c3..d9987bb 100644
+--- a/src/lang/gu.rs
++++ b/src/lang/gu.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk સ્ક્રીન કૅપ્ચર માટે જરૂરી GStreamer ઘટક લોડ કરી શક્યું નથી ({})"),
+         ("Relay fallback delay in seconds", "રિલે પર પાછા ફરવામાં વિલંબ સેકન્ડમાં"),
+         ("relay-fallback-delay-tip", "પહેલેથી સ્થાપિત રિલે કનેક્શન સીધા WebRTC કનેક્શનની કેટલો સમય રાહ જુએ છે, ત્યાર બાદ તેના બદલે વપરાય છે. ધીમા સીધા કનેક્શનને વધુ સમય આપવા માટે વધારો; જ્યાં સીધું કનેક્શન શક્ય નથી તેવા નેટવર્ક પર વહેલા રિલે પર જવા માટે ઘટાડો. મૂળભૂત 2.5 સેકન્ડ માટે ખાલી રાખો."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/he.rs b/src/lang/he.rs
+index 3a9ddfd..4998ddc 100644
+--- a/src/lang/he.rs
++++ b/src/lang/he.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk לא הצליח לטעון רכיב GStreamer הדרוש ללכידת מסך ({})"),
+         ("Relay fallback delay in seconds", "השהיה לפני מעבר לממסר בשניות"),
+         ("relay-fallback-delay-tip", "כמה זמן חיבור ממסר שכבר נוצר ממתין לחיבור WebRTC הישיר לפני שישמש במקומו. הגדל כדי לתת לחיבור ישיר איטי יותר זמן; הקטן כדי לעבור מהר יותר לממסר ברשתות שבהן לא ניתן ליצור חיבור ישיר. השאר ריק לערך ברירת המחדל של 2.5 שניות."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/hi.rs b/src/lang/hi.rs
+index 87a5d8b..34ab5a0 100644
+--- a/src/lang/hi.rs
++++ b/src/lang/hi.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk स्क्रीन कैप्चर के लिए आवश्यक GStreamer घटक लोड नहीं कर सका ({})"),
+         ("Relay fallback delay in seconds", "रिले पर लौटने में विलंब सेकंड में"),
+         ("relay-fallback-delay-tip", "पहले से स्थापित रिले कनेक्शन सीधे WebRTC कनेक्शन की कितनी देर प्रतीक्षा करता है, उसके बाद उसके स्थान पर उपयोग किया जाता है। धीमे सीधे कनेक्शन को अधिक समय देने के लिए बढ़ाएँ; जिन नेटवर्क पर सीधा कनेक्शन संभव नहीं है वहाँ जल्दी रिले पर जाने के लिए घटाएँ। डिफ़ॉल्ट 2.5 सेकंड के लिए खाली छोड़ें।"),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/hr.rs b/src/lang/hr.rs
+index 617f0f4..be769b1 100644
+--- a/src/lang/hr.rs
++++ b/src/lang/hr.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk nije mogao učitati GStreamer komponentu potrebnu za snimanje zaslona ({})"),
+         ("Relay fallback delay in seconds", "Odgoda prije prelaska na relej u sekundama"),
+         ("relay-fallback-delay-tip", "Koliko dugo već uspostavljena relejna veza čeka izravnu WebRTC vezu prije nego što se upotrijebi umjesto nje. Povećajte da sporoj izravnoj vezi date više vremena; smanjite da se na mrežama gdje izravna veza nije moguća brže prijeđe na relej. Ostavite prazno za zadanu vrijednost od 2.5 sekunde."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/hu.rs b/src/lang/hu.rs
+index 62baf1a..15f39f5 100644
+--- a/src/lang/hu.rs
++++ b/src/lang/hu.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "A RustDesk nem tudta betölteni a képernyőrögzítéshez szükséges GStreamer összetevőt ({})"),
+         ("Relay fallback delay in seconds", "Késleltetés a továbbítóra váltás előtt másodpercben"),
+         ("relay-fallback-delay-tip", "Mennyi ideig vár a már létrejött továbbító kapcsolat a közvetlen WebRTC kapcsolatra, mielőtt helyette használnák. Növelje, hogy a lassú közvetlen kapcsolatnak több ideje legyen; csökkentse, hogy olyan hálózatokon, ahol közvetlen kapcsolat nem hozható létre, hamarabb váltson továbbítóra. Hagyja üresen az alapértelmezett 2.5 másodperchez."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/id.rs b/src/lang/id.rs
+index e170a8a..be7b709 100644
+--- a/src/lang/id.rs
++++ b/src/lang/id.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk tidak dapat memuat komponen GStreamer yang diperlukan untuk merekam layar ({})"),
+         ("Relay fallback delay in seconds", "Jeda sebelum beralih ke relai dalam detik"),
+         ("relay-fallback-delay-tip", "Berapa lama koneksi relai yang sudah terbentuk menunggu koneksi langsung WebRTC sebelum digunakan sebagai gantinya. Perbesar untuk memberi koneksi langsung yang lambat lebih banyak waktu; perkecil agar lebih cepat beralih ke relai pada jaringan yang tidak memungkinkan koneksi langsung. Biarkan kosong untuk nilai bawaan 2.5 detik."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/it.rs b/src/lang/it.rs
+index 4e150a0..f235cd3 100644
+--- a/src/lang/it.rs
++++ b/src/lang/it.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk non è riuscito a caricare un componente GStreamer necessario per l'acquisizione dello schermo ({})"),
+         ("Relay fallback delay in seconds", "Ritardo fallback relay (secondi)"),
+         ("relay-fallback-delay-tip", "Quanto tempo una connessione relay già attiva attende la connessione WebRTC diretta prima di essere usata. Aumentalo per dare a una connessione diretta lenta più tempo per funzionare; diminuiscilo per passare prima al relay sulle reti in cui non è possibile effettuare una connessione diretta. Lascia vuoto per il valore predefinito di 2,5 secondi."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Per avviare una chiamata vocale, attiva nella pagina 'Condivisione schermo' la voce 'Cattura audio'.")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Per avviare una chiamata vocale, attiva nella pagina 'Condivisione schermo' la voce 'Cattura audio'."),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/ja.rs b/src/lang/ja.rs
+index 02f0096..c623037 100644
+--- a/src/lang/ja.rs
++++ b/src/lang/ja.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk は画面キャプチャに必要な GStreamer コンポーネントを読み込めませんでした ({})"),
+         ("Relay fallback delay in seconds", "中継に切り替えるまでの待ち時間 (秒)"),
+         ("relay-fallback-delay-tip", "すでに確立された中継接続が、直接の WebRTC 接続をどれだけ待ってから代わりに使用されるかを指定します。値を大きくすると遅い直接接続に時間を与えられ、小さくすると直接接続できないネットワークで早く中継に切り替わります。空欄にすると既定値の 2.5 秒になります。"),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/ko.rs b/src/lang/ko.rs
+index 8318f77..c56001b 100644
+--- a/src/lang/ko.rs
++++ b/src/lang/ko.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk가 화면 캡처에 필요한 GStreamer 구성 요소를 불러오지 못했습니다 ({})"),
+         ("Relay fallback delay in seconds", "릴레이 대체 작동 지연 시간 (초)"),
+         ("relay-fallback-delay-tip", "이미 연결된 중계 연결이 직접 WebRTC 연결을 얼마나 기다린 후 대신 사용되는지입니다. 값을 늘리면 느린 직접 연결에 더 많은 시간을 주고, 줄이면 직접 연결이 불가능한 네트워크에서 더 빨리 중계로 전환합니다. 비워 두면 기본값 2.5초가 사용됩니다."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "음성 통화를 시작하려면 '화면 공유' 페이지에서 '오디오 캡처'를 사용함으로 하세요.")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "음성 통화를 시작하려면 '화면 공유' 페이지에서 '오디오 캡처'를 사용함으로 하세요."),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/kz.rs b/src/lang/kz.rs
+index 999aa76..0978ca5 100644
+--- a/src/lang/kz.rs
++++ b/src/lang/kz.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk экранды түсіру үшін қажет GStreamer компонентін жүктей алмады ({})"),
+         ("Relay fallback delay in seconds", "Релеге ауысу кідірісі, секундпен"),
+         ("relay-fallback-delay-tip", "Бұрыннан орнатылған реле байланысы тікелей WebRTC байланысын қанша уақыт күтеді, содан кейін оның орнына қолданылады. Баяу тікелей байланысқа көбірек уақыт беру үшін үлкейтіңіз; тікелей байланыс мүмкін емес желілерде релеге тезірек ауысу үшін кішірейтіңіз. Әдепкі 2.5 секунд үшін бос қалдырыңыз."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/lt.rs b/src/lang/lt.rs
+index dec4ce4..c3faf40 100644
+--- a/src/lang/lt.rs
++++ b/src/lang/lt.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk nepavyko įkelti ekrano įrašymui reikalingo GStreamer komponento ({})"),
+         ("Relay fallback delay in seconds", "Delsa prieš pereinant prie perdavimo sekundėmis"),
+         ("relay-fallback-delay-tip", "Kiek laiko jau užmegztas perdavimo ryšys laukia tiesioginio WebRTC ryšio, kol bus panaudotas vietoj jo. Padidinkite, kad lėtam tiesioginiam ryšiui būtų skirta daugiau laiko; sumažinkite, kad tinkluose, kuriuose tiesioginis ryšys neįmanomas, greičiau būtų pereinama prie perdavimo. Palikite tuščią numatytajai 2.5 sekundės reikšmei."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/lv.rs b/src/lang/lv.rs
+index 63a48bf..54bb6ab 100644
+--- a/src/lang/lv.rs
++++ b/src/lang/lv.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk nevarēja ielādēt ekrāna tveršanai nepieciešamo GStreamer komponentu ({})"),
+         ("Relay fallback delay in seconds", "Aizkave pirms pārslēgšanās uz retranslatoru sekundēs"),
+         ("relay-fallback-delay-tip", "Cik ilgi jau izveidots retranslatora savienojums gaida tiešo WebRTC savienojumu, pirms tiek izmantots tā vietā. Palieliniet, lai lēnam tiešajam savienojumam dotu vairāk laika; samaziniet, lai tīklos, kur tiešais savienojums nav iespējams, ātrāk pārslēgtos uz retranslatoru. Atstājiet tukšu noklusējuma 2.5 sekunžu vērtībai."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/ml.rs b/src/lang/ml.rs
+index 3b03063..0c6cf59 100644
+--- a/src/lang/ml.rs
++++ b/src/lang/ml.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "സ്ക്രീൻ പകർത്താൻ ആവശ്യമായ GStreamer ഘടകം RustDesk-ന് ലോഡ് ചെയ്യാനായില്ല ({})"),
+         ("Relay fallback delay in seconds", "റിലേയിലേക്ക് മാറുന്നതിനുള്ള കാലതാമസം സെക്കൻഡിൽ"),
+         ("relay-fallback-delay-tip", "ഇതിനകം സ്ഥാപിതമായ റിലേ കണക്ഷൻ നേരിട്ടുള്ള WebRTC കണക്ഷനായി എത്ര നേരം കാത്തിരിക്കുന്നു, അതിനുശേഷം അതിനുപകരം ഉപയോഗിക്കുന്നു. മന്ദഗതിയിലുള്ള നേരിട്ടുള്ള കണക്ഷന് കൂടുതൽ സമയം നൽകാൻ വർദ്ധിപ്പിക്കുക; നേരിട്ടുള്ള കണക്ഷൻ സാധ്യമല്ലാത്ത നെറ്റ്‌വർക്കുകളിൽ വേഗത്തിൽ റിലേയിലേക്ക് മാറാൻ കുറയ്ക്കുക. സ്ഥിരസ്ഥിതിയായ 2.5 സെക്കൻഡിനായി ശൂന്യമാക്കിയിടുക."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/nb.rs b/src/lang/nb.rs
+index defd24f..a1034fe 100644
+--- a/src/lang/nb.rs
++++ b/src/lang/nb.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk kunne ikke laste en GStreamer-komponent som kreves for skjermopptak ({})"),
+         ("Relay fallback delay in seconds", "Forsinkelse før bruk av relé i sekunder"),
+         ("relay-fallback-delay-tip", "Hvor lenge en allerede opprettet reléforbindelse venter på den direkte WebRTC-forbindelsen før den brukes i stedet. Øk verdien for å gi en treg direkteforbindelse mer tid; senk den for å gå raskere over til reléet på nettverk der direkte forbindelse ikke er mulig. La stå tom for standardverdien på 2.5 sekunder."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/nl.rs b/src/lang/nl.rs
+index 6cd1e3a..9cc3c2f 100644
+--- a/src/lang/nl.rs
++++ b/src/lang/nl.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk kon een GStreamer-component die nodig is voor schermopname niet laden ({})"),
+         ("Relay fallback delay in seconds", "Vertraging voordat relay wordt gebruikt in seconden"),
+         ("relay-fallback-delay-tip", "Hoe lang een al tot stand gekomen relayverbinding wacht op de directe WebRTC-verbinding voordat deze in plaats daarvan wordt gebruikt. Verhoog de waarde om een trage directe verbinding meer tijd te geven; verlaag deze om op netwerken waar een directe verbinding niet mogelijk is sneller op de relay terug te vallen. Laat leeg voor de standaardwaarde van 2.5 seconden."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Om een spraakgesprek te starten, schakel je \"Audio-opname\" in op de pagina \"Scherm delen\".")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Om een spraakgesprek te starten, schakel je \"Audio-opname\" in op de pagina \"Scherm delen\"."),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/pl.rs b/src/lang/pl.rs
+index 7e25b90..e50963e 100644
+--- a/src/lang/pl.rs
++++ b/src/lang/pl.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk nie mógł załadować składnika GStreamer wymaganego do przechwytywania ekranu ({})"),
+         ("Relay fallback delay in seconds", "Opóźnienie przed przejściem na przekaźnik w sekundach"),
+         ("relay-fallback-delay-tip", "Jak długo nawiązane już połączenie przez przekaźnik czeka na bezpośrednie połączenie WebRTC, zanim zostanie użyte zamiast niego. Zwiększ, aby dać wolnemu połączeniu bezpośredniemu więcej czasu; zmniejsz, aby w sieciach, w których połączenie bezpośrednie jest niemożliwe, szybciej przechodzić na przekaźnik. Pozostaw puste, aby użyć wartości domyślnej 2.5 sekundy."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/pt_BR.rs b/src/lang/pt_BR.rs
+index 6218583..28b9e46 100644
+--- a/src/lang/pt_BR.rs
++++ b/src/lang/pt_BR.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "O RustDesk não conseguiu carregar um componente do GStreamer necessário para a captura de tela ({})."),
+         ("Relay fallback delay in seconds", "Atraso antes de recorrer ao retransmissor em segundos"),
+         ("relay-fallback-delay-tip", "Tempo que a conexão de retransmissão aguarda pela conexão direta WebRTC. Aumente para dar mais tempo a conexões lentas; diminua para usar o retransmissor mais cedo. Deixe vazio para usar o padrão de 2,5 segundos."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Para iniciar uma chamada de voz, ative \"Captura de áudio\" na página \"Compartilhamento de tela\".")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Para iniciar uma chamada de voz, ative \"Captura de áudio\" na página \"Compartilhamento de tela\"."),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/pt_PT.rs b/src/lang/pt_PT.rs
+index 771204b..776e117 100644
+--- a/src/lang/pt_PT.rs
++++ b/src/lang/pt_PT.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "O RustDesk não conseguiu carregar um componente do GStreamer necessário para capturar o ecrã ({})"),
+         ("Relay fallback delay in seconds", "Atraso antes de recorrer ao retransmissor em segundos"),
+         ("relay-fallback-delay-tip", "Quanto tempo uma ligação de retransmissão já estabelecida aguarda pela ligação direta WebRTC antes de ser usada em vez dela. Aumente para dar mais tempo a uma ligação direta lenta; diminua para recorrer mais cedo ao retransmissor em redes onde não é possível uma ligação direta. Deixe vazio para o valor predefinido de 2.5 segundos."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/ro.rs b/src/lang/ro.rs
+index 35bfeb7..6b8fd5e 100644
+--- a/src/lang/ro.rs
++++ b/src/lang/ro.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk nu a putut încărca o componentă GStreamer necesară pentru capturarea ecranului ({})"),
+         ("Relay fallback delay in seconds", "Întârziere înainte de trecerea la releu în secunde"),
+         ("relay-fallback-delay-tip", "Cât timp așteaptă o conexiune prin releu deja stabilită conexiunea directă WebRTC înainte de a fi folosită în locul ei. Măriți valoarea pentru a acorda mai mult timp unei conexiuni directe lente; micșorați-o pentru a trece mai repede la releu în rețelele în care o conexiune directă nu este posibilă. Lăsați gol pentru valoarea implicită de 2.5 secunde."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/ru.rs b/src/lang/ru.rs
+index 958c61e..861e216 100644
+--- a/src/lang/ru.rs
++++ b/src/lang/ru.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk не удалось загрузить компонент GStreamer, необходимый для захвата экрана ({})"),
+         ("Relay fallback delay in seconds", "Задержка перед переходом на ретранслятор в секундах"),
+         ("relay-fallback-delay-tip", "Сколько времени уже установленное соединение через ретранслятор ждёт прямое соединение WebRTC, прежде чем будет использовано вместо него. Увеличьте, чтобы дать медленному прямому соединению больше времени; уменьшите, чтобы быстрее переходить на ретранслятор в сетях, где прямое соединение невозможно. Оставьте пустым для значения по умолчанию 2.5 секунды."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Чтобы начать голосовой вызов, включите \"Захват аудио\" на странице \"Демонстрация экрана\" настроек.")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Чтобы начать голосовой вызов, включите \"Захват аудио\" на странице \"Демонстрация экрана\" настроек."),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/sc.rs b/src/lang/sc.rs
+index 139c51a..090a369 100644
+--- a/src/lang/sc.rs
++++ b/src/lang/sc.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk no at pòdidu carrigare unu cumponente de GStreamer netzessàriu pro registrare sa schermada ({})"),
+         ("Relay fallback delay in seconds", "Tardu prima de impreare su relè in segundos"),
+         ("relay-fallback-delay-tip", "Cantu tempus una connessione de relè giai istabilida abetat sa connessione direta WebRTC prima de èssere impreada in su postu suo. Aumenta pro dare prus tempus a una connessione direta lenta; diminuì pro colare prima a su relè in sas retes in ue non si podet fàghere una connessione direta. Lassa bòidu pro su valore predefinidu de 2.5 segundos."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Pro aviare una mutida de boghe, ativa in sa pàgina \"Cumpartzidura de ischermu\" s’elementu \"Catura de s’àudio\".")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Pro aviare una mutida de boghe, ativa in sa pàgina \"Cumpartzidura de ischermu\" s’elementu \"Catura de s’àudio\"."),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/sk.rs b/src/lang/sk.rs
+index 7a98820..0d4987e 100644
+--- a/src/lang/sk.rs
++++ b/src/lang/sk.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk nedokázal načítať komponent GStreamera potrebný na zachytenie obrazovky ({})"),
+         ("Relay fallback delay in seconds", "Oneskorenie pred prepnutím na prenos v sekundách"),
+         ("relay-fallback-delay-tip", "Ako dlho už nadviazané spojenie cez prenos čaká na priame spojenie WebRTC, kým sa použije namiesto neho. Zvýšte, aby pomalé priame spojenie malo viac času; znížte, aby sa v sieťach, kde priame spojenie nie je možné, skôr prešlo na prenos. Nechajte prázdne pre predvolenú hodnotu 2.5 sekundy."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/sl.rs b/src/lang/sl.rs
+index d158c0e..e386517 100644
+--- a/src/lang/sl.rs
++++ b/src/lang/sl.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk ni mogel naložiti komponente GStreamer, potrebne za zajem zaslona ({})"),
+         ("Relay fallback delay in seconds", "Zakasnitev pred preklopom na posrednika v sekundah"),
+         ("relay-fallback-delay-tip", "Kako dolgo že vzpostavljena posredniška povezava čaka na neposredno povezavo WebRTC, preden se uporabi namesto nje. Povečajte, da počasni neposredni povezavi date več časa; zmanjšajte, da v omrežjih, kjer neposredna povezava ni mogoča, hitreje preklopite na posrednika. Pustite prazno za privzeto vrednost 2.5 sekunde."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/sq.rs b/src/lang/sq.rs
+index d5df35f..b7b0ed9 100644
+--- a/src/lang/sq.rs
++++ b/src/lang/sq.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk nuk mundi të ngarkojë një komponent të GStreamer të nevojshëm për regjistrimin e ekranit ({})"),
+         ("Relay fallback delay in seconds", "Vonesa para kalimit te releja në sekonda"),
+         ("relay-fallback-delay-tip", "Sa gjatë pret një lidhje releje tashmë e vendosur lidhjen e drejtpërdrejtë WebRTC përpara se të përdoret në vend të saj. Rriteni për t'i dhënë më shumë kohë një lidhjeje të drejtpërdrejtë të ngadaltë; uleni për të kaluar më shpejt te releja në rrjete ku lidhja e drejtpërdrejtë nuk është e mundur. Lëreni bosh për vlerën e parazgjedhur prej 2.5 sekondash."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/sr.rs b/src/lang/sr.rs
+index 4f14c09..47d1bce 100644
+--- a/src/lang/sr.rs
++++ b/src/lang/sr.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk nije mogao da učita GStreamer komponentu potrebnu za snimanje ekrana ({})"),
+         ("Relay fallback delay in seconds", "Кашњење пре преласка на релеј у секундама"),
+         ("relay-fallback-delay-tip", "Колико дуго већ успостављена релејна веза чека на директну WebRTC везу пре него што се употреби уместо ње. Повећајте да бисте спорој директној вези дали више времена; смањите да бисте на мрежама где директна веза није могућа брже прешли на релеј. Оставите празно за подразумевану вредност од 2.5 секунде."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/sv.rs b/src/lang/sv.rs
+index 8ee8390..f72b5a3 100644
+--- a/src/lang/sv.rs
++++ b/src/lang/sv.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk kunde inte läsa in en GStreamer-komponent som krävs för skärminspelning ({})"),
+         ("Relay fallback delay in seconds", "Fördröjning innan relä används i sekunder"),
+         ("relay-fallback-delay-tip", "Hur länge en redan upprättad reläanslutning väntar på den direkta WebRTC-anslutningen innan den används i stället. Öka värdet för att ge en långsam direktanslutning mer tid; sänk det för att snabbare falla tillbaka på reläet i nätverk där direktanslutning inte är möjlig. Lämna tomt för standardvärdet 2.5 sekunder."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/ta.rs b/src/lang/ta.rs
+index 76b49d6..f6f80e1 100644
+--- a/src/lang/ta.rs
++++ b/src/lang/ta.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "திரைப் பதிவுக்குத் தேவையான GStreamer கூறை RustDesk ஏற்ற முடியவில்லை ({})"),
+         ("Relay fallback delay in seconds", "ரிலேக்கு மாறுவதற்கான தாமதம் வினாடிகளில்"),
+         ("relay-fallback-delay-tip", "ஏற்கனவே நிறுவப்பட்ட ரிலே இணைப்பு நேரடி WebRTC இணைப்புக்காக எவ்வளவு நேரம் காத்திருக்கிறது, அதன் பிறகு அதற்குப் பதிலாகப் பயன்படுத்தப்படுகிறது. மெதுவான நேரடி இணைப்புக்கு அதிக நேரம் வழங்க அதிகரிக்கவும்; நேரடி இணைப்பு சாத்தியமில்லாத பிணையங்களில் விரைவாக ரிலேக்கு மாற குறைக்கவும். இயல்புநிலை 2.5 வினாடிகளுக்கு காலியாக விடவும்."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/template.rs b/src/lang/template.rs
+index 968e43b..7e43745 100644
+--- a/src/lang/template.rs
++++ b/src/lang/template.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", ""),
+         ("Relay fallback delay in seconds", ""),
+         ("relay-fallback-delay-tip", ""),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/th.rs b/src/lang/th.rs
+index a3c7ae2..7f0c2ef 100644
+--- a/src/lang/th.rs
++++ b/src/lang/th.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk ไม่สามารถโหลดส่วนประกอบ GStreamer ที่จำเป็นสำหรับการบันทึกหน้าจอได้ ({})"),
+         ("Relay fallback delay in seconds", "เวลารอก่อนเปลี่ยนไปใช้รีเลย์ (วินาที)"),
+         ("relay-fallback-delay-tip", "การเชื่อมต่อผ่านรีเลย์ที่สร้างไว้แล้วจะรอการเชื่อมต่อ WebRTC โดยตรงนานเท่าใดก่อนที่จะถูกใช้แทน เพิ่มค่าเพื่อให้การเชื่อมต่อโดยตรงที่ช้ามีเวลามากขึ้น ลดค่าเพื่อเปลี่ยนไปใช้รีเลย์เร็วขึ้นในเครือข่ายที่ไม่สามารถเชื่อมต่อโดยตรงได้ เว้นว่างไว้เพื่อใช้ค่าเริ่มต้น 2.5 วินาที"),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/tr.rs b/src/lang/tr.rs
+index 5944dfb..5af746a 100644
+--- a/src/lang/tr.rs
++++ b/src/lang/tr.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk ekran yakalama için gereken GStreamer bileşenini yükleyemedi ({})"),
+         ("Relay fallback delay in seconds", "Aktarıcıya geçiş gecikmesi (saniye)"),
+         ("relay-fallback-delay-tip", "Zaten kurulmuş bir aktarıcı bağlantısının, onun yerine kullanılmadan önce doğrudan WebRTC bağlantısını ne kadar beklediğidir. Yavaş bir doğrudan bağlantıya daha fazla süre tanımak için artırın; doğrudan bağlantının kurulamadığı ağlarda aktarıcıya daha erken geçmek için azaltın. Varsayılan 2.5 saniye için boş bırakın."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Sesli arama başlatmak için \"Ekran paylaşımı\" sayfasındaki \"Ses yakalama\" seçeneğini açın.")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Sesli arama başlatmak için \"Ekran paylaşımı\" sayfasındaki \"Ses yakalama\" seçeneğini açın."),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/tw.rs b/src/lang/tw.rs
+index 498caf7..4b1c6d4 100644
+--- a/src/lang/tw.rs
++++ b/src/lang/tw.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk 無法載入螢幕擷取所需的 GStreamer 元件 ({})"),
+         ("Relay fallback delay in seconds", "回退到中繼前的等待時間（秒）"),
+         ("relay-fallback-delay-tip", "已經建立的中繼連線會等待直連的 WebRTC 多久，超過這個時間就改用中繼。調大可以讓較慢的直連有更多機會勝出；調小則在無法直連的網路上更快回退到中繼。留空表示使用預設值 2.5 秒。"),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "若要開始語音通話，請在「僅分享螢幕畫面」頁面啟用「音訊錄製」。")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "若要開始語音通話，請在「僅分享螢幕畫面」頁面啟用「音訊錄製」。"),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/uk.rs b/src/lang/uk.rs
+index 7cfd134..cd57764 100644
+--- a/src/lang/uk.rs
++++ b/src/lang/uk.rs
+@@ -781,5 +781,8 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("Relay fallback delay in seconds", "Затримка перед переходом на ретранслятор у секундах"),
+         ("relay-fallback-delay-tip", "Скільки часу вже встановлене з'єднання через ретранслятор чекає на пряме з'єднання WebRTC, перш ніж буде використане замість нього. Збільште, щоб дати повільному прямому з'єднанню більше часу; зменште, щоб швидше переходити на ретранслятор у мережах, де пряме з'єднання неможливе. Залиште порожнім для типового значення 2.5 секунди."),
+         ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "Щоб розпочати голосовий виклик, увімкніть «Захоплення аудіо» на сторінці «Демонстрація екрана»."),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/lang/ur.rs b/src/lang/ur.rs
+index 7e6ca7f..b502f89 100644
+--- a/src/lang/ur.rs
++++ b/src/lang/ur.rs
+@@ -780,7 +780,10 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk اسکرین ریکارڈنگ کے لیے درکار GStreamer جزو لوڈ نہیں کر سکا ({})"),
+         ("Relay fallback delay in seconds", "ریلے پر واپس جانے میں تاخیر سیکنڈ میں"),
+         ("relay-fallback-delay-tip", "پہلے سے قائم ریلے کنکشن براہ راست WebRTC کنکشن کا کتنی دیر انتظار کرتا ہے، اس کے بعد اس کی جگہ استعمال ہوتا ہے۔ سست براہ راست کنکشن کو مزید وقت دینے کے لیے بڑھائیں؛ ان نیٹ ورکس پر جہاں براہ راست کنکشن ممکن نہیں، جلد ریلے پر جانے کے لیے کم کریں۔ پہلے سے طے شدہ 2.5 سیکنڈ کے لیے خالی چھوڑ دیں۔"),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+ 
+diff --git a/src/lang/vi.rs b/src/lang/vi.rs
+index e078a0b..fdde4c9 100644
+--- a/src/lang/vi.rs
++++ b/src/lang/vi.rs
+@@ -780,6 +780,9 @@ pub static ref T: std::collections::HashMap<&'static str, &'static str> =
+         ("RustDesk could not load a GStreamer component needed for screen capture ({})", "RustDesk không thể tải một thành phần GStreamer cần cho việc ghi màn hình ({})"),
+         ("Relay fallback delay in seconds", "Độ trễ trước khi chuyển sang trung chuyển (giây)"),
+         ("relay-fallback-delay-tip", "Kết nối trung chuyển đã thiết lập sẽ chờ kết nối WebRTC trực tiếp trong bao lâu trước khi được dùng thay thế. Tăng giá trị để cho kết nối trực tiếp chậm thêm thời gian; giảm để chuyển sang trung chuyển sớm hơn trên các mạng không thể kết nối trực tiếp. Để trống để dùng giá trị mặc định 2.5 giây."),
+-        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", "")
++        ("To start a voice call, enable \"Audio capture\" on the \"Screen share\" page.", ""),
++        ("Update required", ""),
++        ("Update now", ""),
++        ("Updating…", ""),
+     ].iter().cloned().collect();
+ }
+diff --git a/src/glitch_update.rs b/src/glitch_update.rs
+new file mode 100644
+index 0000000..0000000
+--- /dev/null
++++ b/src/glitch_update.rs
+@@ -0,0 +1,86 @@
++// GL!TCH: silent self-update (Lawrence, 2026-11-15). Separate from stock
++// RustDesk's own updater.rs (which checks api.rustdesk.com and only
++// verifies downloaded-file size, not a hash) - this is driven entirely by
++// our own ClientRelease data, carried in the existing heartbeat `update`
++// field (see hbbs_http/sync.rs), and requires a matching sha256 before it
++// touches anything. Reuses the existing platform install primitives
++// (update_me_msi, update_me via the --update relaunch) rather than
++// reimplementing them.
++use hbb_common::{bail, log, ResultType};
++use sha2::{Digest, Sha256};
++use std::io::Write;
++
++/// Downloads `url`, verifies it against `expected_sha256` (lowercase hex),
++/// and only then dispatches to the platform install path. Runs on the
++/// calling thread - callers that must not block (a UI button handler)
++/// should spawn this onto its own thread; see `apply_update_async`.
++pub fn apply_update(url: &str, expected_sha256: &str) -> ResultType<()> {
++    let expected = expected_sha256.trim().to_lowercase();
++    if expected.len() != 64 || !expected.chars().all(|c| c.is_ascii_hexdigit()) {
++        bail!("refusing to apply update: malformed sha256");
++    }
++
++    let client = crate::hbbs_http::create_http_client_with_url_strict(url)?;
++    let response = client.get(url).send()?;
++    if !response.status().is_success() {
++        bail!("failed to download update: {}", response.status());
++    }
++    let bytes = response.bytes()?;
++
++    let mut hasher = Sha256::new();
++    hasher.update(&bytes);
++    let actual = hex::encode(hasher.finalize());
++    if actual != expected {
++        bail!(
++            "update sha256 mismatch: expected {}, got {} - refusing to install",
++            expected,
++            actual
++        );
++    }
++
++    let filename = url
++        .rsplit('/')
++        .next()
++        .filter(|name| !name.is_empty())
++        .unwrap_or("glitch-update");
++    let file_path = std::env::temp_dir().join(filename);
++    {
++        let mut file = std::fs::File::create(&file_path)?;
++        file.write_all(&bytes)?;
++    }
++
++    install_downloaded(&file_path)
++}
++
++/// Same as `apply_update`, but runs on a new thread and only logs on
++/// failure - for callers (a UI button) that must return immediately.
++pub fn apply_update_async(url: String, expected_sha256: String) {
++    std::thread::spawn(move || {
++        if let Err(e) = apply_update(&url, &expected_sha256) {
++            log::error!("GL!TCH update failed: {}", e);
++        }
++    });
++}
++
++#[cfg(target_os = "windows")]
++fn install_downloaded(file_path: &std::path::Path) -> ResultType<()> {
++    let path_str = file_path.to_string_lossy().to_string();
++    if crate::platform::is_msi_installed().unwrap_or(false) {
++        crate::platform::update_me_msi(&path_str, true)
++    } else {
++        let Some(session_id) = crate::platform::get_current_process_session_id() else {
++            bail!("failed to get current process session id");
++        };
++        let cmd = format!("{} --update", path_str);
++        let h = crate::platform::launch_privileged_process(session_id, &cmd)?;
++        if h.is_null() {
++            bail!("failed to launch the downloaded update");
++        }
++        Ok(())
++    }
++}
++
++#[cfg(not(target_os = "windows"))]
++fn install_downloaded(_file_path: &std::path::Path) -> ResultType<()> {
++    bail!("GL!TCH silent update is not implemented on this platform yet");
++}
+
+diff --git a/src/hbbs_http/sync.rs b/src/hbbs_http/sync.rs
+--- a/src/hbbs_http/sync.rs
++++ b/src/hbbs_http/sync.rs
+@@ -280,6 +280,34 @@
+                         // (key absent) means no update banner is shown;
+                         // this does not download or install anything.
+                         if let Some(update) = rsp.remove("update") {
++                            // GL!TCH: GlitchHost always installs silently
++                            // once the release has a sha256 - no banner, no
++                            // user to ask. GlitchConnect never auto-installs
++                            // from here; its banner's own "Update now"
++                            // button (or, if `mandatory`, its nag) is the
++                            // only trigger there (Lawrence, 2026-11-15).
++                            #[cfg(not(any(target_os = "android", target_os = "ios")))]
++                            if crate::get_app_name() == "GlitchHost" {
++                                if let (Some(version), Some(url), Some(sha256)) = (
++                                    update.get("version").and_then(|v| v.as_str()),
++                                    update.get("url").and_then(|v| v.as_str()),
++                                    update.get("sha256").and_then(|v| v.as_str()),
++                                ) {
++                                    let attempted_key = "glitch_update_attempted_version";
++                                    if LocalConfig::get_option(attempted_key) != version
++                                        && crate::updater::has_no_active_conns()
++                                    {
++                                        LocalConfig::set_option(
++                                            attempted_key.to_string(),
++                                            version.to_string(),
++                                        );
++                                        crate::glitch_update::apply_update_async(
++                                            url.to_string(),
++                                            sha256.to_string(),
++                                        );
++                                    }
++                                }
++                            }
+                             LocalConfig::set_option(
+                                 "glitch_update_available".to_string(),
+                                 update.to_string(),
+diff --git a/flutter/lib/desktop/pages/connection_page.dart b/flutter/lib/desktop/pages/connection_page.dart
+--- a/flutter/lib/desktop/pages/connection_page.dart
++++ b/flutter/lib/desktop/pages/connection_page.dart
+@@ -640,14 +640,16 @@
+   }
+ }
+ 
+-// GL!TCH: notify-only update banner (Lawrence, 2026-11-11). The Rust side
+-// (hbbs_http/sync.rs) stashes the heartbeat response's `update` field
+-// verbatim into the generic LocalConfig store under
+-// 'glitch_update_available' whenever the server reports one - this just
+-// polls that same key/value option store the rest of the app already uses
+-// (bind.mainGetLocalOption/mainSetLocalOption), so no new FFI surface is
+-// needed. Deliberately does NOT download or install anything itself - the
+-// button only opens the URL for a human to run.
++// GL!TCH: update banner (Lawrence, 2026-11-11; silent install added
++// 2026-11-15). The Rust side (hbbs_http/sync.rs) stashes the heartbeat
++// response's `update` field verbatim into the generic LocalConfig store
++// under 'glitch_update_available' whenever the server reports one - this
++// polls that key/value option store the rest of the app already uses
++// (bind.mainGetLocalOption/mainSetLocalOption). Without a sha256 the button
++// just opens the download URL for a human to run; with one, it calls
++// mainApplyGlitchUpdate to download, sha256-verify and install silently -
++// see glitch_update.rs. `mandatory` only changes whether the banner can be
++// dismissed, never whether this install runs mid-session.
+ class UpdateAvailableBanner extends StatefulWidget {
+   const UpdateAvailableBanner({Key? key}) : super(key: key);
+ 
+@@ -661,6 +663,9 @@
+   Timer? _timer;
+   String? _version;
+   String? _url;
++  String? _sha256;
++  bool _mandatory = false;
++  bool _updating = false;
+ 
+   @override
+   void initState() {
+@@ -690,13 +695,22 @@
+       final data = jsonDecode(raw) as Map<String, dynamic>;
+       final version = (data['version'] ?? '').toString();
+       final url = (data['url'] ?? '').toString();
++      final sha256 = (data['sha256'] ?? '').toString();
++      final mandatory = data['mandatory'] == true;
+       if (version.isEmpty || url.isEmpty) return;
+-      final dismissed = await bind.mainGetLocalOption(key: _dismissedKey);
+-      if (dismissed == version) return;
++      // GL!TCH: mandatory ignores the user's own dismissal (Lawrence,
++      // 2026-11-15) - it still never force-installs mid-session, it just
++      // keeps nagging instead of letting the banner stay closed.
++      if (!mandatory) {
++        final dismissed = await bind.mainGetLocalOption(key: _dismissedKey);
++        if (dismissed == version) return;
++      }
+       if (mounted) {
+         setState(() {
+           _version = version;
+           _url = url;
++          _sha256 = sha256.isEmpty ? null : sha256;
++          _mandatory = mandatory;
+         });
+       }
+     } catch (_) {
+@@ -705,6 +719,22 @@
+     }
+   }
+ 
++  Future<void> _updateNow() async {
++    final url = _url;
++    final sha256 = _sha256;
++    if (url == null || sha256 == null || _updating) return;
++    setState(() => _updating = true);
++    await bind.mainApplyGlitchUpdate(url: url, sha256: sha256);
++    // A successful update kills this process before this ever runs (the
++    // install replaces/relaunches the app); only a failed download or a
++    // sha256 mismatch gets here, so this just un-stucks the button to let
++    // the user try again - see glitch_update.rs for the actual error, which
++    // goes to the log file only.
++    Future.delayed(const Duration(seconds: 60), () {
++      if (mounted) setState(() => _updating = false);
++    });
++  }
++
+   @override
+   Widget build(BuildContext context) {
+     final version = _version;
+@@ -719,24 +749,33 @@
+               size: 18, color: MyTheme.accent),
+           const SizedBox(width: 8),
+           Expanded(
+-            child: Text('${translate("Update available")}: v$version'),
+-          ),
+-          TextButton(
+-            onPressed: () async {
+-              if (await canLaunchUrlString(url)) {
+-                launchUrlString(url);
+-              }
+-            },
+-            child: Text(translate('Download')),
+-          ),
+-          IconButton(
+-            tooltip: translate('Close'),
+-            icon: const Icon(Icons.close, size: 16),
+-            onPressed: () async {
+-              await bind.mainSetLocalOption(key: _dismissedKey, value: version);
+-              if (mounted) setState(() => _version = null);
+-            },
++            child: Text(_mandatory
++                ? '${translate("Update required")}: v$version'
++                : '${translate("Update available")}: v$version'),
+           ),
++          if (_sha256 != null)
++            TextButton(
++              onPressed: _updating ? null : _updateNow,
++              child: Text(translate(_updating ? 'Updating…' : 'Update now')),
++            )
++          else
++            TextButton(
++              onPressed: () async {
++                if (await canLaunchUrlString(url)) {
++                  launchUrlString(url);
++                }
++              },
++              child: Text(translate('Download')),
++            ),
++          if (!_mandatory)
++            IconButton(
++              tooltip: translate('Close'),
++              icon: const Icon(Icons.close, size: 16),
++              onPressed: () async {
++                await bind.mainSetLocalOption(key: _dismissedKey, value: version);
++                if (mounted) setState(() => _version = null);
++              },
++            ),
+         ],
+       ),
+     );
