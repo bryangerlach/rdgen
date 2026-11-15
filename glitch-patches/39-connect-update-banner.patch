@@ -1,0 +1,144 @@
+diff --git a/flutter/lib/desktop/pages/connection_page.dart b/flutter/lib/desktop/pages/connection_page.dart
+index 6d5214a..5d6d6d0 100644
+--- a/flutter/lib/desktop/pages/connection_page.dart
++++ b/flutter/lib/desktop/pages/connection_page.dart
+@@ -640,14 +640,20 @@ class _ConnectionPageState extends State<ConnectionPage>
+   }
+ }
+ 
+-// GL!TCH: notify-only update banner (Lawrence, 2026-11-11). The Rust side
+-// (hbbs_http/sync.rs) stashes the heartbeat response's `update` field
+-// verbatim into the generic LocalConfig store under
+-// 'glitch_update_available' whenever the server reports one - this just
+-// polls that same key/value option store the rest of the app already uses
+-// (bind.mainGetLocalOption/mainSetLocalOption), so no new FFI surface is
+-// needed. Deliberately does NOT download or install anything itself - the
+-// button only opens the URL for a human to run.
++// GL!TCH: update banner (Lawrence, 2026-11-11; silent install added
++// 2026-11-15). The Rust side (hbbs_http/sync.rs) stashes the heartbeat
++// response's `update` field verbatim into the generic LocalConfig store
++// under 'glitch_update_available' whenever the server reports one - this
++// polls that key/value option store the rest of the app already uses
++// (bind.mainGetLocalOption/mainSetLocalOption). Without a sha256 the button
++// just opens the download URL for a human to run; with one, it writes
++// {url, sha256} to the 'glitch_update_trigger' option instead of calling a
++// new bind function - glitch_update.rs's background watcher picks that up
++// and does the actual download/verify/install. Deliberately no new #[frb]
++// function: the bridge Dart bindings are generated in a separate CI job
++// against unpatched upstream source, which would never see one.
++// `mandatory` only changes whether the banner can be dismissed, never
++// whether this install runs mid-session.
+ class UpdateAvailableBanner extends StatefulWidget {
+   const UpdateAvailableBanner({Key? key}) : super(key: key);
+ 
+@@ -661,6 +667,9 @@ class _UpdateAvailableBannerState extends State<UpdateAvailableBanner> {
+   Timer? _timer;
+   String? _version;
+   String? _url;
++  String? _sha256;
++  bool _mandatory = false;
++  bool _updating = false;
+ 
+   @override
+   void initState() {
+@@ -690,13 +699,22 @@ class _UpdateAvailableBannerState extends State<UpdateAvailableBanner> {
+       final data = jsonDecode(raw) as Map<String, dynamic>;
+       final version = (data['version'] ?? '').toString();
+       final url = (data['url'] ?? '').toString();
++      final sha256 = (data['sha256'] ?? '').toString();
++      final mandatory = data['mandatory'] == true;
+       if (version.isEmpty || url.isEmpty) return;
+-      final dismissed = await bind.mainGetLocalOption(key: _dismissedKey);
+-      if (dismissed == version) return;
++      // GL!TCH: mandatory ignores the user's own dismissal (Lawrence,
++      // 2026-11-15) - it still never force-installs mid-session, it just
++      // keeps nagging instead of letting the banner stay closed.
++      if (!mandatory) {
++        final dismissed = await bind.mainGetLocalOption(key: _dismissedKey);
++        if (dismissed == version) return;
++      }
+       if (mounted) {
+         setState(() {
+           _version = version;
+           _url = url;
++          _sha256 = sha256.isEmpty ? null : sha256;
++          _mandatory = mandatory;
+         });
+       }
+     } catch (_) {
+@@ -705,6 +723,24 @@ class _UpdateAvailableBannerState extends State<UpdateAvailableBanner> {
+     }
+   }
+ 
++  Future<void> _updateNow() async {
++    final url = _url;
++    final sha256 = _sha256;
++    if (url == null || sha256 == null || _updating) return;
++    setState(() => _updating = true);
++    await bind.mainSetLocalOption(
++        key: 'glitch_update_trigger',
++        value: jsonEncode({'url': url, 'sha256': sha256}));
++    // A successful update kills this process before this ever runs (the
++    // install replaces/relaunches the app); only a failed download or a
++    // sha256 mismatch gets here, so this just un-stucks the button to let
++    // the user try again - see glitch_update.rs for the actual error, which
++    // goes to the log file only.
++    Future.delayed(const Duration(seconds: 60), () {
++      if (mounted) setState(() => _updating = false);
++    });
++  }
++
+   @override
+   Widget build(BuildContext context) {
+     final version = _version;
+@@ -719,24 +755,33 @@ class _UpdateAvailableBannerState extends State<UpdateAvailableBanner> {
+               size: 18, color: MyTheme.accent),
+           const SizedBox(width: 8),
+           Expanded(
+-            child: Text('${translate("Update available")}: v$version'),
+-          ),
+-          TextButton(
+-            onPressed: () async {
+-              if (await canLaunchUrlString(url)) {
+-                launchUrlString(url);
+-              }
+-            },
+-            child: Text(translate('Download')),
+-          ),
+-          IconButton(
+-            tooltip: translate('Close'),
+-            icon: const Icon(Icons.close, size: 16),
+-            onPressed: () async {
+-              await bind.mainSetLocalOption(key: _dismissedKey, value: version);
+-              if (mounted) setState(() => _version = null);
+-            },
++            child: Text(_mandatory
++                ? '${translate("Update required")}: v$version'
++                : '${translate("Update available")}: v$version'),
+           ),
++          if (_sha256 != null)
++            TextButton(
++              onPressed: _updating ? null : _updateNow,
++              child: Text(translate(_updating ? 'Updating…' : 'Update now')),
++            )
++          else
++            TextButton(
++              onPressed: () async {
++                if (await canLaunchUrlString(url)) {
++                  launchUrlString(url);
++                }
++              },
++              child: Text(translate('Download')),
++            ),
++          if (!_mandatory)
++            IconButton(
++              tooltip: translate('Close'),
++              icon: const Icon(Icons.close, size: 16),
++              onPressed: () async {
++                await bind.mainSetLocalOption(key: _dismissedKey, value: version);
++                if (mounted) setState(() => _version = null);
++              },
++            ),
+         ],
+       ),
+     );

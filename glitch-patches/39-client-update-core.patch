@@ -1,37 +1,178 @@
-diff --git a/src/lib.rs b/src/lib.rs
-index 649f3ef..ab78e38 100644
---- a/src/lib.rs
-+++ b/src/lib.rs
-@@ -58,6 +58,9 @@ mod whiteboard;
- #[cfg(not(any(target_os = "android", target_os = "ios")))]
- mod updater;
- 
-+#[cfg(not(any(target_os = "android", target_os = "ios")))]
-+mod glitch_update;
+diff --git a/src/glitch_update.rs b/src/glitch_update.rs
+new file mode 100644
+index 0000000..7b0844e
+--- /dev/null
++++ b/src/glitch_update.rs
+@@ -0,0 +1,124 @@
++// GL!TCH: silent self-update (Lawrence, 2026-11-15). Separate from stock
++// RustDesk's own updater.rs (which checks api.rustdesk.com and only
++// verifies downloaded-file size, not a hash) - this is driven entirely by
++// our own ClientRelease data, carried in the existing heartbeat `update`
++// field (see hbbs_http/sync.rs), and requires a matching sha256 before it
++// touches anything. Reuses the existing platform install primitives
++// (update_me_msi, update_me via the --update relaunch) rather than
++// reimplementing them.
++use hbb_common::{bail, config::LocalConfig, log, ResultType};
++use sha2::{Digest, Sha256};
++use std::{io::Write, sync::Once, time::Duration};
 +
- mod ui_cm_interface;
- mod ui_interface;
- mod ui_session_interface;
-diff --git a/src/flutter_ffi.rs b/src/flutter_ffi.rs
-index f9cc2d6..8e55e28 100644
---- a/src/flutter_ffi.rs
-+++ b/src/flutter_ffi.rs
-@@ -1210,6 +1210,15 @@ pub fn main_http_request(url: String, method: String, body: Option<String>, head
-     http_request(url, method, body, header)
- }
- 
-+// GL!TCH: "Update now" button on the Connect update banner (Lawrence,
-+// 2026-11-15). Fire-and-forget like main_http_request above - the actual
-+// download/verify/install runs on its own thread so this never blocks the
-+// UI isolate.
-+#[cfg(not(any(target_os = "android", target_os = "ios")))]
-+pub fn main_apply_glitch_update(url: String, sha256: String) {
-+    crate::glitch_update::apply_update_async(url, sha256);
++/// Downloads `url`, verifies it against `expected_sha256` (lowercase hex),
++/// and only then dispatches to the platform install path. Runs on the
++/// calling thread - callers that must not block (a UI button handler)
++/// should spawn this onto its own thread; see `apply_update_async`.
++pub fn apply_update(url: &str, expected_sha256: &str) -> ResultType<()> {
++    let expected = expected_sha256.trim().to_lowercase();
++    if expected.len() != 64 || !expected.chars().all(|c| c.is_ascii_hexdigit()) {
++        bail!("refusing to apply update: malformed sha256");
++    }
++
++    let client = crate::hbbs_http::create_http_client_with_url_strict(url)?;
++    let response = client.get(url).send()?;
++    if !response.status().is_success() {
++        bail!("failed to download update: {}", response.status());
++    }
++    let bytes = response.bytes()?;
++
++    let mut hasher = Sha256::new();
++    hasher.update(&bytes);
++    let actual = hex::encode(hasher.finalize());
++    if actual != expected {
++        bail!(
++            "update sha256 mismatch: expected {}, got {} - refusing to install",
++            expected,
++            actual
++        );
++    }
++
++    let filename = url
++        .rsplit('/')
++        .next()
++        .filter(|name| !name.is_empty())
++        .unwrap_or("glitch-update");
++    let file_path = std::env::temp_dir().join(filename);
++    {
++        let mut file = std::fs::File::create(&file_path)?;
++        file.write_all(&bytes)?;
++    }
++
++    install_downloaded(&file_path)
 +}
 +
- pub fn main_get_local_option(key: String) -> SyncReturn<String> {
-     SyncReturn(get_local_option(key))
- }
++/// Same as `apply_update`, but runs on a new thread and only logs on
++/// failure - for callers (a UI button, or the heartbeat handler) that must
++/// not block.
++pub fn apply_update_async(url: String, expected_sha256: String) {
++    std::thread::spawn(move || {
++        if let Err(e) = apply_update(&url, &expected_sha256) {
++            log::error!("GL!TCH update failed: {}", e);
++        }
++    });
++}
++
++#[cfg(target_os = "windows")]
++fn install_downloaded(file_path: &std::path::Path) -> ResultType<()> {
++    let path_str = file_path.to_string_lossy().to_string();
++    if crate::platform::is_msi_installed().unwrap_or(false) {
++        crate::platform::update_me_msi(&path_str, true)
++    } else {
++        let Some(session_id) = crate::platform::get_current_process_session_id() else {
++            bail!("failed to get current process session id");
++        };
++        let cmd = format!("{} --update", path_str);
++        let h = crate::platform::launch_privileged_process(session_id, &cmd)?;
++        if h.is_null() {
++            bail!("failed to launch the downloaded update");
++        }
++        Ok(())
++    }
++}
++
++#[cfg(not(target_os = "windows"))]
++fn install_downloaded(_file_path: &std::path::Path) -> ResultType<()> {
++    bail!("GL!TCH silent update is not implemented on this platform yet");
++}
++
++const TRIGGER_KEY: &str = "glitch_update_trigger";
++const TRIGGER_POLL_INTERVAL: Duration = Duration::from_secs(2);
++
++static TRIGGER_WATCHER_STARTED: Once = Once::new();
++
++/// Starts (once) a background thread that watches for the Connect "Update
++/// now" button writing `{"url":..,"sha256":..}` into LocalConfig under
++/// `glitch_update_trigger` (see connection_page.dart's _updateNow()).
++/// Deliberately reuses the existing mainSetLocalOption/mainGetLocalOption
++/// bridge calls instead of a new #[frb] function: a brand-new bind function
++/// needs fresh flutter_rust_bridge codegen, which runs as its own CI job
++/// against unpatched upstream source and would never see it.
++pub fn start_trigger_watcher() {
++    TRIGGER_WATCHER_STARTED.call_once(|| {
++        std::thread::spawn(|| loop {
++            std::thread::sleep(TRIGGER_POLL_INTERVAL);
++            let raw = LocalConfig::get_option(TRIGGER_KEY);
++            if raw.is_empty() {
++                continue;
++            }
++            LocalConfig::set_option(TRIGGER_KEY.to_string(), "".to_string());
++            let Ok(value) = serde_json::from_str::<serde_json::Value>(&raw) else {
++                continue;
++            };
++            let (Some(url), Some(sha256)) = (
++                value.get("url").and_then(|v| v.as_str()),
++                value.get("sha256").and_then(|v| v.as_str()),
++            ) else {
++                continue;
++            };
++            if let Err(e) = apply_update(url, sha256) {
++                log::error!("GL!TCH update (button-triggered) failed: {}", e);
++            }
++        });
++    });
++}
+diff --git a/src/hbbs_http/sync.rs b/src/hbbs_http/sync.rs
+index 728e1e8..5485264 100644
+--- a/src/hbbs_http/sync.rs
++++ b/src/hbbs_http/sync.rs
+@@ -265,6 +265,40 @@ async fn start_hbbs_sync_async() {
+                                 }
+                             }
+                         }
++                        // GL!TCH: silent client auto-update (Lawrence,
++                        // 2026-11-15). Deliberately anchored here, right
++                        // before the stock `strategy` block below (present
++                        // in every build), rather than on any
++                        // controller-patch content, which is skipped
++                        // entirely on GlitchHost builds. Connect and Tech
++                        // instead get a dismissible notify banner (see the
++                        // connection_page.dart "Update now" button patch)
++                        // plus this same silent path when the user clicks
++                        // it - see glitch_update.rs's trigger watcher.
++                        #[cfg(not(any(target_os = "android", target_os = "ios")))]
++                        if crate::get_app_name() == "GlitchHost" {
++                            if let Some(update) = rsp.get("update") {
++                                if let (Some(version), Some(url), Some(sha256)) = (
++                                    update.get("version").and_then(|v| v.as_str()),
++                                    update.get("url").and_then(|v| v.as_str()),
++                                    update.get("sha256").and_then(|v| v.as_str()),
++                                ) {
++                                    let attempted_key = "glitch_update_attempted_version";
++                                    if LocalConfig::get_option(attempted_key) != version
++                                        && crate::updater::has_no_active_conns()
++                                    {
++                                        LocalConfig::set_option(
++                                            attempted_key.to_string(),
++                                            version.to_string(),
++                                        );
++                                        crate::glitch_update::apply_update_async(
++                                            url.to_string(),
++                                            sha256.to_string(),
++                                        );
++                                    }
++                                }
++                            }
++                        }
+                         if let Some(strategy) = rsp.remove("strategy") {
+                             if let Ok(strategy) = serde_json::from_value::<StrategyOptions>(strategy) {
+                                 log::info!("strategy updated");
 diff --git a/src/lang/ar.rs b/src/lang/ar.rs
 index c8f23c0..1bc8545 100644
 --- a/src/lang/ar.rs
@@ -826,265 +967,35 @@ index e078a0b..fdde4c9 100644
 +        ("Updating…", ""),
      ].iter().cloned().collect();
  }
-diff --git a/src/glitch_update.rs b/src/glitch_update.rs
-new file mode 100644
-index 0000000..0000000
---- /dev/null
-+++ b/src/glitch_update.rs
-@@ -0,0 +1,86 @@
-+// GL!TCH: silent self-update (Lawrence, 2026-11-15). Separate from stock
-+// RustDesk's own updater.rs (which checks api.rustdesk.com and only
-+// verifies downloaded-file size, not a hash) - this is driven entirely by
-+// our own ClientRelease data, carried in the existing heartbeat `update`
-+// field (see hbbs_http/sync.rs), and requires a matching sha256 before it
-+// touches anything. Reuses the existing platform install primitives
-+// (update_me_msi, update_me via the --update relaunch) rather than
-+// reimplementing them.
-+use hbb_common::{bail, log, ResultType};
-+use sha2::{Digest, Sha256};
-+use std::io::Write;
-+
-+/// Downloads `url`, verifies it against `expected_sha256` (lowercase hex),
-+/// and only then dispatches to the platform install path. Runs on the
-+/// calling thread - callers that must not block (a UI button handler)
-+/// should spawn this onto its own thread; see `apply_update_async`.
-+pub fn apply_update(url: &str, expected_sha256: &str) -> ResultType<()> {
-+    let expected = expected_sha256.trim().to_lowercase();
-+    if expected.len() != 64 || !expected.chars().all(|c| c.is_ascii_hexdigit()) {
-+        bail!("refusing to apply update: malformed sha256");
-+    }
-+
-+    let client = crate::hbbs_http::create_http_client_with_url_strict(url)?;
-+    let response = client.get(url).send()?;
-+    if !response.status().is_success() {
-+        bail!("failed to download update: {}", response.status());
-+    }
-+    let bytes = response.bytes()?;
-+
-+    let mut hasher = Sha256::new();
-+    hasher.update(&bytes);
-+    let actual = hex::encode(hasher.finalize());
-+    if actual != expected {
-+        bail!(
-+            "update sha256 mismatch: expected {}, got {} - refusing to install",
-+            expected,
-+            actual
-+        );
-+    }
-+
-+    let filename = url
-+        .rsplit('/')
-+        .next()
-+        .filter(|name| !name.is_empty())
-+        .unwrap_or("glitch-update");
-+    let file_path = std::env::temp_dir().join(filename);
-+    {
-+        let mut file = std::fs::File::create(&file_path)?;
-+        file.write_all(&bytes)?;
-+    }
-+
-+    install_downloaded(&file_path)
-+}
-+
-+/// Same as `apply_update`, but runs on a new thread and only logs on
-+/// failure - for callers (a UI button) that must return immediately.
-+pub fn apply_update_async(url: String, expected_sha256: String) {
-+    std::thread::spawn(move || {
-+        if let Err(e) = apply_update(&url, &expected_sha256) {
-+            log::error!("GL!TCH update failed: {}", e);
-+        }
-+    });
-+}
-+
-+#[cfg(target_os = "windows")]
-+fn install_downloaded(file_path: &std::path::Path) -> ResultType<()> {
-+    let path_str = file_path.to_string_lossy().to_string();
-+    if crate::platform::is_msi_installed().unwrap_or(false) {
-+        crate::platform::update_me_msi(&path_str, true)
-+    } else {
-+        let Some(session_id) = crate::platform::get_current_process_session_id() else {
-+            bail!("failed to get current process session id");
-+        };
-+        let cmd = format!("{} --update", path_str);
-+        let h = crate::platform::launch_privileged_process(session_id, &cmd)?;
-+        if h.is_null() {
-+            bail!("failed to launch the downloaded update");
-+        }
-+        Ok(())
-+    }
-+}
-+
-+#[cfg(not(target_os = "windows"))]
-+fn install_downloaded(_file_path: &std::path::Path) -> ResultType<()> {
-+    bail!("GL!TCH silent update is not implemented on this platform yet");
-+}
-
-diff --git a/src/hbbs_http/sync.rs b/src/hbbs_http/sync.rs
---- a/src/hbbs_http/sync.rs
-+++ b/src/hbbs_http/sync.rs
-@@ -280,6 +280,28 @@
-                         // (key absent) means no update banner is shown;
-                         // this does not download or install anything.
-                         if let Some(update) = rsp.remove("update") {
-+                            #[cfg(not(any(target_os = "android", target_os = "ios")))]
-+                            if crate::get_app_name() == "GlitchHost" {
-+                                if let (Some(version), Some(url), Some(sha256)) = (
-+                                    update.get("version").and_then(|v| v.as_str()),
-+                                    update.get("url").and_then(|v| v.as_str()),
-+                                    update.get("sha256").and_then(|v| v.as_str()),
-+                                ) {
-+                                    let attempted_key = "glitch_update_attempted_version";
-+                                    if LocalConfig::get_option(attempted_key) != version
-+                                        && crate::updater::has_no_active_conns()
-+                                    {
-+                                        LocalConfig::set_option(
-+                                            attempted_key.to_string(),
-+                                            version.to_string(),
-+                                        );
-+                                        crate::glitch_update::apply_update_async(
-+                                            url.to_string(),
-+                                            sha256.to_string(),
-+                                        );
-+                                    }
-+                                }
-+                            }
-                             LocalConfig::set_option(
-                                 "glitch_update_available".to_string(),
-                                 update.to_string(),
-diff --git a/flutter/lib/desktop/pages/connection_page.dart b/flutter/lib/desktop/pages/connection_page.dart
---- a/flutter/lib/desktop/pages/connection_page.dart
-+++ b/flutter/lib/desktop/pages/connection_page.dart
-@@ -640,14 +640,16 @@
-   }
- }
+diff --git a/src/lib.rs b/src/lib.rs
+index 649f3ef..ab78e38 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -58,6 +58,9 @@ mod whiteboard;
+ #[cfg(not(any(target_os = "android", target_os = "ios")))]
+ mod updater;
  
--// GL!TCH: notify-only update banner (Lawrence, 2026-11-11). The Rust side
--// (hbbs_http/sync.rs) stashes the heartbeat response's `update` field
--// verbatim into the generic LocalConfig store under
--// 'glitch_update_available' whenever the server reports one - this just
--// polls that same key/value option store the rest of the app already uses
--// (bind.mainGetLocalOption/mainSetLocalOption), so no new FFI surface is
--// needed. Deliberately does NOT download or install anything itself - the
--// button only opens the URL for a human to run.
-+// GL!TCH: update banner (Lawrence, 2026-11-11; silent install added
-+// 2026-11-15). The Rust side (hbbs_http/sync.rs) stashes the heartbeat
-+// response's `update` field verbatim into the generic LocalConfig store
-+// under 'glitch_update_available' whenever the server reports one - this
-+// polls that key/value option store the rest of the app already uses
-+// (bind.mainGetLocalOption/mainSetLocalOption). Without a sha256 the button
-+// just opens the download URL for a human to run; with one, it calls
-+// mainApplyGlitchUpdate to download, sha256-verify and install silently -
-+// see glitch_update.rs. `mandatory` only changes whether the banner can be
-+// dismissed, never whether this install runs mid-session.
- class UpdateAvailableBanner extends StatefulWidget {
-   const UpdateAvailableBanner({Key? key}) : super(key: key);
- 
-@@ -661,6 +663,9 @@
-   Timer? _timer;
-   String? _version;
-   String? _url;
-+  String? _sha256;
-+  bool _mandatory = false;
-+  bool _updating = false;
- 
-   @override
-   void initState() {
-@@ -690,13 +695,22 @@
-       final data = jsonDecode(raw) as Map<String, dynamic>;
-       final version = (data['version'] ?? '').toString();
-       final url = (data['url'] ?? '').toString();
-+      final sha256 = (data['sha256'] ?? '').toString();
-+      final mandatory = data['mandatory'] == true;
-       if (version.isEmpty || url.isEmpty) return;
--      final dismissed = await bind.mainGetLocalOption(key: _dismissedKey);
--      if (dismissed == version) return;
-+      // GL!TCH: mandatory ignores the user's own dismissal (Lawrence,
-+      // 2026-11-15) - it still never force-installs mid-session, it just
-+      // keeps nagging instead of letting the banner stay closed.
-+      if (!mandatory) {
-+        final dismissed = await bind.mainGetLocalOption(key: _dismissedKey);
-+        if (dismissed == version) return;
-+      }
-       if (mounted) {
-         setState(() {
-           _version = version;
-           _url = url;
-+          _sha256 = sha256.isEmpty ? null : sha256;
-+          _mandatory = mandatory;
-         });
-       }
-     } catch (_) {
-@@ -705,6 +719,22 @@
-     }
-   }
- 
-+  Future<void> _updateNow() async {
-+    final url = _url;
-+    final sha256 = _sha256;
-+    if (url == null || sha256 == null || _updating) return;
-+    setState(() => _updating = true);
-+    await bind.mainApplyGlitchUpdate(url: url, sha256: sha256);
-+    // A successful update kills this process before this ever runs (the
-+    // install replaces/relaunches the app); only a failed download or a
-+    // sha256 mismatch gets here, so this just un-stucks the button to let
-+    // the user try again - see glitch_update.rs for the actual error, which
-+    // goes to the log file only.
-+    Future.delayed(const Duration(seconds: 60), () {
-+      if (mounted) setState(() => _updating = false);
-+    });
-+  }
++#[cfg(not(any(target_os = "android", target_os = "ios")))]
++mod glitch_update;
 +
-   @override
-   Widget build(BuildContext context) {
-     final version = _version;
-@@ -719,24 +749,33 @@
-               size: 18, color: MyTheme.accent),
-           const SizedBox(width: 8),
-           Expanded(
--            child: Text('${translate("Update available")}: v$version'),
--          ),
--          TextButton(
--            onPressed: () async {
--              if (await canLaunchUrlString(url)) {
--                launchUrlString(url);
--              }
--            },
--            child: Text(translate('Download')),
--          ),
--          IconButton(
--            tooltip: translate('Close'),
--            icon: const Icon(Icons.close, size: 16),
--            onPressed: () async {
--              await bind.mainSetLocalOption(key: _dismissedKey, value: version);
--              if (mounted) setState(() => _version = null);
--            },
-+            child: Text(_mandatory
-+                ? '${translate("Update required")}: v$version'
-+                : '${translate("Update available")}: v$version'),
-           ),
-+          if (_sha256 != null)
-+            TextButton(
-+              onPressed: _updating ? null : _updateNow,
-+              child: Text(translate(_updating ? 'Updating…' : 'Update now')),
-+            )
-+          else
-+            TextButton(
-+              onPressed: () async {
-+                if (await canLaunchUrlString(url)) {
-+                  launchUrlString(url);
-+                }
-+              },
-+              child: Text(translate('Download')),
-+            ),
-+          if (!_mandatory)
-+            IconButton(
-+              tooltip: translate('Close'),
-+              icon: const Icon(Icons.close, size: 16),
-+              onPressed: () async {
-+                await bind.mainSetLocalOption(key: _dismissedKey, value: version);
-+                if (mounted) setState(() => _version = null);
-+              },
-+            ),
-         ],
-       ),
-     );
+ mod ui_cm_interface;
+ mod ui_interface;
+ mod ui_session_interface;
+diff --git a/src/rendezvous_mediator.rs b/src/rendezvous_mediator.rs
+index b039995..5c710d8 100644
+--- a/src/rendezvous_mediator.rs
++++ b/src/rendezvous_mediator.rs
+@@ -279,6 +279,13 @@ impl RendezvousMediator {
+             }
+         }
+         crate::hbbs_http::sync::start();
++        // GL!TCH: the Connect "Update now" button's trigger watcher
++        // (Lawrence, 2026-11-15) - unlike the stock auto-updater below,
++        // this must run from the main UI process the button lives in, not
++        // just the installed background service, so it is not gated by
++        // is_installed()/is_server().
++        #[cfg(not(any(target_os = "android", target_os = "ios")))]
++        crate::glitch_update::start_trigger_watcher();
+         #[cfg(target_os = "windows")]
+         if crate::platform::is_installed() && crate::is_server() {
+             crate::updater::start_auto_update();
