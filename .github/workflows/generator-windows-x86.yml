@@ -291,7 +291,7 @@ jobs:
             python forcePresetPassword.py
 
       - name: Install LLVM and Clang
-        uses: KyleMayes/install-llvm-action@v1
+        uses: KyleMayes/install-llvm-action@v2
         with:
           version: ${{ env.LLVM_VERSION }}
 
