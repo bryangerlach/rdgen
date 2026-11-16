@@ -524,7 +524,6 @@ def _expected_files_for_platform(filename, platform):
             f"{filename}-aarch64.deb",
             f"{filename}-aarch64.rpm",
             f"{filename}-suse-aarch64.rpm",
-            f"{filename}-aarch64.pkg.tar.zst",
             f"{filename}-x86_64.AppImage",
             f"{filename}-aarch64.AppImage",
             f"{filename}-x86_64.flatpak",
