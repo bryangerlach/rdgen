@@ -29,6 +29,25 @@ ZIP_PASSWORD = os.environ.get("ZIP_PASSWORD",'insecure')
 PROTOCOL = os.environ.get("PROTOCOL", 'https')
 REPONAME = os.environ.get("REPONAME", 'rdgen')
 SH_SECRET = os.environ.get('SH_SECRET', 'secret')
+# "json": one JSON object per log line; anything else: the message alone, as before
+LOG_FORMAT = os.environ.get("LOG_FORMAT", "text")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "text": {"format": "%(message)s"},
+        "json": {"()": "rdgen.jsonlog.JSONFormatter"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stdout",
+            "formatter": "json" if LOG_FORMAT.lower() == "json" else "text",
+        },
+    },
+    "loggers": {"rdgenerator": {"handlers": ["console"], "level": "INFO", "propagate": False}},
+}
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

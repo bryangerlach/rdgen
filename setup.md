@@ -30,6 +30,7 @@
   * ZIP_PASSWORD="the same password that you entered as a github secret"
   * PROTOCOL="https" *optional - defaults to "https", change to "http" if you need to
   * REPONAME="rdgen" *optional - defaults to "rdgen", change this if you renamed the repo when you forked it
+  * LOG_FORMAT="json" *optional - one JSON object per log line, for log collectors; defaults to plain text
 5. Now just run ```docker compose up -d```
 
 
