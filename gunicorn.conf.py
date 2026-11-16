@@ -1,4 +1,5 @@
 # Gunicorn configuration for rdgen
+import os
 
 # Host and port for Gunicorn to listen on
 bind = "0.0.0.0:8000"
@@ -33,3 +34,23 @@ activate_base = True
 
 # Path to your Django project's main WSGI application file
 wsgi_app = "rdgen.wsgi.application"
+
+# LOG_FORMAT=json: the gunicorn logs as one JSON object per line too
+if os.environ.get("LOG_FORMAT", "").lower() == "json":
+    logconfig_dict = {
+        "version": 1,
+        "disable_existing_loggers": False,
+        "formatters": {"json": {"()": "rdgen.jsonlog.JSONFormatter"}},
+        "handlers": {
+            "console": {
+                "class": "logging.StreamHandler",
+                "formatter": "json",
+                "stream": "ext://sys.stdout",
+            },
+        },
+        "loggers": {
+            "gunicorn.error": {"handlers": ["console"], "level": "INFO", "propagate": False},
+            # no access log, as with the text format (the healthcheck would fill it)
+            "gunicorn.access": {"handlers": [], "propagate": False},
+        },
+    }
