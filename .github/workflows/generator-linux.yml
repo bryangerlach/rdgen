@@ -797,9 +797,12 @@ jobs:
           # found and replaced in place, same as the MSI's string table.
           set -e
           PLACEHOLDER="GLH-CODE-PLACEHOLDER-XXXXXXXXXXXXXXXXXXXXXXXXXXX"
+          PW_PLACEHOLDER="GLH-PW-PLACEHOLD"
+          NONE_SENTINEL="NONE000000000000"
           SRC="./output/${{ env.filename }}-${{ matrix.job.arch }}.deb"
           OUT="./output/${{ env.filename }}-host-${{ matrix.job.arch }}.deb"
           [ "${#PLACEHOLDER}" -eq 48 ] || { echo "placeholder length drifted"; exit 1; }
+          [ "${#PW_PLACEHOLDER}" -eq 16 ] || { echo "password placeholder length drifted"; exit 1; }
           [ -f "$SRC" ] || { echo "$SRC not found; not patching"; exit 1; }
 
           WORK=$(mktemp -d)
@@ -808,18 +811,29 @@ jobs:
           [ -f "$POSTINST" ] || { echo "postinst missing; not patching"; exit 1; }
           grep -q -- '--assign --token' "$POSTINST" && { echo "postinst already patched"; exit 1; }
 
-          python3 - "$POSTINST" "$PLACEHOLDER" "${{ env.appname }}" <<'PYEOF'
+          python3 - "$POSTINST" "$PLACEHOLDER" "$PW_PLACEHOLDER" "$NONE_SENTINEL" "${{ env.appname }}" <<'PYEOF'
           import sys
-          path, placeholder, appname = sys.argv[1:4]
+          path, placeholder, pw_placeholder, none_sentinel, appname = sys.argv[1:6]
           text = open(path).read()
           if 'if [ "$1" = configure ]; then' not in text:
               sys.exit("configure guard not found; postinst layout changed")
           lines = text.rstrip('\n').split('\n')
           if lines[-1].strip() != 'fi':
               sys.exit("trailing fi not found; postinst layout changed")
+          # GL!TCH: the server swaps PW_PLACEHOLDER for a real 16-char password,
+          # or for NONE_SENTINEL when it has nothing of that exact width to
+          # offer (HostInstalls::fixedWidthPassword) - the guard below skips
+          # --password for that sentinel rather than setting it to the literal.
+          # pw_placeholder is captured into a variable first and compared
+          # against none_sentinel through that variable, not against a
+          # second literal copy of pw_placeholder - the server's swap target
+          # (HostInstalls::passwordPlaceholderAtDeb) requires pw_placeholder
+          # to appear exactly once in the whole deb, verified below.
           inject = [
               '\tif [ -z "$2" ]; then',
               '\t\t/usr/bin/%s --assign --token %s --note GlitchHost || true' % (appname, placeholder),
+              '\t\tGLHPW=%s' % pw_placeholder,
+              '\t\tif [ "$GLHPW" != "%s" ]; then /usr/bin/%s --password "$GLHPW" || true; fi' % (none_sentinel, appname),
               '\tfi',
           ]
           lines[-1:-1] = inject
@@ -829,14 +843,18 @@ jobs:
           dpkg-deb -b --uniform-compression -Znone "$WORK" "$OUT"
           rm -rf "$WORK"
 
-          python3 - "$OUT" "$PLACEHOLDER" <<'PYEOF'
+          python3 - "$OUT" "$PLACEHOLDER" "$PW_PLACEHOLDER" <<'PYEOF'
           import sys
-          path, placeholder = sys.argv[1], sys.argv[2]
+          path, placeholder, pw_placeholder = sys.argv[1], sys.argv[2], sys.argv[3]
           data = open(path, 'rb').read()
           count = data.count(placeholder.encode())
           print(f"placeholder found {count} time(s)")
           if count != 1:
               sys.exit(f"Expected placeholder exactly once, found {count} - deb layout changed; update this step")
+          pw_count = data.count(pw_placeholder.encode())
+          print(f"password placeholder found {pw_count} time(s)")
+          if pw_count != 1:
+              sys.exit(f"Expected password placeholder exactly once, found {pw_count} - deb layout changed; update this step")
           PYEOF
           echo "written: $OUT"
 

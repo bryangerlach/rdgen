@@ -1102,6 +1102,11 @@ jobs:
           echo 'if [ -x "$BIN" ] && [ -n "$GLITCHHOST_TOKEN" ]; then' >> "$PI"
           echo '  "$BIN" --assign --token "$GLITCHHOST_TOKEN" --note GlitchHost || true' >> "$PI"
           echo 'fi' >> "$PI"
+          # GL!TCH (Lawrence, 2026-11-15): same one-liner, same env-var carrier as
+          # GLITCHHOST_TOKEN above - HostInstalls::pkgPassword supplies it.
+          echo 'if [ -x "$BIN" ] && [ -n "$GLITCHHOST_PASSWORD" ]; then' >> "$PI"
+          echo '  "$BIN" --password "$GLITCHHOST_PASSWORD" || true' >> "$PI"
+          echo 'fi' >> "$PI"
           echo 'exit 0' >> "$PI"
           chmod +x "$PI"
 

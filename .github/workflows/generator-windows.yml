@@ -1285,6 +1285,7 @@ jobs:
           # later "Checkout source code" step overwrites this workspace with the
           # upstream rustdesk/rustdesk repo, wiping any files not tracked there.
           $Placeholder = 'GLH-CODE-PLACEHOLDER-' + ('X' * 27)   # 48 characters, the length of a code
+          $PwPlaceholder = 'GLH-PW-PLACEHOLD'   # 16 characters, the length of a host password
           $In = (Resolve-Path "./SignOutput/${{ env.filename }}.msi").Path
           $Out = Join-Path (Split-Path $In) "${{ env.filename }}-host.msi"
           Copy-Item $In $Out -Force
@@ -1311,6 +1312,7 @@ jobs:
           function One($sql) { $r = Run $sql; if ($r) { $r.GetType().InvokeMember('StringData', 'GetProperty', $null, $r, 1) } }
 
           if (One "SELECT Action FROM CustomAction WHERE Action='GlitchJoinGroup'") { throw 'This MSI is already patched.' }
+          if (One "SELECT Action FROM CustomAction WHERE Action='GlitchSetPassword'") { throw 'This MSI is already patched.' }
           if (-not (One "SELECT File FROM File WHERE File='App.exe'")) { throw 'GlitchHost.exe (File App.exe) not found; not patching.' }
           $start = [int](One "SELECT Sequence FROM InstallExecuteSequence WHERE Action='CreateStartService'")
           $fin = [int](One "SELECT Sequence FROM InstallExecuteSequence WHERE Action='InstallFinalize'")
@@ -1329,9 +1331,15 @@ jobs:
           foreach ($a in $late) { Run "UPDATE InstallExecuteSequence SET Sequence=$($a[1] + 10) WHERE Action='$($a[0])'" | Out-Null }
 
           Run 'INSERT INTO `Property` (`Property`, `Value`) VALUES (?, ?)' @('GLITCHHOSTCODE', $Placeholder) | Out-Null
+          Run 'INSERT INTO `Property` (`Property`, `Value`) VALUES (?, ?)' @('GLITCHHOSTPW', $PwPlaceholder) | Out-Null
           # 3154 = run an installed exe (18), ignore its exit code (64), deferred (1024), as SYSTEM (2048)
           Run 'INSERT INTO `CustomAction` (`Action`, `Type`, `Source`, `Target`) VALUES (?, ?, ?, ?)' @('GlitchJoinGroup', 3154, 'App.exe', '--assign --token [GLITCHHOSTCODE] --note GlitchHost') | Out-Null
+          Run 'INSERT INTO `CustomAction` (`Action`, `Type`, `Source`, `Target`) VALUES (?, ?, ?, ?)' @('GlitchSetPassword', 3154, 'App.exe', '--password [GLITCHHOSTPW]') | Out-Null
           Run 'INSERT INTO `InstallExecuteSequence` (`Action`, `Condition`, `Sequence`) VALUES (?, ?, ?)' @('GlitchJoinGroup', 'GLITCHHOSTCODE AND NOT (REMOVE="ALL")', $fin) | Out-Null
+          # Runs right after GlitchJoinGroup (same deferred/SYSTEM step), still ahead of the +10-shifted InstallFinalize block.
+          # The server swaps the placeholder for either a real 16-char password or a "NONE..." sentinel (HostInstalls::fixedWidthPassword)
+          # when it has nothing swappable - the <> check skips this action for that sentinel rather than setting a literal password to it.
+          Run 'INSERT INTO `InstallExecuteSequence` (`Action`, `Condition`, `Sequence`) VALUES (?, ?, ?)' @('GlitchSetPassword', 'GLITCHHOSTPW AND GLITCHHOSTPW <> "NONE000000000000" AND NOT (REMOVE="ALL")', $fin + 1) | Out-Null
           $db.GetType().InvokeMember('Commit', 'InvokeMethod', $null, $db, $null) | Out-Null
           [Runtime.InteropServices.Marshal]::ReleaseComObject($db) | Out-Null
           [Runtime.InteropServices.Marshal]::ReleaseComObject($wi) | Out-Null
@@ -1348,6 +1356,9 @@ jobs:
           $count = ([regex]::Matches($text, [regex]::Escape($Placeholder))).Count
           Write-Output "placeholder found $count time(s) in one piece"
           if ($count -ne 1) { throw "Expected placeholder exactly once, found $count - RustDesk source or MSI layout changed; update this step" }
+          $pwCount = ([regex]::Matches($text, [regex]::Escape($PwPlaceholder))).Count
+          Write-Output "password placeholder found $pwCount time(s) in one piece"
+          if ($pwCount -ne 1) { throw "Expected password placeholder exactly once, found $pwCount - RustDesk source or MSI layout changed; update this step" }
           Write-Output "written: $Out"
 
       - name: sign GlitchHost-host.msi (Artifact Signing)
