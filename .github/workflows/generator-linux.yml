@@ -86,7 +86,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v7
         
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: encrypted-secrets-zip
 
@@ -817,7 +817,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v7
         
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: encrypted-secrets-zip
 
@@ -1421,7 +1421,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v7
         
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: encrypted-secrets-zip
 
@@ -1593,7 +1593,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v7
         
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: encrypted-secrets-zip
 
@@ -1744,7 +1744,7 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v7
         
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: encrypted-secrets-zip
 
