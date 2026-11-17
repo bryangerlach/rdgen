@@ -280,7 +280,7 @@ jobs:
           grep -nE "RENDEZVOUS_PORT|RELAY_PORT|WS_" ./libs/hbb_common/src/config.rs
 
       - name: allow custom.txt
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3

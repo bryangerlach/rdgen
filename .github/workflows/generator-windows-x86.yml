@@ -278,7 +278,7 @@ jobs:
           sed -i -e 's|<span>{translate("Ready")}, <span .link #setup-server>{translate("setup_server_tip")}</span></span>|translate("Ready")|' ./src/ui/index.tis
 
       - name: allow custom.txt
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -367,7 +367,7 @@ jobs:
 
       - name: magick stuff
         if: ${{ env.iconlink_url != 'false' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
