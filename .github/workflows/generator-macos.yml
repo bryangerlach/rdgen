@@ -876,6 +876,23 @@ jobs:
             sed -i '' -e "s/platform :osx, '.*'/platform :osx, '${MIN_MACOS_VERSION}'/" flutter/macos/Podfile
             sed -i '' -e "s/osx_minimum_system_version = \"[0-9]*.[0-9]*\"/osx_minimum_system_version = \"${MIN_MACOS_VERSION}\"/" Cargo.toml
             sed -i '' -e "s/MACOSX_DEPLOYMENT_TARGET = [0-9]*.[0-9]*;/MACOSX_DEPLOYMENT_TARGET = ${MIN_MACOS_VERSION};/" flutter/macos/Runner.xcodeproj/project.pbxproj
+            # The Podfile's own `platform :osx` line (patched above) only sets the
+            # project-level minimum - it does NOT raise the deployment target that
+            # individual bundled pods (FMDB, file_selector_macos, etc.) hardcode in
+            # their own podspecs. Newer Xcode (unlike GitHub's hosted macos-15 image)
+            # hard-errors on any target below its supported SDK range, so append a
+            # second post_install block (CocoaPods runs multiple in sequence) that
+            # force-raises every pod target's deployment target to match.
+            cat >> flutter/macos/Podfile <<EOF
+
+post_install do |installer|
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '${MIN_MACOS_VERSION}'
+    end
+  end
+end
+EOF
           fi
           sed -i '' -e "s/RustDesk.app/\"${{ env.appname }}.app\"/" build.py
           ./build.py --flutter --hwcodec --unix-file-copy-paste ${{ matrix.job.extra-build-args }}
