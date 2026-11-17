@@ -1189,7 +1189,19 @@ jobs:
             exit 1
           fi
           echo "Creating DMG for ${{ env.appname }}.app"
+          # GL!TCH: --skip-jenkins skips create-dmg's Finder-styling AppleScript
+          # (icon layout/background via osascript). On this self-hosted runner
+          # there's no interactive GUI session to grant Finder automation
+          # access, so that AppleEvent just times out after ~2 minutes
+          # ("AppleEvent timed out (-1712)") - worse, aarch64 and x86_64 build
+          # concurrently on the same physical Mac, so both DMG steps race for
+          # the same Finder/WindowServer session, which is why one arch can
+          # succeed while the other times out in the same run. --skip-jenkins
+          # builds the DMG via plain hdiutil with no Finder/AppleScript
+          # involved at all (loses the cosmetic icon layout, keeps everything
+          # else).
           create-dmg \
+            --skip-jenkins \
             --volname "${{ env.appname }}" \
             --window-pos 200 120 \
             --window-size 800 400 \
