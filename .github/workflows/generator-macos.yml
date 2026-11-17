@@ -883,16 +883,7 @@ jobs:
             # hard-errors on any target below its supported SDK range, so append a
             # second post_install block (CocoaPods runs multiple in sequence) that
             # force-raises every pod target's deployment target to match.
-            cat >> flutter/macos/Podfile <<EOF
-
-post_install do |installer|
-  installer.pods_project.targets.each do |target|
-    target.build_configurations.each do |config|
-      config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '${MIN_MACOS_VERSION}'
-    end
-  end
-end
-EOF
+            printf '\npost_install do |installer|\n  installer.pods_project.targets.each do |target|\n    target.build_configurations.each do |config|\n      config.build_settings["MACOSX_DEPLOYMENT_TARGET"] = "%s"\n    end\n  end\nend\n' "${MIN_MACOS_VERSION}" >> flutter/macos/Podfile
           fi
           sed -i '' -e "s/RustDesk.app/\"${{ env.appname }}.app\"/" build.py
           ./build.py --flutter --hwcodec --unix-file-copy-paste ${{ matrix.job.extra-build-args }}
