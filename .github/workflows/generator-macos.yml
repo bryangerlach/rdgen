@@ -1171,7 +1171,11 @@ jobs:
 
       - name: Create DMG
         run: |
-          cd /Users/runner/work/${{ github.event.repository.name }}/${{ github.event.repository.name }}/flutter/build/macos/Build/Products/Release
+          # GL!TCH: was hardcoded to /Users/runner/work/... (GitHub's hosted-runner
+          # home directory) - breaks on the self-hosted arm64 runner, whose user is
+          # elkaim, not runner. Every other step in this file reaches the same
+          # directory via a relative path or $GITHUB_WORKSPACE; do the same here.
+          cd "$GITHUB_WORKSPACE/flutter/build/macos/Build/Products/Release"
           # Print directory contents for debugging
           echo "Directory contents:"
           ls -la
