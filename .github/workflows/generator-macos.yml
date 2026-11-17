@@ -78,7 +78,7 @@ jobs:
             }
           - {
               target: aarch64-apple-darwin,
-              os: macos-15, # macos-14's hosted arm64 runner config ("macos-14-arm64-us-default") stopped being offered to this account on 2026-11-15/16 (confirmed via the GitHub Actions API: every macos-14 arm64 job fails immediately with "configuration ... is not supported", while the x86_64 job's macos-15-intel runner provisions fine) - macos-15 is the still-supported Apple Silicon label.
+              os: macos-arm64-local, # GitHub's hosted arm64 macOS runner fleet has a sustained capacity shortage for this account (jobs cancelled with "not acquired by Runner... capacity constraints" across three separate retries on 2026-11-16, even after the macos-14->macos-15 label fix below resolved the earlier hard "configuration not supported" error). Routed to Lawrence's self-hosted Apple Silicon Mac (custom runner label macos-arm64-local) instead, to get arm64 builds unblocked; macos-15 is the still-supported GitHub-hosted Apple Silicon label if we ever move this back.
               # extra-build-args: "--disable-flutter-texture-render", # disable this for mac, because we see a lot of users reporting flickering both on arm and x64, and we can not confirm if texture rendering has better performance if htere is no vram, https://github.com/rustdesk/rustdesk/issues/6296
               extra-build-args: "--screencapturekit",
               arch: aarch64,
