@@ -255,7 +255,7 @@ jobs:
 
       - name: icon stuff
         if: ${{ env.iconlink_url != 'false' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -360,7 +360,7 @@ jobs:
           grep -nE "RENDEZVOUS_PORT|RELAY_PORT|WS_" ./libs/hbb_common/src/config.rs
 
       - name: allow custom.txt
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -420,7 +420,7 @@ jobs:
 
       - name: use X for offline display instead of orange circle
         if: env.xOffline == 'true'
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -432,7 +432,7 @@ jobs:
 
       - name: hide-cm
         if: env.hidecm == 'true'
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -776,7 +776,7 @@ jobs:
 
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 10
           max_attempts: 3
@@ -790,7 +790,7 @@ jobs:
 
       - name: send file to api server
         if: ${{ env.rdgen == 'false' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 10
           max_attempts: 3
@@ -981,7 +981,7 @@ jobs:
 
       - name: icon stuff
         if: ${{ env.iconlink_url != 'false' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -1086,7 +1086,7 @@ jobs:
           grep -nE "RENDEZVOUS_PORT|RELAY_PORT|WS_" ./libs/hbb_common/src/config.rs
 
       - name: allow custom.txt
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -1146,7 +1146,7 @@ jobs:
 
       - name: use X for offline display instead of orange circle
         if: env.xOffline == 'true'
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -1158,7 +1158,7 @@ jobs:
 
       - name: hide-cm
         if: env.hidecm == 'true'
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -1380,7 +1380,7 @@ jobs:
 
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 10
           max_attempts: 3
@@ -1391,7 +1391,7 @@ jobs:
 
       - name: send file to api server
         if: ${{ env.rdgen == 'false' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 10
           max_attempts: 3
@@ -1477,7 +1477,7 @@ jobs:
 
       - name: icon stuff
         if: ${{ env.iconlink_url != 'false' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 5
           max_attempts: 3
@@ -1545,7 +1545,7 @@ jobs:
 
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 10
           max_attempts: 3
@@ -1556,7 +1556,7 @@ jobs:
           
       - name: send file to api server
         if: ${{ env.rdgen == 'false' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 10
           max_attempts: 3
@@ -1716,7 +1716,7 @@ jobs:
 
       - name: send file to rdgen server
         if: ${{ env.rdgen == 'true' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 10
           max_attempts: 3
@@ -1727,7 +1727,7 @@ jobs:
           
       - name: send file to api server
         if: ${{ env.rdgen == 'false' }}
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 10
           max_attempts: 3

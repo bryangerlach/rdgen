@@ -98,7 +98,7 @@ jobs:
           cache: true
 
       - name: Install flutter rust bridge deps
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 10
           max_attempts: 3
@@ -110,7 +110,7 @@ jobs:
             pushd flutter && sed -i -e 's/extended_text: 14.0.0/extended_text: 13.0.0/g' pubspec.yaml && flutter pub get && popd
 
       - name: Run flutter rust bridge
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
           timeout_minutes: 10
           max_attempts: 3
