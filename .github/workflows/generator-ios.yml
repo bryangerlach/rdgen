@@ -148,62 +148,9 @@ jobs:
             git apply --verbose glitch-03-peer-card-id-gate.diff
             git apply --verbose glitch-06-mobile-id-box-gate.diff
             git apply --verbose glitch-07-mobile-login-gate.diff
-            python3 - <<'PYEOF2'
-            def sub1(path, old, new, label):
-                with open(path, encoding='utf-8') as f:
-                    s = f.read()
-                if old not in s:
-                    raise SystemExit(f"ERROR: {label} pattern not found in {path}")
-                s = s.replace(old, new, 1)
-                with open(path, 'w', encoding='utf-8') as f:
-                    f.write(s)
-                print(f"applied: {label}")
-
-            sub1(
-                'flutter/lib/common/widgets/autocomplete.dart',
-                "                                                      widget.peer.alias.isEmpty\n"
-                "                                                          ? formatID(\n"
-                "                                                              widget.peer.id)\n"
-                "                                                          : widget.peer.alias,",
-                "                                                      peerPrimaryLabel(\n"
-                "                                                          widget.peer),",
-                "autocomplete primary label",
-            )
-            sub1(
-                'flutter/lib/common/widgets/autocomplete.dart',
-                "                                                    widget.peer.alias.isNotEmpty\n"
-                "                                                        ? Padding(\n"
-                "                                                            padding:\n"
-                "                                                                const EdgeInsets\n"
-                "                                                                    .only(\n"
-                "                                                                    left: 5,\n"
-                "                                                                    right: 5),\n"
-                "                                                            child: Text(\n"
-                "                                                              \"(${widget.peer.id})\",\n"
-                "                                                              style: greyStyle,\n"
-                "                                                              overflow:\n"
-                "                                                                  TextOverflow\n"
-                "                                                                      .ellipsis,\n"
-                "                                                            ))\n"
-                "                                                        : Container(),",
-                "                                                    Container(),",
-                "autocomplete id-suffix removal",
-            )
-            sub1(
-                'flutter/lib/common/widgets/peer_card.dart',
-                "      (peer.alias.isEmpty\n"
-                "          ? translate('Connect')\n"
-                "          : '${translate('Connect')} ${peer.id}'),",
-                "      '${translate('Connect')} ${peerPrimaryLabel(peer)}',",
-                "connect-action label",
-            )
-            sub1(
-                'flutter/lib/common/widgets/peer_card.dart',
-                "            '${translate('Delete')} \"${peer.alias.isEmpty ? formatID(peer.id) : peer.alias}\"?');",
-                "            '${translate('Delete')} \"${peerPrimaryLabel(peer)}\"?');",
-                "delete-confirm label",
-            )
-            PYEOF2
+            echo 'ZGVmIHN1YjEocGF0aCwgb2xkLCBuZXcsIGxhYmVsKToKICAgIHdpdGggb3BlbihwYXRoLCBlbmNvZGluZz0ndXRmLTgnKSBhcyBmOgogICAgICAgIHMgPSBmLnJlYWQoKQogICAgaWYgb2xkIG5vdCBpbiBzOgogICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoZiJFUlJPUjoge2xhYmVsfSBwYXR0ZXJuIG5vdCBmb3VuZCBpbiB7cGF0aH0iKQogICAgcyA9IHMucmVwbGFjZShvbGQsIG5ldywgMSkKICAgIHdpdGggb3BlbihwYXRoLCAndycsIGVuY29kaW5nPSd1dGYtOCcpIGFzIGY6CiAgICAgICAgZi53cml0ZShzKQogICAgcHJpbnQoZiJhcHBsaWVkOiB7bGFiZWx9IikKCnN1YjEoCiAgICAnZmx1dHRlci9saWIvY29tbW9uL3dpZGdldHMvYXV0b2NvbXBsZXRlLmRhcnQnLAogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHdpZGdldC5wZWVyLmFsaWFzLmlzRW1wdHlcbiIKICAgICIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPyBmb3JtYXRJRChcbiIKICAgICIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHdpZGdldC5wZWVyLmlkKVxuIgogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA6IHdpZGdldC5wZWVyLmFsaWFzLCIsCiAgICAiICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcGVlclByaW1hcnlMYWJlbChcbiIKICAgICIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgd2lkZ2V0LnBlZXIpLCIsCiAgICAiYXV0b2NvbXBsZXRlIHByaW1hcnkgbGFiZWwiLAopCnN1YjEoCiAgICAnZmx1dHRlci9saWIvY29tbW9uL3dpZGdldHMvYXV0b2NvbXBsZXRlLmRhcnQnLAogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB3aWRnZXQucGVlci5hbGlhcy5pc05vdEVtcHR5XG4iCiAgICAiICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/IFBhZGRpbmcoXG4iCiAgICAiICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcGFkZGluZzpcbiIKICAgICIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgY29uc3QgRWRnZUluc2V0c1xuIgogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgLm9ubHkoXG4iCiAgICAiICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBsZWZ0OiA1LFxuIgogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcmlnaHQ6IDUpLFxuIgogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNoaWxkOiBUZXh0KFxuIgogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXCIoJHt3aWRnZXQucGVlci5pZH0pXCIsXG4iCiAgICAiICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBzdHlsZTogZ3JleVN0eWxlLFxuIgogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgb3ZlcmZsb3c6XG4iCiAgICAiICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgVGV4dE92ZXJmbG93XG4iCiAgICAiICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC5lbGxpcHNpcyxcbiIKICAgICIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICApKVxuIgogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgOiBDb250YWluZXIoKSwiLAogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBDb250YWluZXIoKSwiLAogICAgImF1dG9jb21wbGV0ZSBpZC1zdWZmaXggcmVtb3ZhbCIsCikKc3ViMSgKICAgICdmbHV0dGVyL2xpYi9jb21tb24vd2lkZ2V0cy9wZWVyX2NhcmQuZGFydCcsCiAgICAiICAgICAgKHBlZXIuYWxpYXMuaXNFbXB0eVxuIgogICAgIiAgICAgICAgICA/IHRyYW5zbGF0ZSgnQ29ubmVjdCcpXG4iCiAgICAiICAgICAgICAgIDogJyR7dHJhbnNsYXRlKCdDb25uZWN0Jyl9ICR7cGVlci5pZH0nKSwiLAogICAgIiAgICAgICcke3RyYW5zbGF0ZSgnQ29ubmVjdCcpfSAke3BlZXJQcmltYXJ5TGFiZWwocGVlcil9JywiLAogICAgImNvbm5lY3QtYWN0aW9uIGxhYmVsIiwKKQpzdWIxKAogICAgJ2ZsdXR0ZXIvbGliL2NvbW1vbi93aWRnZXRzL3BlZXJfY2FyZC5kYXJ0JywKICAgICIgICAgICAgICAgICAnJHt0cmFuc2xhdGUoJ0RlbGV0ZScpfSBcIiR7cGVlci5hbGlhcy5pc0VtcHR5ID8gZm9ybWF0SUQocGVlci5pZCkgOiBwZWVyLmFsaWFzfVwiPycpOyIsCiAgICAiICAgICAgICAgICAgJyR7dHJhbnNsYXRlKCdEZWxldGUnKX0gXCIke3BlZXJQcmltYXJ5TGFiZWwocGVlcil9XCI/Jyk7IiwKICAgICJkZWxldGUtY29uZmlybSBsYWJlbCIsCikK' | base64 -d > glitch09_fix.py
+            python3 glitch09_fix.py
+            rm -f glitch09_fix.py
             grep -q "peerPrimaryLabel($" flutter/lib/common/widgets/autocomplete.dart || { echo "ERROR: autocomplete ID-removal missing"; exit 1; }
             grep -q "peerPrimaryLabel(peer)" flutter/lib/common/widgets/peer_card.dart || { echo "ERROR: peer_card connect/delete ID-removal missing"; exit 1; }
             grep -q "canSeeDeviceId" flutter/lib/models/user_model.dart || { echo "ERROR: Tech-tier patches missing"; exit 1; }
