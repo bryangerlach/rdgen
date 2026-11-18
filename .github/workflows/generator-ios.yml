@@ -74,7 +74,11 @@ jobs:
   build-ios:
     name: Build iOS (unsigned)
     needs: [generate-bridge]
-    runs-on: macos-latest
+    # GitHub-hosted macOS arm64 runners have a sustained capacity shortage for this
+    # account (job cancelled with "not acquired by Runner... capacity constraints" on
+    # run 42098884864, 2026-11-11). Routed to the same self-hosted Apple Silicon Mac
+    # already used by generator-macos.yml (see that file's arm64 leg) to unblock iOS.
+    runs-on: macos-arm64-local
     strategy:
       fail-fast: false
       matrix:
