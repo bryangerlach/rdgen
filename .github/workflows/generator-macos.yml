@@ -192,62 +192,9 @@ jobs:
             git apply --verbose glitch-03-peer-card-id-gate.diff
             git apply --verbose glitch-04-tab-title-alias.diff
             git apply --verbose glitch-05-connection-page-id-box.diff
-            python3 - <<'PYEOF2'
-            def sub1(path, old, new, label):
-                with open(path, encoding='utf-8') as f:
-                    s = f.read()
-                if old not in s:
-                    raise SystemExit(f"ERROR: {label} pattern not found in {path}")
-                s = s.replace(old, new, 1)
-                with open(path, 'w', encoding='utf-8') as f:
-                    f.write(s)
-                print(f"applied: {label}")
-
-            sub1(
-                'flutter/lib/common/widgets/autocomplete.dart',
-                "                                                      widget.peer.alias.isEmpty\n"
-                "                                                          ? formatID(\n"
-                "                                                              widget.peer.id)\n"
-                "                                                          : widget.peer.alias,",
-                "                                                      peerPrimaryLabel(\n"
-                "                                                          widget.peer),",
-                "autocomplete primary label",
-            )
-            sub1(
-                'flutter/lib/common/widgets/autocomplete.dart',
-                "                                                    widget.peer.alias.isNotEmpty\n"
-                "                                                        ? Padding(\n"
-                "                                                            padding:\n"
-                "                                                                const EdgeInsets\n"
-                "                                                                    .only(\n"
-                "                                                                    left: 5,\n"
-                "                                                                    right: 5),\n"
-                "                                                            child: Text(\n"
-                "                                                              \"(${widget.peer.id})\",\n"
-                "                                                              style: greyStyle,\n"
-                "                                                              overflow:\n"
-                "                                                                  TextOverflow\n"
-                "                                                                      .ellipsis,\n"
-                "                                                            ))\n"
-                "                                                        : Container(),",
-                "                                                    Container(),",
-                "autocomplete id-suffix removal",
-            )
-            sub1(
-                'flutter/lib/common/widgets/peer_card.dart',
-                "      (peer.alias.isEmpty\n"
-                "          ? translate('Connect')\n"
-                "          : '${translate('Connect')} ${peer.id}'),",
-                "      '${translate('Connect')} ${peerPrimaryLabel(peer)}',",
-                "connect-action label",
-            )
-            sub1(
-                'flutter/lib/common/widgets/peer_card.dart',
-                "            '${translate('Delete')} \"${peer.alias.isEmpty ? formatID(peer.id) : peer.alias}\"?');",
-                "            '${translate('Delete')} \"${peerPrimaryLabel(peer)}\"?');",
-                "delete-confirm label",
-            )
-            PYEOF2
+            echo 'ZGVmIHN1YjEocGF0aCwgb2xkLCBuZXcsIGxhYmVsKToKICAgIHdpdGggb3BlbihwYXRoLCBlbmNvZGluZz0ndXRmLTgnKSBhcyBmOgogICAgICAgIHMgPSBmLnJlYWQoKQogICAgaWYgb2xkIG5vdCBpbiBzOgogICAgICAgIHJhaXNlIFN5c3RlbUV4aXQoZiJFUlJPUjoge2xhYmVsfSBwYXR0ZXJuIG5vdCBmb3VuZCBpbiB7cGF0aH0iKQogICAgcyA9IHMucmVwbGFjZShvbGQsIG5ldywgMSkKICAgIHdpdGggb3BlbihwYXRoLCAndycsIGVuY29kaW5nPSd1dGYtOCcpIGFzIGY6CiAgICAgICAgZi53cml0ZShzKQogICAgcHJpbnQoZiJhcHBsaWVkOiB7bGFiZWx9IikKCnN1YjEoCiAgICAnZmx1dHRlci9saWIvY29tbW9uL3dpZGdldHMvYXV0b2NvbXBsZXRlLmRhcnQnLAogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHdpZGdldC5wZWVyLmFsaWFzLmlzRW1wdHlcbiIKICAgICIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgPyBmb3JtYXRJRChcbiIKICAgICIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHdpZGdldC5wZWVyLmlkKVxuIgogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA6IHdpZGdldC5wZWVyLmFsaWFzLCIsCiAgICAiICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcGVlclByaW1hcnlMYWJlbChcbiIKICAgICIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgd2lkZ2V0LnBlZXIpLCIsCiAgICAiYXV0b2NvbXBsZXRlIHByaW1hcnkgbGFiZWwiLAopCnN1YjEoCiAgICAnZmx1dHRlci9saWIvY29tbW9uL3dpZGdldHMvYXV0b2NvbXBsZXRlLmRhcnQnLAogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICB3aWRnZXQucGVlci5hbGlhcy5pc05vdEVtcHR5XG4iCiAgICAiICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA/IFBhZGRpbmcoXG4iCiAgICAiICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcGFkZGluZzpcbiIKICAgICIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgY29uc3QgRWRnZUluc2V0c1xuIgogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgLm9ubHkoXG4iCiAgICAiICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBsZWZ0OiA1LFxuIgogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgcmlnaHQ6IDUpLFxuIgogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIGNoaWxkOiBUZXh0KFxuIgogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgXCIoJHt3aWRnZXQucGVlci5pZH0pXCIsXG4iCiAgICAiICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBzdHlsZTogZ3JleVN0eWxlLFxuIgogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgb3ZlcmZsb3c6XG4iCiAgICAiICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgVGV4dE92ZXJmbG93XG4iCiAgICAiICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIC5lbGxpcHNpcyxcbiIKICAgICIgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICApKVxuIgogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgOiBDb250YWluZXIoKSwiLAogICAgIiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICBDb250YWluZXIoKSwiLAogICAgImF1dG9jb21wbGV0ZSBpZC1zdWZmaXggcmVtb3ZhbCIsCikKc3ViMSgKICAgICdmbHV0dGVyL2xpYi9jb21tb24vd2lkZ2V0cy9wZWVyX2NhcmQuZGFydCcsCiAgICAiICAgICAgKHBlZXIuYWxpYXMuaXNFbXB0eVxuIgogICAgIiAgICAgICAgICA/IHRyYW5zbGF0ZSgnQ29ubmVjdCcpXG4iCiAgICAiICAgICAgICAgIDogJyR7dHJhbnNsYXRlKCdDb25uZWN0Jyl9ICR7cGVlci5pZH0nKSwiLAogICAgIiAgICAgICcke3RyYW5zbGF0ZSgnQ29ubmVjdCcpfSAke3BlZXJQcmltYXJ5TGFiZWwocGVlcil9JywiLAogICAgImNvbm5lY3QtYWN0aW9uIGxhYmVsIiwKKQpzdWIxKAogICAgJ2ZsdXR0ZXIvbGliL2NvbW1vbi93aWRnZXRzL3BlZXJfY2FyZC5kYXJ0JywKICAgICIgICAgICAgICAgICAnJHt0cmFuc2xhdGUoJ0RlbGV0ZScpfSBcIiR7cGVlci5hbGlhcy5pc0VtcHR5ID8gZm9ybWF0SUQocGVlci5pZCkgOiBwZWVyLmFsaWFzfVwiPycpOyIsCiAgICAiICAgICAgICAgICAgJyR7dHJhbnNsYXRlKCdEZWxldGUnKX0gXCIke3BlZXJQcmltYXJ5TGFiZWwocGVlcil9XCI/Jyk7IiwKICAgICJkZWxldGUtY29uZmlybSBsYWJlbCIsCikK' | base64 -d > glitch09_fix.py
+            python3 glitch09_fix.py
+            rm -f glitch09_fix.py
             grep -q "peerPrimaryLabel($" flutter/lib/common/widgets/autocomplete.dart || { echo "ERROR: autocomplete ID-removal missing"; exit 1; }
             grep -q "peerPrimaryLabel(peer)" flutter/lib/common/widgets/peer_card.dart || { echo "ERROR: peer_card connect/delete ID-removal missing"; exit 1; }
             echo 'LS0tIGEvZmx1dHRlci9saWIvY29tbW9uL2hiYnMvaGJicy5kYXJ0CTIwMjYtMTEtMTEgMTQ6MDA6MDAuMDAwMDAwMDAwIC0wNTAwCisrKyBiL2ZsdXR0ZXIvbGliL2NvbW1vbi9oYmJzL2hiYnMuZGFydAkyMDI2LTExLTExIDE0OjA4OjAwLjAwMDAwMDAwMCAtMDUwMApAQCAtODQsNiArODQsMTAgQEAKICAgU3RyaW5nIHVzZXJfbmFtZSA9ICcnOwogICBTdHJpbmc/IGRldmljZV9ncm91cF9uYW1lOwogICBTdHJpbmcgbm90ZSA9ICcnOworICAvLyBHTCFUQ0g6IHRoaXMgc3luYyBwYXRoIG90aGVyd2lzZSBuZXZlciBjYXJyaWVzIGFuIGFsaWFzIGF0IGFsbCwgc28gdGhlCisgIC8vIHBlZXIgY2FyZCdzIHRpdGxlIGFsd2F5cyBmZWxsIGJhY2sgdG8gZm9ybWF0SUQocGVlci5pZCkgLSB0aGUgcmF3IElELgorICAvLyBDb3J0ZW5EZXNrIHNlbmRzIHRoZSBjbGVhbiBkZXZpY2UgbmFtZSBoZXJlIHNwZWNpZmljYWxseSBmb3IgdGhpcy4KKyAgU3RyaW5nIGFsaWFzID0gJyc7CgogICBQZWVyUGF5bG9hZC5mcm9tSnNvbihNYXA8U3RyaW5nLCBkeW5hbWljPiBqc29uKQogICAgICAgOiBpZCA9IGpzb25bJ2lkJ10gPz8gJycsCkBAIC05MiwxMyArOTYsMTUgQEAKICAgICAgICAgdXNlciA9IGpzb25bJ3VzZXInXSA/PyAnJywKICAgICAgICAgdXNlcl9uYW1lID0ganNvblsndXNlcl9uYW1lJ10gPz8gJycsCiAgICAgICAgIGRldmljZV9ncm91cF9uYW1lID0ganNvblsnZGV2aWNlX2dyb3VwX25hbWUnXSA/PyAnJywKLSAgICAgICAgbm90ZSA9IGpzb25bJ25vdGUnXSA/PyAnJzsKKyAgICAgICAgbm90ZSA9IGpzb25bJ25vdGUnXSA/PyAnJywKKyAgICAgICAgYWxpYXMgPSBqc29uWydhbGlhcyddID8/ICcnOwoKICAgc3RhdGljIFBlZXIgdG9QZWVyKFBlZXJQYXlsb2FkIHApIHsKICAgICByZXR1cm4gUGVlci5mcm9tSnNvbih7CiAgICAgICAiaWQiOiBwLmlkLAogICAgICAgJ2xvZ2luTmFtZSc6IHAudXNlcl9uYW1lLAogICAgICAgInVzZXJuYW1lIjogcC5pbmZvWyd1c2VybmFtZSddID8/ICcnLAorICAgICAgImFsaWFzIjogcC5hbGlhcywKICAgICAgICJwbGF0Zm9ybSI6IF9wbGF0Zm9ybShwLmluZm9bJ29zJ10pLAogICAgICAgImhvc3RuYW1lIjogcC5pbmZvWydkZXZpY2VfbmFtZSddLAogICAgICAgImRldmljZV9ncm91cF9uYW1lIjogcC5kZXZpY2VfZ3JvdXBfbmFtZSwK' | base64 -d > glitch-10-group-peer-alias.diff
