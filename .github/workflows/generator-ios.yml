@@ -64,6 +64,13 @@ env:
   appname: "${{ inputs.appname }}"
   filename: "${{ inputs.filename }}"
   compname: "${{ inputs.compname }}"
+  # GL!TCH: real iOS signing, scaffolded but unverified against an actual
+  # Apple Distribution cert/profile - see PR description. All signing/export/
+  # TestFlight steps below are skipped (today's unsigned build is unchanged)
+  # whenever IOS_DIST_P12_BASE64 is unset, so nothing breaks until these are
+  # configured in GitHub Actions secrets.
+  IOS_DIST_P12_BASE64: "${{ secrets.IOS_DIST_P12_BASE64 }}"
+  IOS_ASC_KEY_BASE64: "${{ secrets.IOS_ASC_KEY_BASE64 }}"
 
 jobs:
   generate-bridge:
@@ -240,37 +247,117 @@ jobs:
           rustup target add ${{ matrix.job.target }}
           cargo build --locked --features flutter,hwcodec --release --target ${{ matrix.job.target }} --lib
 
-      - name: Build rustdesk (unsigned ipa)
+      # GL!TCH: real signing path. Only runs when IOS_DIST_P12_BASE64 is set;
+      # imports the Apple Distribution cert into a throwaway keychain and
+      # installs the provisioning profile where Xcode looks for it.
+      - name: Import iOS signing certificate
+        if: env.IOS_DIST_P12_BASE64 != ''
+        uses: apple-actions/import-codesign-certs@v3
+        with:
+          p12-file-base64: ${{ secrets.IOS_DIST_P12_BASE64 }}
+          p12-password: ${{ secrets.IOS_DIST_P12_PASSWORD }}
+
+      - name: Install provisioning profile & write ExportOptions.plist
+        if: env.IOS_DIST_P12_BASE64 != ''
         shell: bash
         run: |
-          pushd flutter
-          flutter build ipa --release --no-codesign
-          popd
+          set -e
+          echo "${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}" | base64 --decode > profile.mobileprovision
+          security cms -D -i profile.mobileprovision > profile.plist
+          TEAM_ID=$(/usr/libexec/PlistBuddy -c "Print :TeamIdentifier:0" profile.plist)
+          PROFILE_UUID=$(/usr/libexec/PlistBuddy -c "Print :UUID" profile.plist)
+          PROFILE_NAME=$(/usr/libexec/PlistBuddy -c "Print :Name" profile.plist)
+          echo "profile '$PROFILE_NAME' ($PROFILE_UUID), team $TEAM_ID"
 
-          # GL!TCH: "flutter build ipa --no-codesign" only ever produces the
-          # .xcarchive - Xcode's own IPA export step requires a signing
-          # identity, so Flutter deliberately stops there and prints
-          # "Codesigning disabled with --no-codesign, skipping IPA." (this
-          # is why every earlier attempt "succeeded" at building but then
-          # failed to upload - there was never an .ipa to find). Package the
-          # already-built .app into a standard unsigned IPA ourselves: a
-          # "Payload/<App>.app" folder zipped with a .ipa extension, exactly
-          # what sideloading tools (AltStore, Sideloadly) expect.
-          ARCHIVE_APP=$(find flutter/build/ios/archive/Runner.xcarchive/Products/Applications -maxdepth 1 -name "*.app" | head -n 1)
-          if [ -z "$ARCHIVE_APP" ]; then
-            echo "::error::No .app found in the built archive"
-            exit 1
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp profile.mobileprovision "$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
+
+          cat > "$GITHUB_WORKSPACE/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store</string>
+            <key>teamID</key>
+            <string>$TEAM_ID</string>
+            <key>signingStyle</key>
+            <string>manual</string>
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
+            <key>provisioningProfiles</key>
+            <dict>
+              <key>${{ inputs.bundle_id }}</key>
+              <string>$PROFILE_UUID</string>
+            </dict>
+          </dict>
+          </plist>
+          PLIST
+          rm -f profile.mobileprovision profile.plist
+
+      - name: Build rustdesk ipa
+        shell: bash
+        run: |
+          set -e
+          if [[ -n "${{ env.IOS_DIST_P12_BASE64 }}" ]]; then
+            echo "Signed build: exporting via $GITHUB_WORKSPACE/ExportOptions.plist (method=app-store)"
+            pushd flutter
+            flutter build ipa --release --export-options-plist="$GITHUB_WORKSPACE/ExportOptions.plist"
+            popd
+            IPA=$(find flutter/build/ios/ipa -maxdepth 1 -name "*.ipa" | head -n 1)
+            if [ -z "$IPA" ]; then
+              echo "::error::Signed export did not produce an .ipa - check the Xcode export log above for a signing/profile mismatch"
+              exit 1
+            fi
+            echo "IOS_ARTIFACT_NAME=${{ env.filename }}-ios" >> "$GITHUB_ENV"
+          else
+            pushd flutter
+            flutter build ipa --release --no-codesign
+            popd
+
+            # GL!TCH: "flutter build ipa --no-codesign" only ever produces the
+            # .xcarchive - Xcode's own IPA export step requires a signing
+            # identity, so Flutter deliberately stops there and prints
+            # "Codesigning disabled with --no-codesign, skipping IPA." (this
+            # is why every earlier attempt "succeeded" at building but then
+            # failed to upload - there was never an .ipa to find). Package the
+            # already-built .app into a standard unsigned IPA ourselves: a
+            # "Payload/<App>.app" folder zipped with a .ipa extension, exactly
+            # what sideloading tools (AltStore, Sideloadly) expect.
+            ARCHIVE_APP=$(find flutter/build/ios/archive/Runner.xcarchive/Products/Applications -maxdepth 1 -name "*.app" | head -n 1)
+            if [ -z "$ARCHIVE_APP" ]; then
+              echo "::error::No .app found in the built archive"
+              exit 1
+            fi
+            mkdir -p flutter/build/ios/ipa/Payload
+            cp -r "$ARCHIVE_APP" flutter/build/ios/ipa/Payload/
+            pushd flutter/build/ios/ipa
+            zip -r -q "${{ env.filename }}-unsigned.ipa" Payload
+            rm -rf Payload
+            popd
+            echo "IOS_ARTIFACT_NAME=${{ env.filename }}-ios-unsigned" >> "$GITHUB_ENV"
           fi
-          mkdir -p flutter/build/ios/ipa/Payload
-          cp -r "$ARCHIVE_APP" flutter/build/ios/ipa/Payload/
-          pushd flutter/build/ios/ipa
-          zip -r -q "${{ env.filename }}-unsigned.ipa" Payload
-          rm -rf Payload
-          popd
 
-      - name: Upload unsigned build artifact
+      # GL!TCH: opt-in, unverified against a real build - needs validation
+      # once real secrets are in place. Ships the signed ipa straight to
+      # TestFlight using the same App Store Connect API key already issued
+      # for notarization (GlitchApps/AppleConnect), so testers get OTA
+      # updates with no manual re-signing/sideloading step ever again.
+      - name: Upload to TestFlight
+        if: env.IOS_DIST_P12_BASE64 != '' && env.IOS_ASC_KEY_BASE64 != ''
+        shell: bash
+        run: |
+          set -e
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.IOS_ASC_KEY_BASE64 }}" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.IOS_ASC_KEY_ID }}.p8
+          IPA=$(find flutter/build/ios/ipa -maxdepth 1 -name "*.ipa" | head -n 1)
+          xcrun altool --upload-app --type ios -f "$IPA" \
+            --apiKey "${{ secrets.IOS_ASC_KEY_ID }}" --apiIssuer "${{ secrets.IOS_ASC_ISSUER_ID }}"
+          rm -f ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.IOS_ASC_KEY_ID }}.p8
+
+      - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.filename }}-ios-unsigned
+          name: ${{ env.IOS_ARTIFACT_NAME }}
           path: flutter/build/ios/ipa/
           if-no-files-found: error
