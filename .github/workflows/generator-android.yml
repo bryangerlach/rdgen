@@ -701,21 +701,58 @@ jobs:
           mv ../rustdesk-${{ env.VERSION }}-${{ matrix.job.arch }}${{ matrix.job.suffix }}.apk ./${{ env.filename }}-${{ matrix.job.arch }}.apk
           popd
       
+      - name: Check Android signing configuration
+        id: signcheck
+        shell: bash
+        env:
+          KS_B64: ${{ secrets.ANDROID_SIGNING_KEY }}
+          KS_ALIAS: ${{ secrets.ANDROID_ALIAS }}
+          KS_STORE_PASS: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
+          KS_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          # "if: env.ANDROID_SIGNING_KEY != null" never worked: an unset secret
+          # is an empty string, not null, so the sign step always ran and its
+          # failure was swallowed by continue-on-error, silently shipping a
+          # debug-signed APK. Decide once, here, and fail loudly if the
+          # operator configured only part of the key.
+          if [ -z "$KS_B64" ] && [ -z "$KS_ALIAS" ] && [ -z "$KS_STORE_PASS" ]; then
+            echo "::warning::No Android signing secrets set. APKs will be debug-signed: not publishable, and they cannot update an installed app."
+            echo "sign_enabled=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          missing=""
+          [ -n "$KS_B64" ] || missing="ANDROID_SIGNING_KEY"
+          [ -n "$KS_ALIAS" ] || missing="$missing ANDROID_ALIAS"
+          [ -n "$KS_STORE_PASS" ] || missing="$missing ANDROID_KEY_STORE_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Android signing is partially configured; missing secret(s): $missing"
+            exit 1
+          fi
+          # PKCS#12 keystores normally use one password for store and key.
+          [ -n "$KS_KEY_PASS" ] || KS_KEY_PASS="$KS_STORE_PASS"
+          {
+            echo "KS_B64=$KS_B64"
+            echo "KS_ALIAS=$KS_ALIAS"
+            echo "KS_STORE_PASS=$KS_STORE_PASS"
+            echo "KS_KEY_PASS=$KS_KEY_PASS"
+          } >> "$GITHUB_ENV"
+          echo "sign_enabled=true" >> "$GITHUB_OUTPUT"
+          echo "Android signing key found; alias=$KS_ALIAS"
+
       - uses: r0adkll/sign-android-release@v1
         name: Sign app APK
-        continue-on-error: true
-        if: env.ANDROID_SIGNING_KEY != null
+        if: steps.signcheck.outputs.sign_enabled == 'true'
         id: sign-rustdesk
         with:
           releaseDirectory: ./signed-apk
-          signingKeyBase64: ${{ secrets.ANDROID_SIGNING_KEY }}
-          alias: ${{ secrets.ANDROID_ALIAS }}
-          keyStorePassword: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
-          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          signingKeyBase64: ${{ env.KS_B64 }}
+          alias: ${{ env.KS_ALIAS }}
+          keyStorePassword: ${{ env.KS_STORE_PASS }}
+          keyPassword: ${{ env.KS_KEY_PASS }}
         env:
           # override default build-tools version (29.0.3) -- optional
           # 30.0.2 no longer ships on ubuntu-24.04 runners (34.0.0 does);
-          # missing dir made the sign step fail silently via continue-on-error
+          # a missing build-tools dir made the sign step fail silently
           BUILD_TOOLS_VERSION: "34.0.0"
 
       - name: Prefer signed APK when available
@@ -728,10 +765,22 @@ jobs:
           plain="./signed-apk/${{ env.filename }}-${{ matrix.job.arch }}.apk"
           signed="./signed-apk/${{ env.filename }}-${{ matrix.job.arch }}-signed.apk"
           if [ -f "$signed" ]; then
+            # Prove which certificate ended up in the APK instead of trusting
+            # the step above: this is what a user compares with their keystore.
+            apksigner_bin=$(command -v apksigner || true)
+            [ -n "$apksigner_bin" ] || apksigner_bin="$ANDROID_HOME/build-tools/34.0.0/apksigner"
+            if [ -x "$apksigner_bin" ]; then
+              "$apksigner_bin" verify --print-certs "$signed"
+            else
+              echo "::warning::apksigner not found, skipping signature verification"
+            fi
             mv "$signed" "$plain"
             echo "Using release-signed APK: $plain"
+          elif [ "${{ steps.signcheck.outputs.sign_enabled }}" = "true" ]; then
+            echo "::error::An Android signing key is configured but no signed APK was produced (see the 'Sign app APK' step)."
+            exit 1
           else
-            echo "No signed APK found, keeping unsigned/debug APK: $plain"
+            echo "No signing key configured, keeping debug-signed APK: $plain"
           fi
           ls -l ./signed-apk/
 
