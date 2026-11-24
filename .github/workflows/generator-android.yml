@@ -342,9 +342,18 @@ jobs:
             convert ./res/icon.png -resize 64x64 ./res/64x64.png
             convert ./res/icon.png -resize 128x128 ./res/128x128.png
             convert ./res/128x128.png -resize 200% ./res/128x128@2x.png
+            # Android only shows the inner 72dp of an adaptive icon's 108dp
+            # foreground layer: the launcher mask crops the outer sixth on each
+            # side. Using the full-bleed icon as the foreground makes the app
+            # icon look zoomed in with its edges cut off, so bake the safe-zone
+            # padding into the foreground image here. (adaptive_icon_foreground_
+            # inset would do this, but it only exists in flutter_launcher_icons
+            # 0.14+ and rustdesk pins ^0.13.1, which silently ignores the key.)
+            # 432px is the xxxhdpi foreground size flutter_launcher_icons
+            # generates; working at that size avoids an upscaled, blurry icon.
+            convert ./res/icon.png -resize 288x288 -background none -gravity center -extent 432x432 ./res/icon_foreground.png
             sed -i '/android: true/a \ \ adaptive_icon_background: "#ffffff"' ./flutter/pubspec.yaml
-            sed -i '/adaptive_icon_background/a \ \ adaptive_icon_foreground: "../res/icon.png"' ./flutter/pubspec.yaml
-            sed -i '/adaptive_icon_foreground:/a \ \ adaptive_icon_foreground_inset: 32' ./flutter/pubspec.yaml
+            sed -i '/adaptive_icon_background/a \ \ adaptive_icon_foreground: "../res/icon_foreground.png"' ./flutter/pubspec.yaml
             sed -i '/ic_launcher_background/d' ./flutter/android/app/src/main/res/values/colors.xml
 
       - name: set server, serverPort, key, and apiserver
@@ -417,8 +426,6 @@ jobs:
           sed -i -e 's|RustDesk|${{ env.appname }}|' ./flutter/android/app/src/main/res/values/strings.xml
           sed -i -e "s|title: 'RustDesk'|title: '${{ env.appname }}'|" ./flutter/lib/main.dart
           sed -i -e "s|return 'RustDesk';|return '${{ env.appname }}';|" ./flutter/lib/web/bridge.dart
-          sed -i 's|android:label="RustDesk"|android:label="${{ env.appname }}"|' ./flutter/android/app/src/main/AndroidManifest.xml
-          sed -i 's|android:label="RustDesk Input"|android:label="${{ env.appname }} Input"|' ./flutter/android/app/src/main/AndroidManifest.xml
           sed -i 's|RustDesk is Open|${{ env.appname }} is Open|' ./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/BootReceiver.kt
           sed -i 's|Show Rustdesk|Show ${{ env.appname }}|' ./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/FloatingWindowService.kt
           sed -i 's|"RustDesk"|"${{ env.appname }}"|' ./flutter/android/app/src/main/kotlin/com/carriez/flutter_hbb/MainService.kt
@@ -434,6 +441,66 @@ jobs:
           sed -i -e 's|Purslane Ltd.|${{ env.compname }}|' ./Cargo.toml
           sed -i -e 's|Purslane Ltd.|${{ env.compname }}|' ./libs/portable/Cargo.toml
           sed -i -e 's|Purslane Ltd|${{ env.compname }}|' ./src/main.rs
+
+      # The Android launcher and the package installer show the name from
+      # <application android:label>. The old sed matched the literal
+      # android:label="RustDesk" text, so any upstream change to that line turns
+      # the patch into a silent no-op and the app keeps installing as
+      # "RustDesk". Set the attribute itself and print the result, so a missed
+      # patch is visible in the log instead of shipping.
+      - name: change Android app label to custom
+        if: env.appname != '' && env.appname != 'rustdesk'
+        shell: python
+        run: |
+          import os
+          import re
+          import sys
+
+          path = "flutter/android/app/src/main/AndroidManifest.xml"
+          app_name = os.environ.get("appname", "").strip()
+          if not app_name or app_name.lower() == "rustdesk":
+              print("::error::no custom app name to apply to the Android label")
+              sys.exit(1)
+
+          with open(path, encoding="utf-8") as f:
+              text = f.read()
+
+          match = re.search(r"<application\b[^>]*>", text)
+          if not match:
+              print(f"::error::no <application> element in {path}")
+              sys.exit(1)
+          tag = match.group(0)
+          if "android:label=" in tag:
+              tag = re.sub(
+                  r'android:label="[^"]*"',
+                  lambda m: f'android:label="{app_name}"',
+                  tag,
+                  count=1,
+              )
+          else:
+              tag = tag.replace(
+                  "<application",
+                  f'<application\n        android:label="{app_name}"',
+                  1,
+              )
+          text = text[: match.start()] + tag + text[match.end() :]
+
+          # The accessibility service shows its own label in Android Settings.
+          text = re.sub(
+              r'(<service\b[^>]*android:name="\.InputService"[^>]*?)'
+              r'android:label="[^"]*"',
+              lambda m: f'{m.group(1)}android:label="{app_name} Input"',
+              text,
+              count=1,
+          )
+
+          with open(path, "w", encoding="utf-8", newline="") as f:
+              f.write(text)
+
+          print(f"Android app label -> {app_name}")
+          for line in text.splitlines():
+              if "android:label=" in line:
+                  print("  " + line.strip())
 
       - name: change url to custom
         if: env.urlLink != 'https://rustdesk.com'
