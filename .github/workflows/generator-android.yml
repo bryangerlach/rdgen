@@ -710,11 +710,6 @@ jobs:
           KS_STORE_PASS: ${{ secrets.ANDROID_KEY_STORE_PASSWORD }}
           KS_KEY_PASS: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          # "if: env.ANDROID_SIGNING_KEY != null" never worked: an unset secret
-          # is an empty string, not null, so the sign step always ran and its
-          # failure was swallowed by continue-on-error, silently shipping a
-          # debug-signed APK. Decide once, here, and fail loudly if the
-          # operator configured only part of the key.
           if [ -z "$KS_B64" ] && [ -z "$KS_ALIAS" ] && [ -z "$KS_STORE_PASS" ]; then
             echo "::warning::No Android signing secrets set. APKs will be debug-signed: not publishable, and they cannot update an installed app."
             echo "sign_enabled=false" >> "$GITHUB_OUTPUT"
