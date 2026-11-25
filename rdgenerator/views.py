@@ -15,6 +15,7 @@ import pyzipper
 from django.conf import settings as _settings
 from django.db.models import Q
 from .forms import GenerateForm, HEX_COLOR_RE
+from .advanced_keys import ADVANCED_KEYS
 from .models import GithubRun
 from PIL import Image
 from urllib.parse import quote
@@ -505,7 +506,10 @@ def generator_view(request):
     else:
         form = GenerateForm()
     #return render(request, 'maintenance.html')
-    return render(request, 'generator.html', {'form': form})
+    return render(request, 'generator.html', {
+        'form': form,
+        'advanced_keys': ADVANCED_KEYS,
+    })
 
 
 def _expected_files_for_platform(filename, platform):

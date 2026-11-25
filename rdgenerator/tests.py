@@ -9,6 +9,7 @@ from django.conf import settings
 from django.test import RequestFactory, SimpleTestCase, TestCase, override_settings
 
 from .api_views import validate_generate_params
+from .advanced_keys import ADVANCED_KEYS
 from .forms import GenerateForm
 from .views import get_full_url, _norm_hex_color
 
@@ -134,3 +135,19 @@ class GeneratorViewTests(TestCase):
             secrets = json.loads(zf.read('secrets.json'))
         custom = json.loads(base64.b64decode(secrets['custom']))
         self.assertEqual(custom['override-settings']['hide-powered-by-me'], 'Y')
+
+
+class AdvancedKeysCatalogTests(SimpleTestCase):
+    def test_catalog_entries_are_complete_and_unique(self):
+        keys = [item['key'] for item in ADVANCED_KEYS]
+        self.assertEqual(len(keys), len(set(keys)), 'duplicate advanced settings key')
+        for item in ADVANCED_KEYS:
+            for field in ('group', 'key', 'values', 'default', 'sample', 'hint'):
+                self.assertIn(field, item, f'{item.get("key", "?")} is missing {field}')
+            self.assertNotIn('=', item['key'], 'key must be a bare option name')
+
+    def test_owned_sections_match_the_form(self):
+        sections = {'General', 'Security', 'Permissions', 'Visual', 'Other'}
+        for item in ADVANCED_KEYS:
+            if item.get('owned'):
+                self.assertIn(item['owned'], sections, item['key'])
