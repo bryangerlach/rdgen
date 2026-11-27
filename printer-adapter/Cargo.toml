@@ -1,0 +1,16 @@
+[package]
+name = "printer_driver_adapter"
+version = "0.1.0"
+edition = "2021"
+description = "Open drop-in replacement for RustDesk's printer_driver_adapter.dll"
+
+[lib]
+name = "printer_driver_adapter"
+crate-type = ["cdylib"]
+
+[profile.release]
+opt-level = "z"
+lto = true
+strip = true
+
+[workspace]

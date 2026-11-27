@@ -29,6 +29,25 @@ ZIP_PASSWORD = os.environ.get("ZIP_PASSWORD",'insecure')
 PROTOCOL = os.environ.get("PROTOCOL", 'https')
 REPONAME = os.environ.get("REPONAME", 'rdgen')
 SH_SECRET = os.environ.get('SH_SECRET', 'secret')
+# "json": one JSON object per log line; anything else: the message alone, as before
+LOG_FORMAT = os.environ.get("LOG_FORMAT", "text")
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "text": {"format": "%(message)s"},
+        "json": {"()": "rdgen.jsonlog.JSONFormatter"},
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "stream": "ext://sys.stdout",
+            "formatter": "json" if LOG_FORMAT.lower() == "json" else "text",
+        },
+    },
+    "loggers": {"rdgenerator": {"handlers": ["console"], "level": "INFO", "propagate": False}},
+}
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -91,6 +110,14 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
+        'OPTIONS': {
+            # WAL mode allows concurrent readers plus one writer without
+            # blocking readers, which is important when multiple GitHub
+            # Action runners hit save_custom_client / updategh at once.
+            # busy_timeout makes writers wait instead of failing immediately
+            # when the DB file is briefly locked.
+            'init_command': "PRAGMA journal_mode=WAL; PRAGMA busy_timeout=30000; PRAGMA synchronous=NORMAL;",
+        },
     }
 }
 

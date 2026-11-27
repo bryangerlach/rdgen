@@ -3,6 +3,10 @@ name: build RustDeskTempTopMostWindow
 on:
   workflow_call:
     inputs:
+        rustdesk-version:
+            description: 'RustDesk version, used to select a compatible privacy DLL'
+            type: string
+            default: ''
         upload-artifact:
           type: boolean
           default: true
@@ -39,12 +43,12 @@ jobs:
       build_output_dir: RustDeskTempTopMostWindow/WindowInjection/${{ inputs.platform }}/${{ inputs.configuration }}
     steps:
       - name: Add MSBuild to PATH
-        uses: microsoft/setup-msbuild@v2
+        uses: microsoft/setup-msbuild@v3
 
       - name: Checkout Repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: encrypted-secrets-zip
 
@@ -56,7 +60,7 @@ jobs:
       - name: Finalize and Cleanup zip/json
         if: always() # Run even if previous steps fail
         continue-on-error: true
-        uses: fjogeleit/http-request-action@v1
+        uses: fjogeleit/http-request-action@v2
         with:
           url: "${{ secrets.GENURL }}/cleanzip"
           method: 'POST'
@@ -67,26 +71,28 @@ jobs:
         run: |
           git clone https://github.com/rustdesk-org/RustDeskTempTopMostWindow RustDeskTempTopMostWindow
 
-        # Build. commit 53b548a5398624f7149a382000397993542ad796 is tag v0.3
       - name: Build the project
-        uses: nick-fields/retry@v3
+        uses: nick-fields/retry@v4
         with:
-          timeout_minutes: 1
+          timeout_minutes: 5
           max_attempts: 3
+          retry_wait_seconds: 15
           shell: pwsh
           command: |
-            cd RustDeskTempTopMostWindow && git checkout 53b548a5398624f7149a382000397993542ad796
+            cd RustDeskTempTopMostWindow
+            git checkout ecd8d6a139eee76845ea66423fb739af450fda90
+            if ($LASTEXITCODE -ne 0) { throw "Failed to checkout privacy DLL source" }
             if ($env:privacylink_url-ne "false") {
               Invoke-WebRequest -Uri ${{ env.privacylink_url }}/get_png?filename=${{ env.privacylink_file }}"&"uuid=${{ env.privacylink_uuid }} -OutFile privacy.png
-              Invoke-WebRequest -Uri https://raw.githubusercontent.com/bryangerlach/rdgen/refs/heads/master/.github/patches/privacyScreen.py -OutFile privacyScreen.py
-              python privacyScreen.py
+              python "$env:GITHUB_WORKSPACE/.github/patches/privacyScreen.py"
+              if ($LASTEXITCODE -ne 0) { throw "Failed to convert privacy image" }
               rm ./WindowInjection/img.cpp
               mv img.cpp ./WindowInjection/img.cpp
             }
             msbuild ${{ env.project_path }} -p:Configuration=${{ inputs.configuration }} -p:Platform=${{ inputs.platform }} /p:TargetVersion=${{ inputs.target_version }}
 
       - name: Archive build artifacts
-        uses: actions/upload-artifact@master
+        uses: actions/upload-artifact@v7
         if: ${{ inputs.upload-artifact }}
         with:
             name: topmostwindow-artifacts

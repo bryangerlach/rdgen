@@ -1,5 +1,5 @@
-import os
-import shutil
+import sys
+
 
 def remove_line_block(filepath, start_phrase, lines_to_remove_after_start):
     """
@@ -8,56 +8,74 @@ def remove_line_block(filepath, start_phrase, lines_to_remove_after_start):
     :param filepath: The path to the file to modify.
     :param start_phrase: The unique string to identify the first line of the block.
     :param lines_to_remove_after_start: The number of lines to remove after the starting line.
+    :return: True when the block was found and removed.
     """
-    
-    # 1. Configuration for the removal logic
-    # The starting line is: const KEY: &str = "5Qbwsde3unUcJBtrx9ZkvUmwFNoExHzpryHuPUdqlWM=";
-    # The block contains this line plus 8 following lines, so we want to skip 9 lines in total.
-    total_lines_to_skip = 1 + lines_to_remove_after_start # 1 (start line) + 8 (following lines) = 9
-    
-    lines_to_keep = []
-    skip_count = 0
 
-    # 2. Read and filter the file content
+    total_lines_to_skip = 1 + lines_to_remove_after_start
+
     try:
-        with open(filepath, 'r') as file:
-            for line in file:
-                
-                # If we are currently in the process of skipping lines, decrement the counter and continue
-                if skip_count > 0:
-                    skip_count -= 1
-                    continue
-                
-                # Check if the line matches the start phrase (we use .strip() to ignore indentation/whitespace)
-                if line.strip().startswith(start_phrase.strip()):
-                    # Start skipping the block (including the current line)
-                    skip_count = total_lines_to_skip - 1 
-                    # Note: We subtract 1 because the 'continue' will handle the first line removal immediately
-                    continue 
-
-                # If we are not skipping, keep the line, but change custom.txt to custom_.txt
-                line = line.replace("custom.txt", "custom_.txt")
-                lines_to_keep.append(line)
-                
+        with open(filepath, 'r', encoding='utf-8') as file:
+            lines = file.readlines()
     except FileNotFoundError:
-        print(f"Error: File not found at {filepath}")
-        return
+        print(f"Error: File not found at {filepath}", file=sys.stderr)
+        return False
 
-    # 3. Write the remaining lines back to the file
+    start = None
+    for i, line in enumerate(lines):
+        if line.strip().startswith(start_phrase.strip()):
+            start = i
+            break
+
+    if start is None:
+        # A retry of the workflow step (or a source tree that was already
+        # patched) has no signature block left.  If the renamed path is
+        # already present this is success, not a broken upstream change.
+        if "custom_.txt" in "".join(lines):
+            print(f"{filepath} is already patched; nothing to do.")
+            return True
+        print(
+            f"Error: could not find the signature block starting with "
+            f"'{start_phrase.strip()}' in {filepath}. RustDesk may have changed "
+            f"read_custom_client(); refusing to build a client whose custom "
+            f"config would be silently rejected by signature verification.",
+            file=sys.stderr,
+        )
+        return False
+
+    block = "".join(lines[start:start + total_lines_to_skip])
+    if "get_rs_pk" not in block or "sign::verify" not in block:
+        print(
+            f"Error: the block at {filepath}:{start + 1} no longer looks like the "
+            f"custom-client signature check (expected get_rs_pk and sign::verify). "
+            f"Refusing to remove lines blindly.",
+            file=sys.stderr,
+        )
+        return False
+
+    remaining = lines[:start] + lines[start + total_lines_to_skip:]
+    remaining = [line.replace("custom.txt", "custom_.txt") for line in remaining]
+
     try:
-        with open(filepath, 'w') as file:
-            file.writelines(lines_to_keep)
-            
-        print(f"Success! Removed the 9-line block starting with '{start_phrase.strip()}' from {filepath}.")
-        
+        with open(filepath, 'w', encoding='utf-8') as file:
+            file.writelines(remaining)
     except IOError as e:
-        print(f"An error occurred while writing to the file: {e}")
+        print(f"An error occurred while writing to the file: {e}", file=sys.stderr)
+        return False
+
+    print(
+        f"Success! Removed the {total_lines_to_skip}-line block starting with "
+        f"'{start_phrase.strip()}' from {filepath}."
+    )
+    return True
+
 
 def main():
-    file_path = 'src/common.rs' 
+    file_path = 'src/common.rs'
     start_phrase = 'const KEY: &str = "5Qbwsde3unUcJBtrx9ZkvUmwFNoExHzpryHuPUdqlWM=";'
-    lines_to_remove_after_start = 8 
-    remove_line_block(file_path, start_phrase, lines_to_remove_after_start)
+    lines_to_remove_after_start = 8
+    if not remove_line_block(file_path, start_phrase, lines_to_remove_after_start):
+        sys.exit(1)
 
-if __name__ == "__main__":
+
+if __name__ == '__main__':
     main()

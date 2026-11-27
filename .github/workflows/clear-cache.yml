@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Clear cache
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             console.log("About to clear")
@@ -30,7 +30,7 @@ jobs:
             console.log("Clear completed")
             
       - name: Purge cache # Above seems not clear thouroughly, so add this to double clear
-        uses: MyAlbum/purge-cache@v2
+        uses: MyAlbum/purge-cache@v3
         with:
           accessed: true # Purge caches by their last accessed time (default)
           created: false # Purge caches by their created time (default)
