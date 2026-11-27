@@ -213,6 +213,7 @@ def generate_custom_client(params, full_url):
     decodedCustom['override-settings'] = {}
     decodedCustom['default-settings'] = {}
     override = decodedCustom['override-settings']
+    default = decodedCustom['default-settings']
 
     # Remove the "Powered by <app>" link entirely. RustDesk ships a built-in
     # option for this that BOTH the Flutter UI (loadPowered) and the Sciter UI
@@ -255,6 +256,8 @@ def generate_custom_client(params, full_url):
         enableBlockingInput = enableRemoteModi = False
         enablePrinter = enableCamera = enableTerminal = False
 
+    default['verification-method'] = 'use-permanent-password' if permPass else 'use-both-passwords'
+
     override['access-mode'] = permissionsType
     override['enable-keyboard'] = 'Y' if enableKeyboard else 'N'
     override['enable-clipboard'] = 'Y' if enableClipboard else 'N'
@@ -266,9 +269,6 @@ def generate_custom_client(params, full_url):
     override['enable-block-input'] = 'Y' if enableBlockingInput else 'N'
     override['allow-remote-config-modification'] = 'Y' if enableRemoteModi else 'N'
     override['direct-server'] = 'Y' if enableDirectIP else 'N'
-    # A baked permanent password is authoritative: make it the permanent
-    # password method instead of silently leaving "both passwords" enabled.
-    override['verification-method'] = 'use-permanent-password' if permPass else 'use-both-passwords'
     # hide_cm() only returns true with approve-mode=password and a permanent
     # password, so do not advertise the feature when it cannot work.
     effective_hidecm = bool(hidecm and permPass)
