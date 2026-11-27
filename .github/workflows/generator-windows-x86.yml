@@ -536,6 +536,17 @@ jobs:
           # allowCustom.py renames the runtime path to custom_.txt.
           echo -n "${{ env.custom }}" | cat > ./Release/custom_.txt
 
+      - name: Prepare portable package
+        shell: bash
+        run: |
+          mv "./Release/rustdesk.exe" "./Release/${{ env.filename }}.exe" || echo "rustdesk"
+
+      - name: Zip portable package
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path ./Package | Out-Null
+          Compress-Archive -Path ./Release/* -DestinationPath ./Package/${{ env.filename }}.zip -CompressionLevel Optimal -Force
+
       - name: Build self-extracted executable
         shell: bash
         run: |
@@ -589,13 +600,13 @@ jobs:
         if: ${{ env.rdgen == 'true' }}
         shell: bash
         run: |
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.exe" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client
+          curl --fail --show-error -i -X POST -H "Authorization: Bearer ${{ env.token }}" -F "file=@./Package/${{ env.filename }}.zip" -F "uuid=${{ env.uuid }}" ${{ secrets.GENURL }}/save_custom_client
 
       - name: send file to api server
         if: ${{ env.rdgen == 'false' }}
         shell: bash
         run: |
-          curl -i -X POST -H "Content-Type: multipart/form-data" -H "Authorization: Bearer ${{ env.token }}" -F "file=@./SignOutput/${{ env.filename }}.exe" ${{ env.apiServer }}/api/save_custom_client
+          curl --fail --show-error -i -X POST -H "Authorization: Bearer ${{ env.token }}" -F "file=@./Package/${{ env.filename }}.zip" ${{ env.apiServer }}/api/save_custom_client
 
   cleanup:
     needs: [build-for-windows-sciter]
